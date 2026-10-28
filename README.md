@@ -28,7 +28,13 @@ Already cloned? `./scripts/install.sh`
 
 ---
 
-## Demo (30 seconds)
+## Demo (what you’re seeing)
+
+**Capture** a URL → **Package** a Task Card → **Continue** in an isolated browser → get a **Receipt** (proof).
+
+<p align="center">
+  <img src="docs/assets/tabhandoff-demo-strip.png" alt="CAPTURE → PACKAGE → CONTINUE → RECEIPT — proof stays local" width="900" />
+</p>
 
 ```bash
 cd ~/tabhandoff
@@ -38,20 +44,19 @@ node packages/cli/dist/index.js run \
   --wait
 ```
 
-You get a **shareable receipt** — markdown + screenshots + Task Card — under `~/.tabhandoff/receipts/<id>/`.
+### Where’s the proof?
 
-<p align="center">
-  <img src="docs/assets/tabhandoff-demo-strip.png" alt="TabHandoff before/after: Capture → Receipt" width="720" />
-</p>
+On **this machine only** (not uploaded to a cloud by default):
 
-<p align="center">
-  <img src="docs/assets/tabhandoff-demo-screenshot.png" alt="Capture — page loaded" width="360" />
-  &nbsp;
-  <img src="docs/assets/tabhandoff-demo-screenshot-result.png" alt="Continue — receipt result" width="360" />
-</p>
+```text
+~/.tabhandoff/receipts/<handoff-id>/
+├── receipt.md      # shareable markdown receipt
+├── card.yaml       # Task Card (portable handoff)
+└── screenshots/    # before/after stills
+```
 
-Live run against `playwright.dev/docs/intro` (`b8f51071-…`): isolated Chromium, DOM extract, receipt written — cookies/creds never transferred.
-
+Open a receipt: `node packages/cli/dist/index.js receipt <handoff-id>`  
+Privacy default: cookies/creds are **not** transferred; proof stays local unless *you* copy/share it.
 ---
 
 ## The loop

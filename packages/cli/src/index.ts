@@ -163,12 +163,25 @@ async function cmdDoctor(): Promise<void> {
       : "none — DOM extractor only (fine for v0.1 public extracts)",
   });
 
+  checks.push({
+    name: "proof-store",
+    ok: true,
+    detail: `${receiptsDir()}/<handoff-id>/ — receipt.md · screenshots · card.yaml (local only; not uploaded by default)`,
+  });
+
   let failed = false;
   console.log(`🕊️ tabhandoff doctor\n`);
   for (const c of checks) {
     console.log(`${c.ok ? "✅" : "❌"} ${c.name}: ${c.detail}`);
     if (!c.ok && c.name !== "llm-key") failed = true;
   }
+  console.log(``);
+  console.log(`Where's the proof? Local on this machine:`);
+  console.log(`  ${receiptsDir()}/<handoff-id>/`);
+  console.log(`  ├── receipt.md`);
+  console.log(`  ├── card.yaml`);
+  console.log(`  └── screenshots/`);
+  console.log(`Nothing is uploaded to a cloud by default (self-host / privacy).`);
   if (failed) process.exitCode = 1;
 }
 
@@ -195,11 +208,22 @@ async function cmdRun(args: Args): Promise<void> {
       error: job.error,
       resultSummary: job.resultSummary?.slice(0, 300),
     }, null, 2));
+    const proofDir = job.receiptPath
+      ? path.dirname(job.receiptPath)
+      : path.join(receiptsDir(), job.id);
+    console.log(``);
+    console.log(`Where's the proof? (local — not uploaded by default)`);
+    console.log(`  ${proofDir}/`);
+    console.log(`  ├── receipt.md`);
+    console.log(`  ├── card.yaml`);
+    console.log(`  └── screenshots/`);
+    console.log(`Open: tabhandoff receipt ${job.id}`);
     if (job.status !== "succeeded") process.exitCode = 1;
   } else {
     const job = await createAndQueue({ url, instruction, note });
     console.log(JSON.stringify({ id: job.id, status: job.status, receiptDir: job.receiptDir }, null, 2));
     console.log(`Poll: tabhandoff status ${job.id}`);
+    console.log(`Proof will land at: ${job.receiptDir ?? path.join(receiptsDir(), job.id)}/`);
   }
   await closeSharedBrowser();
 }
