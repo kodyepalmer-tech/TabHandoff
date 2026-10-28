@@ -2,13 +2,13 @@
 
 [![GitHub](https://img.shields.io/badge/github-kodyepalmer--tech%2FTabHandoff-black)](https://github.com/kodyepalmer-tech/TabHandoff)
 
-# The open handoff protocol for AI agents.
+**TABHANDOFF — The open handoff protocol for AI agents.**
 
 **Your AI was here. Now the next one can pick up.**
 
-Capture a page → package a portable handoff → continue in any agent → get a receipt.
+Capture → Package → Continue (any agent) + receipt.
 
-**Live self-hosted v0.1 — not a stub.** MIT · OSS protocol first · no marketplace/cloud platform yet.
+Live self-hosted v0.1 — not a stub. MIT · OSS protocol first · small v1 · no marketplace or cloud platform yet.
 
 ---
 
@@ -16,15 +16,15 @@ Capture a page → package a portable handoff → continue in any agent → get 
 
 | Step | What happens |
 |---|---|
-| **1. Capture** | Point TabHandoff at a URL (CLI/MCP today; browser “Handoff” next) with task context |
-| **2. Package** | Portable bundle: URL, instruction, note, Task Card — open format on disk |
-| **3. Continue** | Any MCP/CLI agent runs it in an **isolated** browser and returns a **receipt** |
+| **1. Capture** | Point TabHandoff at a complicated page (CLI/MCP today; browser “Handoff” next) with highlights / task context |
+| **2. Package** | Portable open-format bundle: URL, context, instructions, permitted evidence → Task Card on disk |
+| **3. Continue** | Another agent resumes via MCP/CLI in an **isolated** browser and returns a result with an **execution receipt** |
 
-**Safety default:** cookies, credentials, and authenticated browser state are **not** transferred. Ephemeral Chromium only — no daily-driver profile clone.
+**Safety default:** cookies, credentials, and authenticated browser state are **not** transferred. Ephemeral Chromium only — no daily-driver profile clone. Safe context + explicit permissions only.
 
 ---
 
-## One-command install (from this repo)
+## One-command install
 
 ```bash
 pnpm install && pnpm build && pnpm --filter @tabhandoff/cli exec playwright install chromium && node packages/cli/dist/index.js init
@@ -40,16 +40,16 @@ node packages/cli/dist/index.js run \
   --wait
 ```
 
-Shareable artifacts land in `~/.tabhandoff/receipts/<id>/` — `receipt.md`, screenshots, `card.yaml`.
+Shareable artifacts: `~/.tabhandoff/receipts/<id>/` — `receipt.md`, screenshots, `card.yaml` (postable receipt; GIF polish next).
 
 ---
 
-## Viral surface (v0.1)
+## Viral engineering (v0.1)
 
 1. **One-command install** — try the CLI with no account  
-2. **Visual payoff** — screenshots + action log on every run  
+2. **Visual handoff** — screenshots + action log every run (agent → proof)  
 3. **Shareable receipt** — markdown people can post/remix  
-4. **Open format** — Task Cards + MCP tools (`handoff.create` / `.status` / `.receipt`)  
+4. **Open format** — Task Cards + MCP (`handoff.create` / `.status` / `.receipt`)  
 5. **Distribution loop** — every receipt invites the next agent/person to pick up  
 
 ---
@@ -109,4 +109,4 @@ docs/clients/ MCP snippets
 
 ## License
 
-MIT — OSS protocol first; commercial hosted routing later, never paywall the core.
+MIT — OSS protocol first; commercial hosted routing later. Never paywall the core.
