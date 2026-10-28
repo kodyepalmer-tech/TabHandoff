@@ -2,7 +2,7 @@
   "name": "tabhandoff",
   "version": "0.1.0",
   "private": true,
-  "description": "TabHandoff \u2014 open-source browser handoffs for AI agents",
+  "description": "TabHandoff \u2014 the open handoff protocol for AI agents",
   "license": "MIT",
   "packageManager": "pnpm@10.33.4",
   "engines": {

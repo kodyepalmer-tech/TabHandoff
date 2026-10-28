@@ -2,26 +2,35 @@
 
 [![GitHub](https://img.shields.io/badge/github-kodyepalmer--tech%2FTabHandoff-black)](https://github.com/kodyepalmer-tech/TabHandoff)
 
-> **Live self-hosted — not a demo.** Isolated browser handoffs → receipts + Task Cards.
+# The open handoff protocol for AI agents.
 
-**Your agent. Your browser. Your proof.**  
-Launch: *Give your agent the page. Get the proof.*  
-Descriptor: Open-source browser handoffs for AI agents.
+**Your AI was here. Now the next one can pick up.**
 
-**Code / npm / CLI:** `tabhandoff` · `@tabhandoff/*` · bin `tabhandoff`  
-**Mascot (art later):** slightly chaotic clever **pigeon** — messenger bag, carries a browser tab like a letter, holds the receipt when the task is done.
+Capture a page → package a portable handoff → continue in any agent → get a receipt.
 
-> Name note: we do **not** use or claim [openhandoff.com](https://openhandoff.com) (unrelated call-handling SaaS). Brand is **TabHandoff**.
+**Live self-hosted v0.1 — not a stub.** MIT · OSS protocol first · no marketplace/cloud platform yet.
 
 ---
 
-## One-line install (from this repo)
+## The loop
+
+| Step | What happens |
+|---|---|
+| **1. Capture** | Point TabHandoff at a URL (CLI/MCP today; browser “Handoff” next) with task context |
+| **2. Package** | Portable bundle: URL, instruction, note, Task Card — open format on disk |
+| **3. Continue** | Any MCP/CLI agent runs it in an **isolated** browser and returns a **receipt** |
+
+**Safety default:** cookies, credentials, and authenticated browser state are **not** transferred. Ephemeral Chromium only — no daily-driver profile clone.
+
+---
+
+## One-command install (from this repo)
 
 ```bash
 pnpm install && pnpm build && pnpm --filter @tabhandoff/cli exec playwright install chromium && node packages/cli/dist/index.js init
 ```
 
-Then:
+No account required. Then:
 
 ```bash
 node packages/cli/dist/index.js doctor
@@ -31,21 +40,35 @@ node packages/cli/dist/index.js run \
   --wait
 ```
 
-Receipts land in `~/.tabhandoff/receipts/<id>/` (`receipt.md`, `card.yaml`, screenshots).
+Shareable artifacts land in `~/.tabhandoff/receipts/<id>/` — `receipt.md`, screenshots, `card.yaml`.
 
 ---
 
-## What you get (v0.1)
+## Viral surface (v0.1)
+
+1. **One-command install** — try the CLI with no account  
+2. **Visual payoff** — screenshots + action log on every run  
+3. **Shareable receipt** — markdown people can post/remix  
+4. **Open format** — Task Cards + MCP tools (`handoff.create` / `.status` / `.receipt`)  
+5. **Distribution loop** — every receipt invites the next agent/person to pick up  
+
+---
+
+## What ships in v0.1
 
 | Surface | Status |
 |---|---|
-| MCP tools `handoff_create` / `handoff_status` / `handoff_receipt` (protocol: `handoff.create` · `.status` · `.receipt`) | ✅ |
-| Playwright **ephemeral** Chromium (no cookie/session clone) | ✅ |
-| CLI alone (`run` / `capture` / `status` / `receipt` / `doctor`) | ✅ |
+| MCP `handoff_create` / `handoff_status` / `handoff_receipt` | ✅ |
+| Playwright **ephemeral** Chromium runner | ✅ |
+| CLI (`init` / `run` / `capture` / `status` / `receipt` / `doctor`) | ✅ |
 | Receipt markdown + screenshots + Task Card YAML | ✅ |
-| DOM extractor without API key; optional OpenAI/Anthropic agent loop | ✅ |
+| DOM extractor (no API key) · optional OpenAI/Anthropic loop | ✅ |
 
-**Hard rules:** MIT · self-host first · no cookie vault · no daily-driver profile clone.
+**Not in v1:** marketplace, hosted cloud platform, cookie/session vault, general-purpose agent.
+
+**Mascot (art later):** pigeon messenger — carries a tab like a letter, holds the receipt when done.
+
+> We do **not** claim [openhandoff.com](https://openhandoff.com) (unrelated SaaS). Product is **TabHandoff** (`tabhandoff` / `@tabhandoff/*`).
 
 ---
 
@@ -55,9 +78,20 @@ Receipts land in `~/.tabhandoff/receipts/<id>/` (`receipt.md`, `card.yaml`, scre
 |---|---|
 | **Cursor** | Local stdio MCP — [docs/clients/cursor.md](docs/clients/cursor.md) |
 | **Claude Desktop** | Local stdio MCP — [docs/clients/claude-desktop.md](docs/clients/claude-desktop.md) |
-| **ChatGPT** | Desktop/Codex: local stdio; Web: remote/tunnel — [docs/clients/chatgpt.md](docs/clients/chatgpt.md) |
-| **Grok** | Grok Build local MCP; grok.com connectors need public URL — [docs/clients/grok.md](docs/clients/grok.md) |
-| **CLI** | Always works offline — no chat client required |
+| **ChatGPT** | Desktop/Codex stdio; web needs tunnel — [docs/clients/chatgpt.md](docs/clients/chatgpt.md) |
+| **Grok** | Grok Build local MCP; grok.com needs public URL — [docs/clients/grok.md](docs/clients/grok.md) |
+| **CLI** | Works alone — no chat client required |
+
+```json
+{
+  "mcpServers": {
+    "tabhandoff": {
+      "command": "node",
+      "args": ["/ABS/PATH/TO/tabhandoff/packages/mcp/dist/stdio.js"]
+    }
+  }
+}
+```
 
 ---
 
@@ -65,14 +99,14 @@ Receipts land in `~/.tabhandoff/receipts/<id>/` (`receipt.md`, `card.yaml`, scre
 
 ```
 packages/
-  protocol/   @tabhandoff/protocol
-  runner/     @tabhandoff/runner
-  mcp/        @tabhandoff/mcp
-  cli/        @tabhandoff/cli   (bin: tabhandoff)
+  protocol/   @tabhandoff/protocol   # open handoff schemas
+  runner/     @tabhandoff/runner     # isolated Playwright
+  mcp/        @tabhandoff/mcp        # handoff.create / status / receipt
+  cli/        @tabhandoff/cli        # bin: tabhandoff
 cards/        starter Task Cards
 docs/clients/ MCP snippets
 ```
 
 ## License
 
-MIT
+MIT — OSS protocol first; commercial hosted routing later, never paywall the core.

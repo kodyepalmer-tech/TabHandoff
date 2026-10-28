@@ -51,8 +51,8 @@ function bool(args: Args, name: string): boolean {
 }
 
 async function cmdHelp(): Promise<void> {
-  console.log(`🕊️ tabhandoff — browser handoffs for AI agents
-(product brand TBD: TabHandoff (locked))
+  console.log(`🕊️ TabHandoff — the open handoff protocol for AI agents
+Your AI was here. Now the next one can pick up.
 
 Usage:
   tabhandoff init                 Prepare ~/.tabhandoff + print MCP client snippets
@@ -63,12 +63,12 @@ Usage:
   tabhandoff receipt <id>
   tabhandoff mcp                  Start MCP server on stdio (for Cursor/Claude)
 
+Loop: Capture → Package → Continue (any agent) + receipt
+No cookies/creds by default · MIT · OSS protocol first
+
 One-liner (from this repo):
   pnpm install && pnpm build && pnpm exec playwright install chromium
   node packages/cli/dist/index.js init
-
-Tagline (draft): Your agent. Your browser. Your proof.
-MIT · isolated browser · no cookie clone · self-host first · pigeon mascot TBD
 `);
 }
 

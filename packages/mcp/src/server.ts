@@ -35,7 +35,7 @@ export function createTabHandoffServer(): McpServer {
 
   server.tool(
     "handoff_create",
-    "Create a TabHandoff job job: navigate an isolated browser to a public URL and follow the instruction. Returns job id immediately; poll handoff_status / handoff_receipt.",
+    "Create a TabHandoff (Capture→Package→Continue): navigate an isolated browser to a public URL and follow the instruction. No cookies/creds. Returns job id; poll handoff_status / handoff_receipt.",
     {
       url: z.string().url().describe("Public start URL"),
       instruction: z.string().min(1).describe("What TabHandoff should do"),
@@ -58,7 +58,7 @@ export function createTabHandoffServer(): McpServer {
 
   server.tool(
     "handoff_status",
-    "Get status of a TabHandoff job job by id.",
+    "Get status of a TabHandoff job by id.",
     {
       id: z.string().min(1).describe("Handoff job id from handoff_create"),
     },
@@ -87,7 +87,7 @@ export function createTabHandoffServer(): McpServer {
 
   server.tool(
     "handoff_receipt",
-    "Fetch TabHandoff receipt paths and markdown for a finished (or failed) handoff.",
+    "Fetch the shareable TabHandoff receipt (markdown + screenshots + Task Card paths).",
     {
       id: z.string().min(1).describe("Handoff job id"),
       includeContent: z
