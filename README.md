@@ -1,5 +1,7 @@
 # TabHandoff
 
+[![GitHub](https://img.shields.io/badge/github-kodyepalmer--tech%2FTabHandoff-black)](https://github.com/kodyepalmer-tech/TabHandoff)
+
 > **Live self-hosted — not a demo.** Isolated browser handoffs → receipts + Task Cards.
 
 **Your agent. Your browser. Your proof.**  
