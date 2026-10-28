@@ -1,20 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="TabHandoff">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="TabHandoff">
   <title>TabHandoff</title>
-  <rect width="512" height="512" fill="#F7FBFC"/>
-  <!-- Left tab -->
-  <rect x="40" y="150" width="130" height="180" rx="20" fill="none" stroke="#0B3A4A" stroke-width="20"/>
-  <path d="M68 190h74M68 232h74M68 274h50" stroke="#0B3A4A" stroke-width="14" stroke-linecap="round"/>
-  <!-- Right tab -->
-  <rect x="342" y="150" width="130" height="180" rx="20" fill="none" stroke="#0B3A4A" stroke-width="20"/>
-  <path d="M370 190h74M370 232h74M370 274h50" stroke="#0B3A4A" stroke-width="14" stroke-linecap="round"/>
-  <!-- BACK AND FORTH arrows (focal) -->
-  <path d="M188 200 H300" stroke="#1EC8C8" stroke-width="22" stroke-linecap="round"/>
-  <path d="M278 172 L318 200 L278 228" fill="none" stroke="#1EC8C8" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M324 292 H212" stroke="#1EC8C8" stroke-width="22" stroke-linecap="round"/>
-  <path d="M234 264 L194 292 L234 320" fill="none" stroke="#1EC8C8" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
-  <!-- Receipt + check -->
-  <rect x="214" y="214" width="84" height="110" rx="10" fill="#FFFFFF" stroke="#0B3A4A" stroke-width="10"/>
-  <path d="M232 248h48M232 274h48M232 300h28" stroke="#0B3A4A" stroke-width="8" stroke-linecap="round"/>
-  <circle cx="280" cy="312" r="22" fill="#22C55E"/>
-  <path d="M270 312 L278 320 L292 302" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- B&W app icon: black squircle + bidirectional arrows (no teal) -->
+  <rect width="1024" height="1024" rx="224" fill="#000000"/>
+  <!-- Top arrow → -->
+  <path d="M256 400 H680" stroke="#FFFFFF" stroke-width="72" stroke-linecap="round"/>
+  <path d="M620 320 L768 400 L620 480" fill="none" stroke="#FFFFFF" stroke-width="72" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Bottom arrow ← -->
+  <path d="M768 624 H344" stroke="#FFFFFF" stroke-width="72" stroke-linecap="round"/>
+  <path d="M404 544 L256 624 L404 704" fill="none" stroke="#FFFFFF" stroke-width="72" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

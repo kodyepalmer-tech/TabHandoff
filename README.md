@@ -118,13 +118,13 @@ Live run against `playwright.dev/docs/intro` (`b8f51071-…`): isolated Chromium
 
 | Asset | Path |
 |---|---|
-| App icon / avatar (hero) | [`docs/assets/tabhandoff-app-icon.png`](docs/assets/tabhandoff-app-icon.png) |
+| App icon / avatar (hero) | [`docs/assets/tabhandoff-app-icon.png`](docs/assets/tabhandoff-app-icon.png) — black squircle, white bidirectional arrows |
 | Logo (same mark) | [`docs/assets/tabhandoff-logo.png`](docs/assets/tabhandoff-logo.png) |
-| SVG mark (tabs + back-and-forth arrows) | [`docs/assets/tabhandoff-mark.svg`](docs/assets/tabhandoff-mark.svg) |
+| SVG mark (B&W ↔ arrows) | [`docs/assets/tabhandoff-mark.svg`](docs/assets/tabhandoff-mark.svg) |
 | GitHub social preview (1200×630) | [`docs/assets/tabhandoff-og.png`](docs/assets/tabhandoff-og.png) |
 | Demo (static strip) | [`docs/assets/tabhandoff-demo-strip.png`](docs/assets/tabhandoff-demo-strip.png) |
 
-Repo settings → Social preview → upload `docs/assets/tabhandoff-og.png`. Use the **app icon PNG** as the org/user avatar.
+Repo settings → Social preview → upload `docs/assets/tabhandoff-og.png`. Use the **B&W app icon PNG** as the org/user avatar.
 
 ---
 
