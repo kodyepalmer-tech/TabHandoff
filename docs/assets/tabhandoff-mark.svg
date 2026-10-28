@@ -1,39 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none" role="img" aria-label="TabHandoff">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="TabHandoff">
   <title>TabHandoff</title>
-  <!-- Black squircle app icon + two browser tabs + one curved handoff arrow -->
-  <rect width="128" height="128" rx="28" fill="#000000"/>
-  <!-- Left tab (sender) -->
-  <path
-    fill="#FFFFFF"
-    d="M22 44
-       c0-4.4 3.6-8 8-8h14c2.2 0 4.2 1.2 5.2 3.1L52 44
-       H74c4.4 0 8 3.6 8 8v28c0 4.4-3.6 8-8 8H30c-4.4 0-8-3.6-8-8V44z"
-  />
-  <!-- Right tab (receiver) — slightly lower/right, outline weight via cut -->
-  <path
-    fill="#FFFFFF"
-    d="M54 52
-       c0-4.4 3.6-8 8-8h14c2.2 0 4.2 1.2 5.2 3.1L84 52
-       H98c4.4 0 8 3.6 8 8v28c0 4.4-3.6 8-8 8H62c-4.4 0-8-3.6-8-8V52z"
-  />
-  <!-- Cut inner windows so tabs read as frames, not blocks -->
-  <path fill="#000000" d="M30 52h44v22H30z"/>
-  <path fill="#000000" d="M62 60h36v22H62z"/>
-  <!-- Single curved handoff arrow (left → right, above tabs) -->
-  <path
-    fill="none"
-    stroke="#FFFFFF"
-    stroke-width="7"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-    d="M34 30 C52 14, 76 14, 94 30"
-  />
-  <path
-    fill="none"
-    stroke="#FFFFFF"
-    stroke-width="7"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-    d="M86 22 L96 30 L86 38"
-  />
+  <!-- Exact app-icon composition: black squircle + two tab frames + one curved handoff arrow -->
+  <rect width="1024" height="1024" rx="224" fill="#000000"/>
+  <!-- Left tab -->
+  <rect x="248" y="288" width="200" height="448" rx="56" fill="none" stroke="#FFFFFF" stroke-width="56"/>
+  <!-- Right tab -->
+  <rect x="576" y="288" width="200" height="448" rx="56" fill="none" stroke="#FFFFFF" stroke-width="56"/>
+  <!-- Handoff curve + arrowhead (left → right) -->
+  <path d="M448 512 C496 400 528 400 576 512" fill="none" stroke="#FFFFFF" stroke-width="56" stroke-linecap="round"/>
+  <path d="M548 456 L596 512 L548 512 Z" fill="#FFFFFF"/>
 </svg>
