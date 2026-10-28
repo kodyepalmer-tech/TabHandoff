@@ -41,15 +41,16 @@ node packages/cli/dist/index.js run \
 You get a **shareable receipt** — markdown + screenshots + Task Card — under `~/.tabhandoff/receipts/<id>/`.
 
 <p align="center">
-  <img src="docs/assets/tabhandoff-demo.gif" alt="TabHandoff Capture → Package → Continue demo" width="720" />
+  <img src="docs/assets/tabhandoff-demo-strip.png" alt="TabHandoff before/after: Capture → Receipt" width="720" />
 </p>
 
-<details>
-<summary>Sample receipt excerpt</summary>
+<p align="center">
+  <img src="docs/assets/tabhandoff-demo-screenshot.png" alt="Capture — page loaded" width="360" />
+  &nbsp;
+  <img src="docs/assets/tabhandoff-demo-screenshot-result.png" alt="Continue — receipt result" width="360" />
+</p>
 
 Live run against `playwright.dev/docs/intro` (`b8f51071-…`): isolated Chromium, DOM extract, receipt written — cookies/creds never transferred.
-
-</details>
 
 ---
 
@@ -119,9 +120,9 @@ Live run against `playwright.dev/docs/intro` (`b8f51071-…`): isolated Chromium
 |---|---|
 | App icon / avatar (hero) | [`docs/assets/tabhandoff-app-icon.png`](docs/assets/tabhandoff-app-icon.png) |
 | Logo (same mark) | [`docs/assets/tabhandoff-logo.png`](docs/assets/tabhandoff-logo.png) |
-| SVG mark (vector of same glyph) | [`docs/assets/tabhandoff-mark.svg`](docs/assets/tabhandoff-mark.svg) |
+| SVG mark (two tabs + one arrow) | [`docs/assets/tabhandoff-mark.svg`](docs/assets/tabhandoff-mark.svg) |
 | GitHub social preview (1200×630) | [`docs/assets/tabhandoff-og.png`](docs/assets/tabhandoff-og.png) |
-| Demo GIF | [`docs/assets/tabhandoff-demo.gif`](docs/assets/tabhandoff-demo.gif) |
+| Demo (static strip) | [`docs/assets/tabhandoff-demo-strip.png`](docs/assets/tabhandoff-demo-strip.png) |
 
 Repo settings → Social preview → upload `docs/assets/tabhandoff-og.png`. Use the **app icon PNG** as the org/user avatar.
 
@@ -135,7 +136,7 @@ packages/
   runner/     @tabhandoff/runner
   mcp/        @tabhandoff/mcp
   cli/        @tabhandoff/cli
-docs/assets/  logo · OG · demo gif
+docs/assets/  app icon · OG · static demo stills
 scripts/install.sh
 ```
 
