@@ -1,0 +1,13 @@
+schemaVersion: "0.1"
+name: example-com-headings
+description: Extract main heading and first paragraph from example.com
+startUrl: "https://example.com"
+instruction: "Extract the main heading and first paragraph as markdown"
+successHints:
+  - "Receipt markdown produced"
+  - "At least one screenshot"
+tags:
+  - tabhandoff
+  - starter
+  - public
+createdAt: "2026-10-28T00:00:00.000Z"

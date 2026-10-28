@@ -1,0 +1,28 @@
+{
+  "name": "@tabhandoff/cli",
+  "version": "0.1.0",
+  "description": "TabHandoff CLI \u2014 init, run, doctor, capture",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "tabhandoff": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --clean --external playwright && node -e \"const fs=require('fs');const p='dist/index.js';fs.writeFileSync(p,'#!/usr/bin/env node\\n'+fs.readFileSync(p,'utf8'))\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@tabhandoff/mcp": "workspace:*",
+    "@tabhandoff/protocol": "workspace:*",
+    "@tabhandoff/runner": "workspace:*",
+    "playwright": "^1.51.0"
+  },
+  "devDependencies": {
+    "tsup": "^8.4.0",
+    "typescript": "^5.8.2"
+  }
+}

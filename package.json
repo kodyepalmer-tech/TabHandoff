@@ -1,0 +1,22 @@
+{
+  "name": "tabhandoff",
+  "version": "0.1.0",
+  "private": true,
+  "description": "TabHandoff \u2014 open-source browser handoffs for AI agents",
+  "license": "MIT",
+  "packageManager": "pnpm@10.33.4",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "pnpm -r run build",
+    "typecheck": "pnpm -r run typecheck",
+    "tabhandoff": "node packages/cli/dist/index.js",
+    "doctor": "node packages/cli/dist/index.js doctor",
+    "smoke": "node packages/cli/dist/index.js run --url https://example.com --instruction \"Extract the main heading and first paragraph as markdown\" --wait"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "typescript": "^5.9.3"
+  }
+}

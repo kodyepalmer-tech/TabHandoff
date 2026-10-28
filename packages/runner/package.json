@@ -1,0 +1,33 @@
+{
+  "name": "@tabhandoff/runner",
+  "version": "0.1.0",
+  "description": "TabHandoff isolated Playwright runner (ephemeral context, no cookie clone)",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --clean --external playwright",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@tabhandoff/protocol": "workspace:*"
+  },
+  "peerDependencies": {
+    "playwright": "^1.51.0"
+  },
+  "devDependencies": {
+    "playwright": "^1.51.0",
+    "tsup": "^8.4.0",
+    "typescript": "^5.8.2"
+  }
+}
