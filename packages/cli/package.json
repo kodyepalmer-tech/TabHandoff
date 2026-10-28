@@ -1,7 +1,7 @@
 {
   "name": "@tabhandoff/cli",
   "version": "0.1.0",
-  "description": "TabHandoff CLI \u2014 Capture \u2192 Package \u2192 Continue + receipt",
+  "description": "TabHandoff CLI \u2014 Capture \u2192 Package \u2192 Continue. The open handoff protocol for AI agents.",
   "license": "MIT",
   "type": "module",
   "bin": {

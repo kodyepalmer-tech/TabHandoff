@@ -1,7 +1,7 @@
 {
   "name": "@tabhandoff/runner",
   "version": "0.1.0",
-  "description": "TabHandoff isolated Playwright runner (no cookie clone)",
+  "description": "TabHandoff isolated Playwright runner \u2014 no cookies/creds by default",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",

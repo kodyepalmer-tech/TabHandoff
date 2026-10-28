@@ -1,7 +1,7 @@
 {
   "name": "@tabhandoff/mcp",
   "version": "0.1.0",
-  "description": "TabHandoff MCP \u2014 handoff.create / status / receipt",
+  "description": "TabHandoff MCP \u2014 handoff.create / status / receipt (open handoff protocol)",
   "license": "MIT",
   "type": "module",
   "bin": {

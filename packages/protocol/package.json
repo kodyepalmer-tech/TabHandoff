@@ -1,7 +1,7 @@
 {
   "name": "@tabhandoff/protocol",
   "version": "0.1.0",
-  "description": "TabHandoff open handoff protocol schemas",
+  "description": "TabHandoff open handoff protocol schemas: jobs, receipts, Task Cards",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
