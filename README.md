@@ -1,14 +1,55 @@
-# TabHandoff
+<p align="center">
+  <img src="docs/assets/tabhandoff-logo.png" alt="TabHandoff" width="96" height="96" />
+</p>
 
-[![GitHub](https://img.shields.io/badge/github-kodyepalmer--tech%2FTabHandoff-black)](https://github.com/kodyepalmer-tech/TabHandoff)
+<h1 align="center">TabHandoff</h1>
 
-**TABHANDOFF — The open handoff protocol for AI agents.**
+<p align="center">
+  <strong>The open handoff protocol for AI agents.</strong><br/>
+  <em>Your AI was here. Now the next one can pick up.</em>
+</p>
 
-**Your AI was here. Now the next one can pick up.**
+<p align="center">
+  Capture → Package → Continue · MIT · no cookies by default<br/>
+  <a href="https://github.com/kodyepalmer-tech/TabHandoff">github.com/kodyepalmer-tech/TabHandoff</a>
+</p>
 
-Capture → Package → Continue (any agent) + receipt.
+---
 
-Live self-hosted v0.1 — not a stub. MIT · OSS protocol first · small v1 · no marketplace or cloud platform yet.
+## One-command install
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/kodyepalmer-tech/TabHandoff/main/scripts/install.sh | bash
+```
+
+Node 22+. Clones to `~/tabhandoff`, builds, installs Chromium, runs `init`. No account.
+
+Already cloned? `./scripts/install.sh`
+
+---
+
+## Demo (30 seconds)
+
+```bash
+cd ~/tabhandoff
+node packages/cli/dist/index.js run \
+  --url https://playwright.dev/docs/intro \
+  --instruction "Extract the page title and first three getting-started steps as markdown" \
+  --wait
+```
+
+You get a **shareable receipt** — markdown + screenshots + Task Card — under `~/.tabhandoff/receipts/<id>/`.
+
+<p align="center">
+  <img src="docs/assets/tabhandoff-demo.gif" alt="TabHandoff Capture → Package → Continue demo" width="720" />
+</p>
+
+<details>
+<summary>Sample receipt excerpt</summary>
+
+Live run against `playwright.dev/docs/intro` (`b8f51071-…`): isolated Chromium, DOM extract, receipt written — cookies/creds never transferred.
+
+</details>
 
 ---
 
@@ -16,41 +57,19 @@ Live self-hosted v0.1 — not a stub. MIT · OSS protocol first · small v1 · n
 
 | Step | What happens |
 |---|---|
-| **1. Capture** | Point TabHandoff at a complicated page (CLI/MCP today; browser “Handoff” next) with highlights / task context |
-| **2. Package** | Portable open-format bundle: URL, context, instructions, permitted evidence → Task Card on disk |
-| **3. Continue** | Another agent resumes via MCP/CLI in an **isolated** browser and returns a result with an **execution receipt** |
+| **1. Capture** | Point TabHandoff at a page (CLI/MCP today; browser “Handoff” next) |
+| **2. Package** | Portable Task Card: URL, context, instructions, permitted evidence |
+| **3. Continue** | Another agent resumes in an **isolated** browser and returns a receipt |
 
-**Safety default:** cookies, credentials, and authenticated browser state are **not** transferred. Ephemeral Chromium only — no daily-driver profile clone. Safe context + explicit permissions only.
-
----
-
-## One-command install
-
-```bash
-pnpm install && pnpm build && pnpm --filter @tabhandoff/cli exec playwright install chromium && node packages/cli/dist/index.js init
-```
-
-No account required. Then:
-
-```bash
-node packages/cli/dist/index.js doctor
-node packages/cli/dist/index.js run \
-  --url https://example.com \
-  --instruction "Extract the main heading and first paragraph as markdown" \
-  --wait
-```
-
-Shareable artifacts: `~/.tabhandoff/receipts/<id>/` — `receipt.md`, screenshots, `card.yaml` (postable receipt; GIF polish next).
+**Safety default:** cookies, credentials, and authenticated browser state are **not** transferred.
 
 ---
 
-## Viral engineering (v0.1)
+## Why star / contribute
 
-1. **One-command install** — try the CLI with no account  
-2. **Visual handoff** — screenshots + action log every run (agent → proof)  
-3. **Shareable receipt** — markdown people can post/remix  
-4. **Open format** — Task Cards + MCP (`handoff.create` / `.status` / `.receipt`)  
-5. **Distribution loop** — every receipt invites the next agent/person to pick up  
+- **Protocol first** — open Task Cards + MCP tools other agents can implement
+- **Proof every run** — postable receipts (the shareable artifact)
+- **Small v0.1** — MCP + Playwright + CLI; no marketplace, no cookie vault
 
 ---
 
@@ -62,11 +81,10 @@ Shareable artifacts: `~/.tabhandoff/receipts/<id>/` — `receipt.md`, screenshot
 | Playwright **ephemeral** Chromium runner | ✅ |
 | CLI (`init` / `run` / `capture` / `status` / `receipt` / `doctor`) | ✅ |
 | Receipt markdown + screenshots + Task Card YAML | ✅ |
-| DOM extractor (no API key) · optional OpenAI/Anthropic loop | ✅ |
 
 **Not in v1:** marketplace, hosted cloud platform, cookie/session vault, general-purpose agent.
 
-**Mascot (art later):** pigeon messenger — carries a tab like a letter, holds the receipt when done.
+**Mascot (art later):** pigeon messenger.
 
 > We do **not** claim [openhandoff.com](https://openhandoff.com) (unrelated SaaS). Product is **TabHandoff** (`tabhandoff` / `@tabhandoff/*`).
 
@@ -76,11 +94,11 @@ Shareable artifacts: `~/.tabhandoff/receipts/<id>/` — `receipt.md`, screenshot
 
 | Client | Path |
 |---|---|
-| **Cursor** | Local stdio MCP — [docs/clients/cursor.md](docs/clients/cursor.md) |
-| **Claude Desktop** | Local stdio MCP — [docs/clients/claude-desktop.md](docs/clients/claude-desktop.md) |
-| **ChatGPT** | Desktop/Codex stdio; web needs tunnel — [docs/clients/chatgpt.md](docs/clients/chatgpt.md) |
-| **Grok** | Grok Build local MCP; grok.com needs public URL — [docs/clients/grok.md](docs/clients/grok.md) |
-| **CLI** | Works alone — no chat client required |
+| **Cursor** | [docs/clients/cursor.md](docs/clients/cursor.md) |
+| **Claude Desktop** | [docs/clients/claude-desktop.md](docs/clients/claude-desktop.md) |
+| **ChatGPT** | [docs/clients/chatgpt.md](docs/clients/chatgpt.md) |
+| **Grok** | [docs/clients/grok.md](docs/clients/grok.md) |
+| **CLI** | Works alone |
 
 ```json
 {
@@ -95,16 +113,28 @@ Shareable artifacts: `~/.tabhandoff/receipts/<id>/` — `receipt.md`, screenshot
 
 ---
 
+## Brand assets
+
+| Asset | Path |
+|---|---|
+| App icon / avatar | [`docs/assets/tabhandoff-logo.png`](docs/assets/tabhandoff-logo.png) |
+| SVG mark | [`docs/assets/tabhandoff-mark.svg`](docs/assets/tabhandoff-mark.svg) |
+| GitHub social preview (1200×630) | [`docs/assets/tabhandoff-og.png`](docs/assets/tabhandoff-og.png) |
+
+Repo settings → Social preview → upload `docs/assets/tabhandoff-og.png`. Use the logo as the org/user avatar.
+
+---
+
 ## Monorepo
 
 ```
 packages/
-  protocol/   @tabhandoff/protocol   # open handoff schemas
-  runner/     @tabhandoff/runner     # isolated Playwright
-  mcp/        @tabhandoff/mcp        # handoff.create / status / receipt
-  cli/        @tabhandoff/cli        # bin: tabhandoff
-cards/        starter Task Cards
-docs/clients/ MCP snippets
+  protocol/   @tabhandoff/protocol
+  runner/     @tabhandoff/runner
+  mcp/        @tabhandoff/mcp
+  cli/        @tabhandoff/cli
+docs/assets/  logo · OG · demo gif
+scripts/install.sh
 ```
 
 ## License

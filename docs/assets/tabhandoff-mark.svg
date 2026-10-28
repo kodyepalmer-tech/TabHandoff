@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="TabHandoff app icon">
+  <title>TabHandoff</title>
+  <!-- Cursor-style black squircle + white geometric handoff mark -->
+  <rect width="128" height="128" rx="28" fill="#000000"/>
+  <!-- white tab / card -->
+  <rect x="44" y="36" width="40" height="52" rx="6" fill="none" stroke="#FFFFFF" stroke-width="7"/>
+  <path d="M54 52h20M54 64h20M54 76h12" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round"/>
+  <!-- bidirectional arrows (handoff) -->
+  <path d="M22 52h18" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round"/>
+  <path d="M34 42l12 10-12 10" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M106 76H88" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round"/>
+  <path d="M94 86L82 76l12-10" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

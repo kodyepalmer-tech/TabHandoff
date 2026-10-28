@@ -11,6 +11,7 @@
   "scripts": {
     "build": "pnpm -r run build",
     "typecheck": "pnpm -r run typecheck",
+    "install:local": "bash scripts/install.sh",
     "tabhandoff": "node packages/cli/dist/index.js",
     "doctor": "node packages/cli/dist/index.js doctor",
     "smoke": "node packages/cli/dist/index.js run --url https://example.com --instruction \"Extract the main heading and first paragraph as markdown\" --wait"

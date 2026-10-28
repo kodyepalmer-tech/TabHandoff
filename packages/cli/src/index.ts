@@ -66,9 +66,8 @@ Usage:
 Loop: Capture → Package → Continue (any agent) + receipt
 No cookies/creds by default · MIT · OSS protocol first
 
-One-liner (from this repo):
-  pnpm install && pnpm build && pnpm exec playwright install chromium
-  node packages/cli/dist/index.js init
+One-liner (stranger install):
+  curl -fsSL https://raw.githubusercontent.com/kodyepalmer-tech/TabHandoff/main/scripts/install.sh | bash
 `);
 }
 
