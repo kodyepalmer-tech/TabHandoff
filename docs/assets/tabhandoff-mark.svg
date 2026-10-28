@@ -1,14 +1,21 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="TabHandoff">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="TabHandoff">
   <title>TabHandoff</title>
-  <!-- App icon twin: black squircle + abstract diamond handoff glyph -->
-  <rect width="1024" height="1024" rx="224" fill="#000000"/>
-  <path
-    fill="#FFFFFF"
-    fill-rule="evenodd"
-    d="M512 176
-       L848 416 L752 496 L512 336 L272 496 L176 416 Z
-       M512 848
-       L176 608 L272 528 L512 688 L752 528 L848 608 Z
-       M464 320 L560 320 L560 704 L464 704 Z"
-  />
+  <!-- Teal tabs + bidirectional handoff + receipt check (matches founder-chosen logo) -->
+  <rect width="512" height="512" fill="#F7FBFC"/>
+  <!-- Left tab -->
+  <rect x="56" y="140" width="120" height="160" rx="18" fill="none" stroke="#0B3A4A" stroke-width="22"/>
+  <path d="M80 180h72M80 220h72M80 260h48" stroke="#0B3A4A" stroke-width="16" stroke-linecap="round"/>
+  <!-- Right tab -->
+  <rect x="336" y="140" width="120" height="160" rx="18" fill="none" stroke="#0B3A4A" stroke-width="22"/>
+  <path d="M360 180h72M360 220h72M360 260h48" stroke="#0B3A4A" stroke-width="16" stroke-linecap="round"/>
+  <!-- Bidirectional teal arrows -->
+  <path d="M196 200 H250" stroke="#1EC8C8" stroke-width="20" stroke-linecap="round"/>
+  <path d="M230 176 L262 200 L230 224" fill="none" stroke="#1EC8C8" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M316 280 H262" stroke="#1EC8C8" stroke-width="20" stroke-linecap="round"/>
+  <path d="M282 256 L250 280 L282 304" fill="none" stroke="#1EC8C8" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Receipt + green check -->
+  <rect x="214" y="214" width="84" height="108" rx="10" fill="#FFFFFF" stroke="#0B3A4A" stroke-width="10"/>
+  <path d="M232 248h48M232 272h48M232 296h28" stroke="#0B3A4A" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="278" cy="310" r="22" fill="#22C55E"/>
+  <path d="M268 310 L276 318 L290 300" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

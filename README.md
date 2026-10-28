@@ -120,7 +120,7 @@ Live run against `playwright.dev/docs/intro` (`b8f51071-…`): isolated Chromium
 |---|---|
 | App icon / avatar (hero) | [`docs/assets/tabhandoff-app-icon.png`](docs/assets/tabhandoff-app-icon.png) |
 | Logo (same mark) | [`docs/assets/tabhandoff-logo.png`](docs/assets/tabhandoff-logo.png) |
-| SVG mark (two tabs + one arrow) | [`docs/assets/tabhandoff-mark.svg`](docs/assets/tabhandoff-mark.svg) |
+| SVG mark (teal tabs + handoff) | [`docs/assets/tabhandoff-mark.svg`](docs/assets/tabhandoff-mark.svg) |
 | GitHub social preview (1200×630) | [`docs/assets/tabhandoff-og.png`](docs/assets/tabhandoff-og.png) |
 | Demo (static strip) | [`docs/assets/tabhandoff-demo-strip.png`](docs/assets/tabhandoff-demo-strip.png) |
 
