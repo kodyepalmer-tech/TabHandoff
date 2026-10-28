@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/tabhandoff-logo.png" alt="TabHandoff" width="96" height="96" />
+  <img src="docs/assets/tabhandoff-app-icon.png" alt="TabHandoff" width="96" height="96" />
 </p>
 
 <h1 align="center">TabHandoff</h1>
@@ -117,11 +117,13 @@ Live run against `playwright.dev/docs/intro` (`b8f51071-…`): isolated Chromium
 
 | Asset | Path |
 |---|---|
-| App icon / avatar | [`docs/assets/tabhandoff-logo.png`](docs/assets/tabhandoff-logo.png) |
-| SVG mark | [`docs/assets/tabhandoff-mark.svg`](docs/assets/tabhandoff-mark.svg) |
+| App icon / avatar (hero) | [`docs/assets/tabhandoff-app-icon.png`](docs/assets/tabhandoff-app-icon.png) |
+| Logo (same mark) | [`docs/assets/tabhandoff-logo.png`](docs/assets/tabhandoff-logo.png) |
+| SVG mark (vector of same glyph) | [`docs/assets/tabhandoff-mark.svg`](docs/assets/tabhandoff-mark.svg) |
 | GitHub social preview (1200×630) | [`docs/assets/tabhandoff-og.png`](docs/assets/tabhandoff-og.png) |
+| Demo GIF | [`docs/assets/tabhandoff-demo.gif`](docs/assets/tabhandoff-demo.gif) |
 
-Repo settings → Social preview → upload `docs/assets/tabhandoff-og.png`. Use the logo as the org/user avatar.
+Repo settings → Social preview → upload `docs/assets/tabhandoff-og.png`. Use the **app icon PNG** as the org/user avatar.
 
 ---
 
