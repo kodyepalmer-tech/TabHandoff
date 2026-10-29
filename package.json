@@ -14,6 +14,7 @@
     "test": "pnpm test:evidence && pnpm test:bridge",
     "test:evidence": "pnpm --filter @tabhandoff/evidence test",
     "test:bridge": "pnpm --filter @tabhandoff/bridge test",
+    "test:agent": "pnpm --filter @tabhandoff/bridge exec node --import tsx --test test/agent-integration.test.ts",
     "desktop": "pnpm --filter @tabhandoff/desktop start",
     "bridge": "pnpm --filter @tabhandoff/bridge start",
     "install:local": "bash scripts/install.sh",
