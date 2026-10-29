@@ -43,3 +43,23 @@ export {
   workflowInflightCount,
   type LiveHandoffStatus,
 } from "./execute.js";
+export {
+  PortableError,
+  HASH_INTEGRITY_NOTE,
+  resolveHandoffDir,
+  readHandoffPackage,
+  validateHandoffTarget,
+  createPortableHandoff,
+  appendProgress,
+  attachEvidence,
+  markExecutionStatus,
+  continueHandoff,
+  exportHandoffPackage,
+  summarizePackageForAgent,
+  type AppendProgressInput,
+  type AttachEvidenceInput,
+  type MarkStatusInput,
+  type ContinueHandoffInput,
+  type ExportHandoffInput,
+  type ExportHandoffResult,
+} from "./portable.js";
