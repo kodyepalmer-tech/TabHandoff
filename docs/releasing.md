@@ -2,14 +2,18 @@
 
 **Hard stops for agents:** no merge to `main` without founder approval, no DNS changes, no live publish, no CWS submit, no `v*` tag unless the founder asks, no paid spend.
 
-## Recommended merge order (relative to product PR #13)
+## Current ship state (as of 2026-10-29)
 
-1. **Land product AI UX first** — [PR #13](https://github.com/kodyepalmer-tech/TabHandoff/pull/13) (Run with AI + history) onto `main` when ready. Website packaging does **not** need to wait on #13 to merge, but public copy already describes that primary path; shipping Pages before #13 is OK if status language stays honest.
-2. **Then website / release pipeline** — this branch (`website/` + Pages + electron-builder workflows). Prefer a fresh PR based on current `main` over rebasing obsolete #6 wholesale (a full #6 merge would revert Phase B / extension pack scripts already on `main`).
-3. **Messaging PR #7** — stacks on old #6; either close and fold useful copy into the website PR, or rebase onto the new website branch after it merges. Do not merge #7 onto stale #6.
-4. **Founder publish steps** (below) only after the website PR is on `main` and product feel is acceptable.
+| Item | State |
+|---|---|
+| Website + release workflows on `main` | Yes ([#14](https://github.com/kodyepalmer-tech/TabHandoff/pull/14) merged) |
+| Run with AI + history on `main` | Yes ([#13](https://github.com/kodyepalmer-tech/TabHandoff/pull/13) merged) |
+| Verified handoff schema 0.2 on `main` | Yes ([#15](https://github.com/kodyepalmer-tech/TabHandoff/pull/15) merged) |
+| GitHub Pages enabled | **No** — `has_pages: false`; Deploy website fails at “Setup Pages” until founder enables Actions Pages |
+| `tabhandoff.com` → product site | **No** — DNS still Porkbun parking (`*.l.ink`), not GitHub Pages A/AAAA |
+| Published `v*` desktop release | **No** (`/releases/latest` 404) |
 
-Packaging collision note: desktop `electron-builder` / `stage-release.mjs` touch `packages/desktop/package.json` scripts only — they do **not** rewrite extension AI UX. If #13 also edits desktop package scripts, merge #13 first and re-apply dist scripts on top.
+Obsolete PRs to close when convenient: [#6](https://github.com/kodyepalmer-tech/TabHandoff/pull/6), [#7](https://github.com/kodyepalmer-tech/TabHandoff/pull/7) (superseded by #14).
 
 ## What CI builds
 

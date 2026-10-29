@@ -1,77 +1,69 @@
-# Set up TabHandoff in your browser (nontechnical)
+# Set up TabHandoff (first run)
 
-**Primary product path:** desktop + local AI → hand off a tab → real result → saved history.  
-**ZIP download is optional** (sharing). **Load unpacked** until Chrome Web Store is published — there is **no** live store URL yet.
+**Everyday path:** desktop + local AI → hand off a tab → real result → history on this computer.  
+**ZIP is optional** (sharing). **Load unpacked** until Chrome Web Store — there is **no** store URL yet.  
+**Agents:** verified portable packages (schema 0.2) are a separate CLI/MCP path — see [verified-handoff.md](./verified-handoff.md).
 
-Public website (after Pages): [install](../website/install.html) · [privacy](../website/privacy.html) · [support](../website/support.html)
-
----
-
-## 1. Start desktop / bridge (for Run with AI)
-
-1. From the TabHandoff folder: `pnpm install && pnpm build && pnpm desktop`  
-   (or `pnpm bridge` if you only want the loopback helper).
-2. Optional free local model: install [Ollama](https://ollama.com/), pull a model, leave it running.
-3. Copy the access token the app/terminal shows.
+Site pages (in-repo; Pages not live yet): [install](../website/install.html) · [privacy](../website/privacy.html) · [support](../website/support.html)
 
 ---
 
-## 2. Load unpacked (store not live yet)
+## First run (about four steps)
 
-Do not follow any third-party “install from store” link claiming to be TabHandoff until the founder publishes one.
+### 1. Desktop
 
-1. Open Chrome, Edge, or Brave → `chrome://extensions` (or `edge://extensions`).
-2. Turn **Developer mode** on.
-3. Click **Load unpacked** → choose `packages/extension` in this repo  
-   (or unzip `artifacts/tabhandoff-extension-*.zip` from `pnpm pack:extension` into a folder and load that).
-4. Pin TabHandoff to the toolbar.
-5. Extension → **Settings** → paste the token → **Save**.
+```bash
+git clone https://github.com/kodyepalmer-tech/TabHandoff.git
+cd TabHandoff
+pnpm install && pnpm build
+pnpm desktop
+```
+
+Optional free local model: install [Ollama](https://ollama.com/), pull a model (use the **full tag**, e.g. `smollm2:135m`), leave it running.  
+Copy the **access token** the desktop/bridge prints.
+
+### 2. Extension (Load unpacked)
+
+1. Chrome / Edge / Brave → `chrome://extensions` → **Developer mode** on.  
+2. **Load unpacked** → `packages/extension` (or unpack `pnpm pack:extension` output).  
+3. Pin the toolbar icon.  
+4. **Settings** → paste the token → **Save**.
+
+Do not use third-party “store” links until the founder publishes an official CWS listing.
+
+### 3. Run a task
+
+1. Open a normal `https://…` page (not `chrome://`).  
+2. Right-click → **Hand off with TabHandoff** (or toolbar).  
+3. Type the instruction → Review → **Run with AI**.  
+4. Result + history stay under `~/.tabhandoff/`.  
+5. Optional: also download a ZIP to share — not required for AI.
+
+If the bridge is off or there is no provider, the UI stays honest (Save package / unavailable / failed — never a fake “done”).
 
 ---
 
-## 3. Hand off a page (primary: Run with AI)
+## Optional: ZIP-only (no desktop)
 
-1. Open any normal website (`https://…`).
-2. Right-click → **Hand off with TabHandoff**, or click the toolbar button.
-3. Type what you want done → Review.
-4. **Run with AI** when the bridge is connected — result and history stay on this computer (`~/.tabhandoff/`).
-5. Optional: also download a portable ZIP if you want to share. ZIP is **not** required for the AI path.
-
-> Note: Full Run with AI UX lands via the product PR track (see open PRs). On builds that only have Save package, use the ZIP path below — status stays honest.
-
----
-
-## Optional: ZIP-only (no desktop / no token)
-
-You can create and download a handoff **without** the desktop app:
-
-1. Load unpacked as above (token not required).
-2. Hand off → Review → **Save package**.
-3. A ZIP downloads (`START_HERE.md`, `handoff.json`, `summary.md`, screenshots when available).
-4. Status says **Package created — not agent executed**.
-5. Optional: **Copy brief for another AI**.
-
-Validate a downloaded package (developers):
+Load unpacked without a token → Review → **Save package**. Status: **Package created — not agent executed**. Optional **Copy brief for another AI**.
 
 ```bash
 unzip tabhandoff-<id>.zip -d /tmp/th-pack
-pnpm build   # once
+pnpm build
 node packages/cli/dist/index.js validate /tmp/th-pack
 ```
 
-### Clean-install manual checklist
+---
 
-Use a fresh Chrome profile (or guest) with **no** prior TabHandoff data:
+## Quick checklist
 
-- [ ] Load unpacked
-- [ ] Welcome onboarding appears once
-- [ ] Open https://example.com → right-click Hand off
-- [ ] With bridge: Run with AI succeeds **or** fails honestly (no fake “done”)
-- [ ] Without bridge: Save package → ZIP downloads; does **not** claim an agent ran
-- [ ] Copy brief for another AI pastes readable text
-- [ ] chrome://extensions itself cannot be handed off (honest message)
+- [ ] `pnpm desktop` running; token pasted  
+- [ ] Load unpacked  
+- [ ] example.com → Run with AI succeeds **or** fails honestly  
+- [ ] Without bridge: Save package still works; does not claim an agent ran  
+- [ ] `chrome://` pages refuse with an honest message  
 
-Automated coverage: `pnpm test:extension-package` (ZIP layout + CLI validate — no browser required).
+Automated ZIP layout check: `pnpm test:extension-package`.
 
 ---
 
@@ -79,8 +71,8 @@ Automated coverage: `pnpm test:extension-package` (ZIP layout + CLI validate —
 
 | Problem | Fix |
 |---|---|
-| Bridge: off | Start desktop/bridge + paste token for Run with AI / history. Fine for ZIP-only |
-| Can’t hand off chrome:// pages | Open a regular website instead |
-| No screenshot | Some pages block capture — link and text still hand off |
-| Token rejected | Copy token again from desktop Settings or bridge terminal |
-| Local model error | Confirm Ollama is running; use the full model tag (e.g. `smollm2:135m`) |
+| Bridge: off | Start `pnpm desktop` / `pnpm bridge` + paste token |
+| Token rejected | Copy the token again from the desktop/terminal |
+| Local model error | Ollama running; full model tag (`name:tag`) |
+| Can’t hand off chrome:// | Use a normal https page |
+| No screenshot | Some pages block capture — URL + text still work |

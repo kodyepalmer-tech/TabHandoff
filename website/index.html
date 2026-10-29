@@ -127,28 +127,29 @@
         <div class="agents-block">
           <h2>How you install today</h2>
           <p class="section-lede">
-            Chrome Web Store and signed desktop installers are
+            Public site, Chrome Web Store, and signed installers are
             <strong>not</strong> live yet. We do not invent store buttons or
             download links for missing assets.
           </p>
           <ul>
             <li>
-              <strong>Desktop from source</strong> —
-              <code>pnpm install && pnpm build && pnpm desktop</code>
-              (installers appear on GitHub Releases only after a published
-              <code>v*</code> tag).
+              <strong>First run</strong> —
+              <code>pnpm install && pnpm build && pnpm desktop</code>, then
+              Load unpacked <code>packages/extension</code>, paste the token,
+              Run with AI.
             </li>
             <li>
-              <strong>Browser extension</strong> — Load unpacked from
-              <code>packages/extension</code> (developer path until CWS).
+              <strong>Optional ZIP</strong> — share a package when you want;
+              not required for Run with AI / history.
             </li>
             <li>
-              <strong>Optional ZIP</strong> — Save a portable package when you
-              want to share; not required for Run with AI / history.
+              <strong>Agents</strong> — verified portable handoffs (schema 0.2)
+              via CLI/MCP are documented in the repo; they are not a one-click
+              consumer install.
             </li>
           </ul>
           <p style="margin-top: 1.25rem">
-            <a href="./install.html">Full setup &amp; troubleshooting →</a>
+            <a href="./install.html">First-run setup →</a>
             ·
             <a href="./download.html">Download page →</a>
           </p>

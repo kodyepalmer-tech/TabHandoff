@@ -6,7 +6,7 @@
     <title>Setup &amp; troubleshoot — TabHandoff</title>
     <meta
       name="description"
-      content="Set up TabHandoff: desktop + local AI first, optional ZIP, Load unpacked until Chrome Web Store. Honest about installer and store status."
+      content="First-run TabHandoff: desktop + local AI, Load unpacked until Chrome Web Store, optional ZIP. Honest about what is not live yet."
     />
     <link rel="canonical" href="https://tabhandoff.com/install.html" />
     <meta property="og:url" content="https://tabhandoff.com/install.html" />
@@ -36,116 +36,47 @@
       <header class="page-hero">
         <h1>Setup &amp; troubleshoot</h1>
         <p>
-          Primary path: desktop + local AI → browser task → real result → saved
-          history. ZIP export is optional. This page never invents a live store
-          or installer URL.
+          First run: desktop → Load unpacked → Run with AI. ZIP is optional.
+          This page does not invent a live store, installer, or
+          <code>tabhandoff.com</code> site until those exist.
         </p>
       </header>
 
       <article class="prose">
         <p class="warn">
-          <strong>Not live yet:</strong> Chrome Web Store listing · signed
-          macOS/Windows installers · production
-          <code>tabhandoff.com</code> DNS. Until those ship, use the paths below.
+          <strong>Not live yet:</strong> Chrome Web Store · signed installers ·
+          GitHub Pages / <code>tabhandoff.com</code> (founder enables those).
+          Use the from-source path below today.
         </p>
 
-        <h2 id="desktop">1. Desktop + local AI (primary)</h2>
-        <p class="ok-note">
-          The desktop app hosts the local bridge, shows activity / AI task
-          history, and keeps results under <code>~/.tabhandoff/</code>.
-        </p>
-
-        <h3 id="from-source">Run from source (works today on every OS)</h3>
+        <h2 id="first-run">First run (today)</h2>
         <ol>
-          <li>Install <a href="https://nodejs.org/">Node.js 22+</a> and enable Corepack (<code>corepack enable</code>).</li>
           <li>
-            Clone and build:
+            Install <a href="https://nodejs.org/">Node.js 22+</a>, then:
             <pre><code>git clone https://github.com/kodyepalmer-tech/TabHandoff.git
 cd TabHandoff
 pnpm install && pnpm build
 pnpm desktop</code></pre>
+            Optional: install <a href="https://ollama.com/">Ollama</a>, pull a
+            model with its full tag, leave it running. Copy the access token.
           </li>
           <li>
-            Optional free local model: install
-            <a href="https://ollama.com/">Ollama</a>, pull a small model, leave
-            the Ollama app running.
+            Chrome / Edge / Brave → <code>chrome://extensions</code> → Developer
+            mode → <strong>Load unpacked</strong> →
+            <code>packages/extension</code> → Settings → paste token.
           </li>
           <li>
-            Copy the access token the desktop/bridge shows (needed for the
-            browser extension to talk to this computer).
+            Open a normal <code>https://…</code> page → Hand off →
+            <strong>Run with AI</strong>. History stays in
+            <code>~/.tabhandoff/</code>. Optional: also download a ZIP to share.
           </li>
         </ol>
-        <p>
-          Packaged installers appear on
-          <a href="./download.html">Download</a> only when a GitHub Release
-          asset exists. Early builds are <strong>unsigned</strong> — expect
-          Gatekeeper / SmartScreen prompts until the founder adds signing.
+        <p class="ok-note">
+          Status stays honest: if the bridge or model is missing, you get
+          unavailable / failed / package-only — never a fake “agent finished.”
         </p>
-
-        <h3 id="macos">macOS installer (when published)</h3>
-        <ol>
-          <li>Download the <code>.dmg</code> for your chip from GitHub Releases.</li>
-          <li>Open the disk image and drag <strong>TabHandoff</strong> to Applications.</li>
-          <li>
-            First launch: if Gatekeeper blocks an unsigned app, open
-            <strong>System Settings → Privacy &amp; Security</strong> →
-            <em>Open Anyway</em>, or right-click → <em>Open</em>.
-          </li>
-        </ol>
-
-        <h3 id="windows">Windows installer (when published)</h3>
-        <ol>
-          <li>Download the NSIS <code>.exe</code> (x64) from GitHub Releases.</li>
-          <li>Run the installer.</li>
-          <li>
-            If SmartScreen appears: <em>More info</em> → <em>Run anyway</em>
-            only for the official GitHub Release asset.
-          </li>
-        </ol>
-
-        <h3 id="linux">Linux installer (when published)</h3>
-        <pre><code>chmod +x TabHandoff-*-linux-*.AppImage
-./TabHandoff-*-linux-*.AppImage
-# or: sudo apt install ./TabHandoff-*-linux-amd64.deb</code></pre>
-
-        <h2 id="extension">2. Browser extension (Load unpacked until CWS)</h2>
-        <p class="warn">
-          <strong>Chrome Web Store is not live.</strong> There is no public CWS
-          listing. Use <strong>Load unpacked</strong> — this is the developer /
-          early-tester path until the founder publishes to the store.
-        </p>
-        <ol>
-          <li>Open Chrome, Edge, or Brave → <code>chrome://extensions</code>.</li>
-          <li>Turn <strong>Developer mode</strong> on.</li>
-          <li>
-            <strong>Load unpacked</strong> → select
-            <code>packages/extension</code> in the cloned repo
-            (or unpack <code>artifacts/tabhandoff-extension-*.zip</code> from
-            <code>pnpm pack:extension</code>).
-          </li>
-          <li>Pin TabHandoff to the toolbar.</li>
-          <li>
-            Extension → <strong>Settings</strong> → paste the desktop/bridge
-            token → Save.
-          </li>
-        </ol>
-
-        <h3>Run a task</h3>
-        <ol>
-          <li>Open a normal <code>https://…</code> page (not <code>chrome://</code>).</li>
-          <li>Right-click → <strong>Hand off with TabHandoff</strong> (or the toolbar button).</li>
-          <li>Write what you want done → Review.</li>
-          <li>
-            <strong>Primary:</strong> Run with AI (local bridge) — result and
-            history stay on this computer.
-          </li>
-          <li>
-            <strong>Optional:</strong> also download a portable ZIP if you want
-            to share context. ZIP is not required for the AI path.
-          </li>
-        </ol>
         <p>
-          Repo guide:
+          Longer checklist:
           <a
             href="https://github.com/kodyepalmer-tech/TabHandoff/blob/main/docs/extension-setup.md"
             >docs/extension-setup.md</a
@@ -154,12 +85,46 @@ pnpm desktop</code></pre>
           <a href="./privacy.html">Privacy</a>
         </p>
 
-        <h2 id="zip-only">Optional: ZIP-only (no AI)</h2>
+        <h2 id="zip-only">Optional: ZIP-only</h2>
         <p>
-          You can still <strong>Save package</strong> / download a ZIP without
-          the desktop app. Status will say the package was created — not that an
-          agent ran. Useful for sharing; not the primary AI path.
+          Without desktop, <strong>Save package</strong> still downloads a ZIP.
+          That path creates a package — it does <em>not</em> mean an agent ran.
         </p>
+
+        <h2 id="download">Desktop installers (when published)</h2>
+        <p>
+          Buttons on <a href="./download.html">Download</a> appear only when a
+          GitHub Release asset exists. Early builds are
+          <strong>unsigned</strong> (Gatekeeper / SmartScreen). No
+          <code>v*</code> release is published yet.
+        </p>
+        <ul>
+          <li><a href="#macos">macOS</a> · <a href="#windows">Windows</a> · <a href="#linux">Linux</a></li>
+        </ul>
+
+        <h3 id="macos">macOS</h3>
+        <ol>
+          <li>Download the <code>.dmg</code> from GitHub Releases when present.</li>
+          <li>Drag TabHandoff to Applications.</li>
+          <li>
+            If Gatekeeper blocks: System Settings → Privacy &amp; Security →
+            Open Anyway, or right-click → Open.
+          </li>
+        </ol>
+
+        <h3 id="windows">Windows</h3>
+        <ol>
+          <li>Download the NSIS <code>.exe</code> (x64) when present.</li>
+          <li>
+            If SmartScreen appears: More info → Run anyway only for the official
+            Release asset.
+          </li>
+        </ol>
+
+        <h3 id="linux">Linux</h3>
+        <pre><code>chmod +x TabHandoff-*-linux-*.AppImage
+./TabHandoff-*-linux-*.AppImage
+# or: sudo apt install ./TabHandoff-*-linux-amd64.deb</code></pre>
 
         <h2 id="data">Where data lives</h2>
         <ul>
@@ -168,33 +133,22 @@ pnpm desktop</code></pre>
           <li>Override: <code>TABHANDOFF_HOME</code></li>
         </ul>
 
-        <h2 id="troubleshoot">Troubleshooting (plain language)</h2>
+        <h2 id="troubleshoot">Troubleshooting</h2>
         <ul>
           <li>
-            <strong>“Bridge: off” / can’t Run with AI:</strong> Start
-            <code>pnpm desktop</code> (or <code>pnpm bridge</code>), copy the
-            token again into extension Settings.
+            <strong>Can’t Run with AI:</strong> start <code>pnpm desktop</code>,
+            paste token; confirm Ollama/model tag if using a local model.
           </li>
           <li>
-            <strong>Port already in use:</strong> Quit the other TabHandoff
-            window, or change the port in <code>~/.tabhandoff/bridge.json</code>.
+            <strong>Port in use:</strong> quit the other TabHandoff window, or
+            edit <code>~/.tabhandoff/bridge.json</code>.
           </li>
           <li>
-            <strong>Local model errors:</strong> Confirm Ollama is running and
-            the model name includes its tag (example:
-            <code>smollm2:135m</code>, not just <code>smollm2</code>).
+            <strong>chrome:// pages:</strong> use a normal website.
           </li>
           <li>
-            <strong>Can’t hand off <code>chrome://</code> pages:</strong> Open a
-            normal website instead.
-          </li>
-          <li>
-            <strong>No screenshot:</strong> Some pages block capture — URL +
-            instruction still hand off.
-          </li>
-          <li>
-            <strong>Desktop “Coming soon” on Download:</strong> No published
-            installer for that OS yet — use from-source above.
+            <strong>Download “Coming soon”:</strong> no installer for that OS
+            yet — use from-source above.
           </li>
           <li>
             More:

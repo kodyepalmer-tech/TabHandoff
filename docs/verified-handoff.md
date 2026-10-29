@@ -8,12 +8,6 @@ Local model execution (`run-ai`) is **infrastructure** for demos and optional as
 
 ---
 
-## Branch / PR note
-
-This line lives on `cursor/verified-handoff-7f9b` (branched from PR **#13** tip for protocol + persistence + AI infra). PR **#13** / **#14** stay separate for founder merge decisions.
-
----
-
 ## Package fields (0.2)
 
 In addition to 0.1 (`instruction`, `page`/`sources`, `previousResults`, `remainingWork`, `execution.events`, …):

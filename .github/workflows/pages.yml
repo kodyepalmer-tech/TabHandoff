@@ -1,3 +1,7 @@
+# Deploys website/ via GitHub Actions Pages.
+# Fails at "Setup Pages" until the founder enables:
+#   Repo Settings → Pages → Build and deployment → Source: GitHub Actions
+# Agents must not change DNS or treat tabhandoff.com as live before that.
 name: Deploy website
 
 on:

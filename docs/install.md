@@ -1,21 +1,19 @@
 # Install TabHandoff
 
-Public pages: [website/install.html](../website/install.html) · [website/download.html](../website/download.html) · [website/privacy.html](../website/privacy.html) · [website/support.html](../website/support.html)
+Public pages (in-repo; **GitHub Pages / tabhandoff.com not live yet**): [website/install.html](../website/install.html) · [download](../website/download.html) · [privacy](../website/privacy.html) · [support](../website/support.html)
 
-**Product order:** desktop + local AI → browser task → real result → saved history. **ZIP is optional.** Load unpacked until Chrome Web Store. Do not invent live CWS or installer URLs.
+**First run:** desktop + local AI → Load unpacked → Run with AI → history under `~/.tabhandoff/`. **ZIP optional.** No CWS / signed installer / custom domain until the founder publishes them.
 
-## Desktop + local AI (primary, from source today)
+## Desktop + local AI (from source — works today)
 
 ```bash
 git clone https://github.com/kodyepalmer-tech/TabHandoff.git
 cd TabHandoff
 pnpm install && pnpm build
-pnpm desktop          # evidence library + local bridge + history
+pnpm desktop
 ```
 
-Optional free local model: install [Ollama](https://ollama.com/), pull a model, keep it running. Paste the bridge token into the extension Settings.
-
-CLI quick install:
+Optional: [Ollama](https://ollama.com/) with a full model tag. Paste the bridge token into extension Settings. Short guide: [extension-setup.md](./extension-setup.md).
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/kodyepalmer-tech/TabHandoff/main/scripts/install.sh | bash

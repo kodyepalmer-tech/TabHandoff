@@ -144,7 +144,7 @@ Details: [docs/ai-execution.md](docs/ai-execution.md) · end-to-end handoff: [do
 
 ```text
 ~/.tabhandoff/receipts/<handoff-id>/
-├── handoff.json    # portable package (schema 0.1)
+├── handoff.json    # portable package (schema 0.1; verified 0.2 when created that way)
 ├── receipt.md
 ├── summary.md
 ├── card.yaml
