@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "TabHandoff",
+  "version": "0.2.0",
+  "description": "Hand off a browser tab as a portable package for another person or AI — with honest status, no fake runs.",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "action": {
+    "default_title": "Hand off with TabHandoff",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "permissions": ["contextMenus", "activeTab", "storage", "scripting"],
+  "host_permissions": ["http://127.0.0.1/*"],
+  "optional_host_permissions": ["http://*/*", "https://*/*"]
+}

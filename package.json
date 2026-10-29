@@ -11,9 +11,11 @@
   "scripts": {
     "build": "pnpm -r run build",
     "typecheck": "pnpm -r run typecheck",
-    "test": "pnpm test:evidence",
+    "test": "pnpm test:evidence && pnpm test:bridge",
     "test:evidence": "pnpm --filter @tabhandoff/evidence test",
+    "test:bridge": "pnpm --filter @tabhandoff/bridge test",
     "desktop": "pnpm --filter @tabhandoff/desktop start",
+    "bridge": "pnpm --filter @tabhandoff/bridge start",
     "install:local": "bash scripts/install.sh",
     "tabhandoff": "node packages/cli/dist/index.js",
     "doctor": "node packages/cli/dist/index.js doctor",

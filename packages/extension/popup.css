@@ -1,0 +1,273 @@
+:root {
+  --bg: #0b0b0c;
+  --bg-elev: #141416;
+  --ink: #f4f4f5;
+  --muted: #a1a1aa;
+  --line: #2a2a2e;
+  --accent: #fafafa;
+  --accent-ink: #0b0b0c;
+  --danger: #fca5a5;
+  --ok: #bbf7d0;
+  --font-display: "Syne", "Avenir Next", "Segoe UI", sans-serif;
+  --font-body: "Source Sans 3", "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", "SF Mono", ui-monospace, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 380px;
+  min-height: 520px;
+  background:
+    radial-gradient(120% 80% at 10% -10%, #222 0%, transparent 55%),
+    radial-gradient(90% 60% at 100% 0%, #1a1a1c 0%, transparent 50%),
+    var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.top {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 16px 16px 8px;
+}
+
+.mark {
+  border-radius: 8px;
+  flex: none;
+}
+
+h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.35rem;
+  letter-spacing: -0.02em;
+}
+
+.tag {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.panel {
+  padding: 8px 16px 16px;
+}
+
+.panel.hidden,
+.hidden {
+  display: none !important;
+}
+
+h2 {
+  margin: 0 0 10px;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.meta {
+  margin: 0 0 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.meta > div {
+  padding: 8px 10px;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+}
+
+.meta dt {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.meta dd {
+  margin: 2px 0 0;
+  word-break: break-word;
+}
+
+.selection {
+  max-height: 72px;
+  overflow: auto;
+  white-space: pre-wrap;
+  color: var(--muted);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+}
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shot-wrap {
+  margin-bottom: 12px;
+}
+
+.shot {
+  display: block;
+  width: 100%;
+  max-height: 140px;
+  object-fit: cover;
+  object-position: top;
+  border: 1px solid var(--line);
+  background: #000;
+}
+
+.note {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0;
+}
+
+.field span {
+  font-weight: 600;
+}
+
+textarea,
+input[type="text"],
+input[type="password"] {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: var(--bg-elev);
+  color: var(--ink);
+  border-radius: 0;
+  padding: 10px;
+  font: inherit;
+  resize: vertical;
+}
+
+textarea:focus,
+input:focus {
+  outline: 2px solid #fff;
+  outline-offset: 1px;
+}
+
+.trust {
+  color: var(--muted);
+  font-size: 0.78rem;
+  margin: 0 0 12px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  padding: 10px 14px;
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+button.primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+  font-weight: 700;
+}
+
+button.ghost {
+  background: transparent;
+  color: var(--ink);
+}
+
+button.linkish {
+  background: none;
+  border: none;
+  color: var(--muted);
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.review-list {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.review-list li {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+}
+
+.review-list strong {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.result-body {
+  white-space: pre-wrap;
+}
+
+.path {
+  padding: 8px;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  word-break: break-all;
+  font-size: 0.72rem;
+}
+
+.foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px 14px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.pill {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  padding: 3px 8px;
+  border: 1px solid var(--line);
+}
+
+.pill.ok {
+  color: var(--ok);
+}
+
+.pill.bad {
+  color: var(--danger);
+}

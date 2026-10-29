@@ -333,6 +333,39 @@ function wire() {
     toast("Using default evidence folder");
     await refresh();
   });
+
+  $("#btn-refresh-bridge").addEventListener("click", () => {
+    void refreshBridgeStatus();
+  });
+
+  $("#btn-copy-token").addEventListener("click", async () => {
+    const token = $("#settings-bridge-token").value;
+    if (!token) return toast("No token yet — is the bridge running?");
+    try {
+      await navigator.clipboard.writeText(token);
+      toast("Token copied — paste into the browser extension Settings");
+    } catch {
+      toast("Could not copy — select the token field manually");
+    }
+  });
+}
+
+async function refreshBridgeStatus() {
+  if (typeof api.bridgeStatus !== "function") {
+    $("#bridge-status-line").textContent =
+      "Bridge status unavailable in this build.";
+    return;
+  }
+  const st = await api.bridgeStatus();
+  if (st.running) {
+    $("#bridge-status-line").textContent = `Listening at ${st.url} (this computer only). Packages only — no agent launch.`;
+    $("#settings-bridge-token").value = st.token || "";
+  } else {
+    $("#bridge-status-line").textContent = st.error
+      ? `Bridge not running: ${st.error}`
+      : "Bridge not running. Start desktop again or run: pnpm bridge";
+    $("#settings-bridge-token").value = "";
+  }
 }
 
 function debounce(fn, ms) {
@@ -351,6 +384,7 @@ async function boot() {
   $("#home-pill").textContent = info.home;
   showView("activity");
   await refresh();
+  await refreshBridgeStatus();
 }
 
 boot().catch((err) => {

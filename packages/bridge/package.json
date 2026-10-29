@@ -1,0 +1,36 @@
+{
+  "name": "@tabhandoff/bridge",
+  "version": "0.1.0",
+  "description": "TabHandoff local loopback bridge — receive browser handoffs securely",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "tabhandoff-bridge": "./dist/cli.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts src/cli.ts --format esm --dts --clean",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "start": "node dist/cli.js",
+    "test": "node --import tsx --test test/*.test.ts"
+  },
+  "dependencies": {
+    "@tabhandoff/protocol": "workspace:*",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "tsup": "^8.4.0",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  }
+}

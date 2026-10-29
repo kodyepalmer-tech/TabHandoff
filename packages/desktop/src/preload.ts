@@ -28,6 +28,17 @@ export type DesktopApi = {
   reveal: (targetPath: string) => Promise<{ ok: boolean }>;
   openExternal: (url: string) => Promise<{ ok: boolean }>;
   readImage: (filePath: string) => Promise<string>;
+  bridgeStatus: () => Promise<{
+    running: boolean;
+    url?: string;
+    host?: string;
+    port?: number;
+    token?: string;
+    home?: string;
+    error?: string | null;
+    agentExecution?: boolean;
+    message?: string;
+  }>;
 };
 
 const api: DesktopApi = {
@@ -41,6 +52,7 @@ const api: DesktopApi = {
   reveal: (targetPath) => ipcRenderer.invoke("evidence:reveal", targetPath),
   openExternal: (url) => ipcRenderer.invoke("evidence:openExternal", url),
   readImage: (filePath) => ipcRenderer.invoke("evidence:readImage", filePath),
+  bridgeStatus: () => ipcRenderer.invoke("bridge:status"),
 };
 
 contextBridge.exposeInMainWorld("tabhandoff", api);
