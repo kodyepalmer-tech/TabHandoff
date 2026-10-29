@@ -43,8 +43,8 @@ Status is always honest: TabHandoff never pretends an agent ran when only a pack
 
 | Path | How |
 |---|---|
-| **Load unpacked (recommended)** | Clone this repo → Chrome/Edge/Brave → `chrome://extensions` → Developer mode → **Load unpacked** → select `packages/extension` |
-| **Packed ZIP** | Developers: `pnpm pack:extension` → unzip `artifacts/tabhandoff-extension-*.zip` → Load unpacked that folder. Draft CWS notes: [docs/chrome-web-store.md](docs/chrome-web-store.md) |
+| **Load unpacked (developer / sideload)** | Clone this repo → Chrome/Edge/Brave → `chrome://extensions` → Developer mode → **Load unpacked** → select `packages/extension`. This is **not** the consumer end-state — Chrome Web Store listing is not live yet. |
+| **Packed ZIP (prep)** | `pnpm pack:extension` → `artifacts/tabhandoff-extension-*.zip` → Load unpacked that folder. CWS draft notes only: [docs/chrome-web-store.md](docs/chrome-web-store.md) — **no store submit from agents** |
 
 Full steps + clean-profile checklist: **[docs/extension-setup.md](docs/extension-setup.md)** · Privacy: [docs/privacy.md](docs/privacy.md)
 

@@ -413,6 +413,63 @@ function wire() {
 
   wireHandoff();
   wireAiTasks();
+  wireAiSettings();
+}
+
+function wireAiSettings() {
+  $("#btn-refresh-runtimes")?.addEventListener("click", () => {
+    void refreshAiSettingsUi().then(() => toast("Runtimes refreshed"));
+  });
+  $("#btn-save-ai")?.addEventListener("click", async () => {
+    try {
+      await api.saveAiSettings({
+        provider: $("#ai-provider-select")?.value || "auto",
+        model: ($("#ai-model-input")?.value || "").trim(),
+      });
+      toast("AI settings saved (no keys stored)");
+      await refreshBridgeStatus();
+    } catch (err) {
+      toast(err instanceof Error ? err.message : String(err));
+    }
+  });
+  $("#btn-test-ai")?.addEventListener("click", async () => {
+    $("#ai-test-line").textContent = "Testing…";
+    try {
+      const r = await api.testAiConnection();
+      $("#ai-test-line").textContent = r.ok
+        ? `OK · ${r.provider}/${r.model} · ${(r.result || "").slice(0, 80)}`
+        : `Failed · ${r.status}: ${r.message || r.error || "unknown"}`;
+      toast(r.ok ? "Connection OK" : "Connection failed (honest)");
+    } catch (err) {
+      $("#ai-test-line").textContent =
+        err instanceof Error ? err.message : String(err);
+    }
+  });
+  $("#btn-pair-code")?.addEventListener("click", async () => {
+    try {
+      const r = await api.startPairing();
+      if (r.ok && r.code) {
+        $("#pair-code-line").textContent = `Pairing code: ${r.code} (expires in ${r.expiresInSec}s). Enter it in the extension Settings.`;
+        toast("Pairing code ready");
+      } else {
+        $("#pair-code-line").textContent = r.message || r.error || "Could not start pairing";
+        toast("Pairing failed");
+      }
+    } catch (err) {
+      toast(err instanceof Error ? err.message : String(err));
+    }
+  });
+  $("#btn-ensure-bridge")?.addEventListener("click", async () => {
+    const r = await api.ensureBridge();
+    toast(
+      r.running
+        ? r.adopted
+          ? "Adopted existing bridge"
+          : "Bridge running"
+        : r.error || "Bridge failed",
+    );
+    await refreshBridgeStatus();
+  });
 }
 
 function renderHandoffFiles() {
@@ -523,7 +580,11 @@ async function refreshBridgeStatus() {
   }
   const st = await api.bridgeStatus();
   if (st.running) {
-    const bits = [`Listening at ${st.url} (this computer only).`];
+    const bits = [
+      st.adopted
+        ? `Using existing bridge at ${st.url} (adopted — no port fight).`
+        : `Listening at ${st.url} (this computer only).`,
+    ];
     if (st.aiCompletion) {
       bits.push(
         `Run with AI ready (${st.aiProvider || "provider"} / ${st.aiModel || "model"}).`,
@@ -542,7 +603,7 @@ async function refreshBridgeStatus() {
   } else {
     $("#bridge-status-line").textContent = st.error
       ? `Bridge not running: ${st.error}`
-      : "Bridge not running. Start desktop again or run: pnpm bridge";
+      : "Bridge not running. Use Restart / adopt bridge, or run: pnpm bridge";
     $("#settings-bridge-token").value = "";
   }
 
@@ -552,10 +613,47 @@ async function refreshBridgeStatus() {
       providerLine.textContent = `Ready: ${st.aiProvider || "provider"} · model ${st.aiModel || "(default)"}. Keys are never displayed.`;
     } else if (st.running) {
       providerLine.textContent =
-        "No provider detected. Set OPENAI_API_KEY / GROQ_API_KEY / ANTHROPIC_API_KEY, or run Ollama on 127.0.0.1:11434, then restart desktop.";
+        "No provider detected. Install Ollama or LM Studio, or set a cloud key in the desktop process env.";
     } else {
       providerLine.textContent = "Bridge offline — start desktop to probe providers.";
     }
+  }
+  await refreshAiSettingsUi();
+}
+
+async function refreshAiSettingsUi() {
+  if (typeof api.listRuntimes !== "function") return;
+  const [{ runtimes }, settingsWrap] = await Promise.all([
+    api.listRuntimes(),
+    api.getAiSettings(),
+  ]);
+  const line = $("#ai-runtimes-line");
+  if (line) {
+    line.textContent = (runtimes || [])
+      .map((r) => `${r.id}: ${r.ok ? r.message : "offline"}`)
+      .join(" · ");
+  }
+  const list = $("#ai-model-list");
+  if (list) {
+    list.innerHTML = "";
+    for (const r of runtimes || []) {
+      for (const m of r.models || []) {
+        const opt = document.createElement("option");
+        opt.value = m;
+        list.appendChild(opt);
+      }
+    }
+  }
+  const settings = settingsWrap?.settings;
+  if (settings) {
+    if ($("#ai-provider-select")) $("#ai-provider-select").value = settings.provider || "auto";
+    if ($("#ai-model-input")) $("#ai-model-input").value = settings.model || "";
+  } else if (runtimes?.find((r) => r.ok && r.models?.[0])) {
+    const first = runtimes.find((r) => r.ok && r.models?.[0]);
+    if ($("#ai-model-input") && !$("#ai-model-input").value) {
+      $("#ai-model-input").value = first.models[0];
+    }
+    if ($("#ai-provider-select")) $("#ai-provider-select").value = first.id;
   }
 }
 

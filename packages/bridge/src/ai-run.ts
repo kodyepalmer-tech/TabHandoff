@@ -10,6 +10,7 @@ import {
   type AiProviderDeps,
 } from "@tabhandoff/runner";
 import { receiptsDir, tabHandoffHome } from "./home.js";
+import { envWithAiSettings, loadAiSettings } from "./ai-settings.js";
 
 export type AiRunRequest = AiCompletionInput & {
   /** Optional existing handoff id to attach result under */
@@ -141,8 +142,19 @@ export async function executeAiRun(
     maxTokens: request.maxTokens,
   };
 
-  const result = await runAiCompletion(input, options?.deps);
   const home = tabHandoffHome(options?.home);
+  const settings = await loadAiSettings(home);
+  const baseEnv = options?.deps?.env ?? process.env;
+  const mergedDeps: AiProviderDeps = {
+    ...options?.deps,
+    env: envWithAiSettings(baseEnv, settings),
+    // When caller injected a test env, still allow local probe only if they opted in
+    allowLocalProbe:
+      options?.deps?.allowLocalProbe ??
+      options?.deps?.allowOllamaProbe ??
+      options?.deps?.env === undefined,
+  };
+  const result = await runAiCompletion(input, mergedDeps);
   const taskId = safeId(request.taskId) || `ai-${randomUUID().slice(0, 12)}`;
   const handoffId = safeId(request.handoffId) || undefined;
 

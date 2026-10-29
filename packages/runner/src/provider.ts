@@ -11,16 +11,30 @@
  * - Ollama local (`TABHANDOFF_AI_PROVIDER=ollama` or local `OPENAI_BASE_URL`)
  */
 
-export type AiProviderId = "openai-compatible" | "anthropic" | "ollama" | "groq";
+export type AiProviderId =
+  | "openai-compatible"
+  | "anthropic"
+  | "ollama"
+  | "lmstudio"
+  | "groq";
 
 export type AiProviderConfig = {
   id: AiProviderId;
-  /** Display / request model id */
+  /** Display / request model id — preserve exact tags (e.g. smollm2:135m) */
   model: string;
   /** Chat completions base (OpenAI-compatible family) */
   baseUrl?: string;
   /** Present only in-memory — never serialize */
   apiKey: string;
+};
+
+export type LocalRuntimeProbe = {
+  id: "ollama" | "lmstudio";
+  ok: boolean;
+  baseUrl: string;
+  /** Exact model ids including tags */
+  models: string[];
+  message: string;
 };
 
 export type AiCompletionInput = {
@@ -54,6 +68,8 @@ export type AiProviderDeps = {
    * Defaults to true only when `env` is omitted (real process env).
    */
   allowOllamaProbe?: boolean;
+  /** Alias of allowOllamaProbe — also covers LM Studio local probes */
+  allowLocalProbe?: boolean;
 };
 
 const DEFAULT_OPENAI_BASE = "https://api.openai.com/v1";
@@ -63,7 +79,23 @@ const DEFAULT_GROQ_BASE = "https://api.groq.com/openai/v1";
 const DEFAULT_GROQ_MODEL = "llama-3.1-8b-instant";
 const DEFAULT_OLLAMA_BASE = "http://127.0.0.1:11434/v1";
 const DEFAULT_OLLAMA_MODEL = "llama3.2";
+const DEFAULT_LMSTUDIO_BASE = "http://127.0.0.1:1234/v1";
 const MAX_CONTEXT_CHARS = 24_000;
+
+/**
+ * Keep Ollama/LM Studio model ids exact — never strip `:tag` (e.g. `:135m`, `:latest`).
+ * That bug caused HTTP 404 "model 'smollm2' not found" when only `smollm2:135m` was pulled.
+ */
+export function preserveExactModelId(
+  preferred: string | undefined,
+  available: string[],
+  fallback: string,
+): string {
+  const want = preferred?.trim();
+  if (want) return want;
+  if (available.length > 0) return available[0]!;
+  return fallback;
+}
 
 function isLocalBaseUrl(url: string): boolean {
   try {
@@ -95,10 +127,32 @@ export function resolveAiProvider(
     const normalized = baseUrl.endsWith("/v1") ? baseUrl : `${baseUrl}/v1`;
     return {
       id: "ollama",
-      model: env.OLLAMA_MODEL?.trim() || env.OPENAI_MODEL?.trim() || DEFAULT_OLLAMA_MODEL,
+      model: preserveExactModelId(
+        env.OLLAMA_MODEL || env.OPENAI_MODEL,
+        [],
+        DEFAULT_OLLAMA_MODEL,
+      ),
       baseUrl: normalized,
       // Ollama ignores the bearer token; placeholder keeps OpenAI-compatible clients happy.
       apiKey: env.OPENAI_API_KEY?.trim() || "ollama",
+    };
+  }
+
+  if (forced === "lmstudio" || forced === "lm-studio") {
+    const baseUrl = (
+      env.OPENAI_BASE_URL?.trim() ||
+      env.LMSTUDIO_BASE_URL?.trim() ||
+      DEFAULT_LMSTUDIO_BASE
+    ).replace(/\/$/, "");
+    return {
+      id: "lmstudio",
+      model: preserveExactModelId(
+        env.LMSTUDIO_MODEL || env.OPENAI_MODEL,
+        [],
+        "local-model",
+      ),
+      baseUrl: baseUrl.endsWith("/v1") ? baseUrl : `${baseUrl}/v1`,
+      apiKey: env.OPENAI_API_KEY?.trim() || "lm-studio",
     };
   }
 
@@ -122,18 +176,34 @@ export function resolveAiProvider(
 
   // Local OpenAI-compatible endpoint (Ollama, LM Studio, etc.) — key optional.
   if (!openaiKey && isLocalBaseUrl(baseUrl)) {
+    const isLm =
+      baseUrl.includes(":1234") ||
+      (env.TABHANDOFF_AI_PROVIDER || "").toLowerCase().includes("lm");
     return {
-      id: "ollama",
-      model: env.OPENAI_MODEL?.trim() || env.OLLAMA_MODEL?.trim() || DEFAULT_OLLAMA_MODEL,
+      id: isLm ? "lmstudio" : "ollama",
+      model: preserveExactModelId(
+        env.OPENAI_MODEL || env.OLLAMA_MODEL || env.LMSTUDIO_MODEL,
+        [],
+        isLm ? "local-model" : DEFAULT_OLLAMA_MODEL,
+      ),
       baseUrl,
-      apiKey: "ollama",
+      apiKey: isLm ? "lm-studio" : "ollama",
     };
   }
 
   if (openaiKey) {
+    const local = isLocalBaseUrl(baseUrl);
     return {
-      id: isLocalBaseUrl(baseUrl) ? "ollama" : "openai-compatible",
-      model: env.OPENAI_MODEL?.trim() || DEFAULT_OPENAI_MODEL,
+      id: local
+        ? baseUrl.includes(":1234")
+          ? "lmstudio"
+          : "ollama"
+        : "openai-compatible",
+      model: preserveExactModelId(
+        env.OPENAI_MODEL,
+        [],
+        DEFAULT_OPENAI_MODEL,
+      ),
       baseUrl,
       apiKey: openaiKey,
     };
@@ -184,8 +254,9 @@ export async function probeLocalOllama(
     const json = (await res.json()) as {
       models?: Array<{ name?: string }>;
     };
+    // Keep exact names including tags — do not strip after ':'
     const models = (json.models ?? [])
-      .map((m) => m.name)
+      .map((m) => m.name?.trim())
       .filter((n): n is string => Boolean(n));
     return { ok: true, models, baseUrl: `${base}/v1` };
   } catch {
@@ -195,9 +266,71 @@ export async function probeLocalOllama(
   }
 }
 
+/** Probe LM Studio's OpenAI-compatible local server (default :1234). */
+export async function probeLocalLmStudio(
+  options?: {
+    fetch?: typeof globalThis.fetch;
+    baseUrl?: string;
+    timeoutMs?: number;
+  },
+): Promise<{ ok: boolean; models: string[]; baseUrl: string }> {
+  const fetchFn = options?.fetch ?? globalThis.fetch;
+  let base = (options?.baseUrl || DEFAULT_LMSTUDIO_BASE).replace(/\/$/, "");
+  if (!base.endsWith("/v1")) base = `${base}/v1`;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), options?.timeoutMs ?? 1200);
+  try {
+    const res = await fetchFn(`${base}/models`, { signal: ctrl.signal });
+    if (!res.ok) {
+      return { ok: false, models: [], baseUrl: base };
+    }
+    const json = (await res.json()) as {
+      data?: Array<{ id?: string }>;
+    };
+    const models = (json.data ?? [])
+      .map((m) => m.id?.trim())
+      .filter((n): n is string => Boolean(n));
+    return { ok: true, models, baseUrl: base };
+  } catch {
+    return { ok: false, models: [], baseUrl: base };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** Probe known local runtimes (Ollama, LM Studio). Never invents success. */
+export async function probeLocalRuntimes(
+  deps: { fetch?: typeof globalThis.fetch } = {},
+): Promise<LocalRuntimeProbe[]> {
+  const [ollama, lm] = await Promise.all([
+    probeLocalOllama({ fetch: deps.fetch }),
+    probeLocalLmStudio({ fetch: deps.fetch }),
+  ]);
+  return [
+    {
+      id: "ollama",
+      ok: ollama.ok,
+      baseUrl: ollama.baseUrl,
+      models: ollama.models,
+      message: ollama.ok
+        ? `Ollama reachable · ${ollama.models.length} model(s)`
+        : "Ollama not reachable on 127.0.0.1:11434",
+    },
+    {
+      id: "lmstudio",
+      ok: lm.ok,
+      baseUrl: lm.baseUrl,
+      models: lm.models,
+      message: lm.ok
+        ? `LM Studio reachable · ${lm.models.length} model(s)`
+        : "LM Studio not reachable on 127.0.0.1:1234",
+    },
+  ];
+}
+
 /**
- * Prefer explicit env config; otherwise adopt a live local Ollama instance.
- * Mutates a copy of env for the run — never writes secrets to disk.
+ * Prefer explicit env config; otherwise adopt a live local runtime.
+ * Never writes secrets to disk. Preserves exact model tags.
  */
 export async function resolveAiProviderAsync(
   env: NodeJS.ProcessEnv = process.env,
@@ -206,20 +339,56 @@ export async function resolveAiProviderAsync(
   const sync = resolveAiProvider(env);
   if (sync) return sync;
 
-  const ollama = await probeLocalOllama({ fetch: deps.fetch });
-  if (!ollama.ok) return null;
+  const preferLm =
+    (env.TABHANDOFF_AI_PROVIDER || "").toLowerCase().includes("lm");
 
-  const model =
-    env.OLLAMA_MODEL?.trim() ||
-    ollama.models[0]?.split(":")[0] ||
-    DEFAULT_OLLAMA_MODEL;
+  if (!preferLm) {
+    const ollama = await probeLocalOllama({ fetch: deps.fetch });
+    if (ollama.ok) {
+      return {
+        id: "ollama",
+        model: preserveExactModelId(
+          env.OLLAMA_MODEL || env.OPENAI_MODEL,
+          ollama.models,
+          DEFAULT_OLLAMA_MODEL,
+        ),
+        baseUrl: ollama.baseUrl,
+        apiKey: "ollama",
+      };
+    }
+  }
 
-  return {
-    id: "ollama",
-    model,
-    baseUrl: ollama.baseUrl,
-    apiKey: "ollama",
-  };
+  const lm = await probeLocalLmStudio({ fetch: deps.fetch });
+  if (lm.ok) {
+    return {
+      id: "lmstudio",
+      model: preserveExactModelId(
+        env.LMSTUDIO_MODEL || env.OPENAI_MODEL,
+        lm.models,
+        lm.models[0] || "local-model",
+      ),
+      baseUrl: lm.baseUrl,
+      apiKey: "lm-studio",
+    };
+  }
+
+  if (preferLm) {
+    const ollama = await probeLocalOllama({ fetch: deps.fetch });
+    if (ollama.ok) {
+      return {
+        id: "ollama",
+        model: preserveExactModelId(
+          env.OLLAMA_MODEL || env.OPENAI_MODEL,
+          ollama.models,
+          DEFAULT_OLLAMA_MODEL,
+        ),
+        baseUrl: ollama.baseUrl,
+        apiKey: "ollama",
+      };
+    }
+  }
+
+  return null;
 }
 
 function truncate(s: string, max: number): string {
@@ -262,11 +431,13 @@ export async function runAiCompletion(
 ): Promise<AiCompletionResult> {
   const env = deps.env ?? process.env;
   const fetchFn = deps.fetch ?? globalThis.fetch;
-  const allowOllamaProbe =
-    deps.allowOllamaProbe ?? deps.env === undefined;
+  const allowLocalProbe =
+    deps.allowLocalProbe ??
+    deps.allowOllamaProbe ??
+    deps.env === undefined;
   const provider =
     resolveAiProvider(env) ??
-    (allowOllamaProbe
+    (allowLocalProbe
       ? await resolveAiProviderAsync(env, { fetch: fetchFn })
       : null);
 
@@ -279,7 +450,7 @@ export async function runAiCompletion(
       result: "",
       error: "no_api_key",
       message:
-        "No AI provider configured. Set OPENAI_API_KEY, ANTHROPIC_API_KEY, GROQ_API_KEY, or run Ollama locally (TABHANDOFF_AI_PROVIDER=ollama). TabHandoff did not call a model.",
+        "No AI provider configured. Set OPENAI_API_KEY, ANTHROPIC_API_KEY, GROQ_API_KEY, run Ollama, or start LM Studio’s local server. TabHandoff did not call a model.",
     };
   }
 
@@ -452,6 +623,7 @@ async function callAnthropic(
 
 function providerLabel(id: AiProviderId): string {
   if (id === "ollama") return "Ollama";
+  if (id === "lmstudio") return "LM Studio";
   if (id === "groq") return "Groq";
   if (id === "anthropic") return "Anthropic";
   return "OpenAI-compatible provider";

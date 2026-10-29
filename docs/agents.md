@@ -4,6 +4,8 @@ TabHandoff is an **open handoff protocol** for AI agents: discover → install �
 
 Humans and coding agents should follow this page. Schema details: [schema.md](./schema.md). Manual path for unsupported agents: [manual-export.md](./manual-export.md).
 
+**Supported interfaces only** (CLI, MCP, portable package, local bridge) — see [agents-interfaces.md](./agents-interfaces.md). TabHandoff does not invent Cursor/ChatGPT remote-control APIs.
+
 ---
 
 ## 1. Discover

@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   resolveAiProvider,
+  resolveAiProviderAsync,
+  preserveExactModelId,
   runAiCompletion,
   sanitizeError,
 } from "../src/provider.ts";
@@ -41,10 +43,49 @@ describe("AI provider abstraction", () => {
     assert.match(cfg!.baseUrl ?? "", /11434/);
   });
 
+  it("preserveExactModelId never strips :tag", () => {
+    assert.equal(
+      preserveExactModelId(undefined, ["smollm2:135m", "llama3.2:latest"], "x"),
+      "smollm2:135m",
+    );
+    assert.equal(
+      preserveExactModelId("llama3.2:latest", ["smollm2:135m"], "x"),
+      "llama3.2:latest",
+    );
+    assert.equal(preserveExactModelId(undefined, [], "fallback:tag"), "fallback:tag");
+  });
+
+  it("auto-detect Ollama keeps full model tag (regression for 404)", async () => {
+    const fakeFetch: typeof fetch = async (url) => {
+      if (String(url).includes("/api/tags")) {
+        return new Response(
+          JSON.stringify({ models: [{ name: "smollm2:135m" }] }),
+          { status: 200 },
+        );
+      }
+      throw new Error(`unexpected ${url}`);
+    };
+    const cfg = await resolveAiProviderAsync({}, { fetch: fakeFetch });
+    assert.ok(cfg);
+    assert.equal(cfg!.id, "ollama");
+    assert.equal(cfg!.model, "smollm2:135m");
+    assert.equal(cfg!.model.includes(":"), true);
+  });
+
   it("resolves Groq from GROQ_API_KEY", () => {
     const cfg = resolveAiProvider({ GROQ_API_KEY: "gsk-test" });
     assert.ok(cfg);
     assert.equal(cfg!.id, "groq");
+  });
+
+  it("resolves LM Studio when TABHANDOFF_AI_PROVIDER=lmstudio", () => {
+    const cfg = resolveAiProvider({
+      TABHANDOFF_AI_PROVIDER: "lmstudio",
+      LMSTUDIO_MODEL: "my-local:latest",
+    });
+    assert.ok(cfg);
+    assert.equal(cfg!.id, "lmstudio");
+    assert.equal(cfg!.model, "my-local:latest");
   });
 
   it("runAiCompletion with mock fetch", async () => {

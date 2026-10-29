@@ -64,6 +64,24 @@ export {
   type AiTaskRecord,
 } from "./ai-run.js";
 export {
+  mintPairingCode,
+  pairingStatus,
+  redeemPairingCode,
+  clearPairingState,
+} from "./pairing.js";
+export {
+  loadAiSettings,
+  saveAiSettings,
+  aiSettingsPath,
+  envWithAiSettings,
+  type AiSettings,
+} from "./ai-settings.js";
+export {
+  probeLocalRuntimes,
+  preserveExactModelId,
+  type LocalRuntimeProbe,
+} from "@tabhandoff/runner";
+export {
   PortableError,
   HASH_INTEGRITY_NOTE,
   resolveHandoffDir,

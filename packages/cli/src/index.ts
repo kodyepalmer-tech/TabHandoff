@@ -195,9 +195,39 @@ async function cmdDoctor(): Promise<void> {
     name: "llm-key",
     ok: true,
     detail: llm
-      ? `${llm} detected — agent loop + run-ai / /v1/ai/run enabled`
-      : "none — DOM extractor only; run-ai unavailable until OPENAI_API_KEY or ANTHROPIC_API_KEY is set",
+      ? `${llm} env key detected — agent loop + run-ai enabled`
+      : "no cloud API key in env (optional if a local runtime is up)",
   });
+
+  try {
+    const { resolveAiProviderAsync, probeLocalRuntimes } = await import(
+      "@tabhandoff/runner"
+    );
+    const runtimes = await probeLocalRuntimes();
+    for (const rt of runtimes) {
+      checks.push({
+        name: `local-${rt.id}`,
+        ok: true,
+        detail: rt.ok
+          ? `${rt.message}${rt.models[0] ? ` · e.g. ${rt.models[0]}` : ""}`
+          : rt.message,
+      });
+    }
+    const resolved = await resolveAiProviderAsync();
+    checks.push({
+      name: "ai-provider",
+      ok: true,
+      detail: resolved
+        ? `${resolved.id} / ${resolved.model} — run-ai / /v1/ai/run ready`
+        : "none — start Ollama or LM Studio, or set OPENAI_API_KEY / GROQ_API_KEY / ANTHROPIC_API_KEY",
+    });
+  } catch (err) {
+    checks.push({
+      name: "ai-provider",
+      ok: false,
+      detail: `probe failed: ${err instanceof Error ? err.message : String(err)}`,
+    });
+  }
 
   checks.push({
     name: "proof-store",
@@ -209,7 +239,9 @@ async function cmdDoctor(): Promise<void> {
   console.log(`🕊️ tabhandoff doctor\n`);
   for (const c of checks) {
     console.log(`${c.ok ? "✅" : "❌"} ${c.name}: ${c.detail}`);
-    if (!c.ok && c.name !== "llm-key") failed = true;
+    if (!c.ok && c.name !== "llm-key" && !c.name.startsWith("local-")) {
+      failed = true;
+    }
   }
   console.log(``);
   console.log(`Where's the proof? Local on this machine:`);

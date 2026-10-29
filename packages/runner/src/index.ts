@@ -5,6 +5,9 @@ export {
   resolveAiProvider,
   resolveAiProviderAsync,
   probeLocalOllama,
+  probeLocalLmStudio,
+  probeLocalRuntimes,
+  preserveExactModelId,
   runAiCompletion,
   sanitizeError,
   type AiProviderId,
@@ -12,6 +15,7 @@ export {
   type AiCompletionInput,
   type AiCompletionResult,
   type AiProviderDeps,
+  type LocalRuntimeProbe,
 } from "./provider.js";
 export {
   runHandoff,

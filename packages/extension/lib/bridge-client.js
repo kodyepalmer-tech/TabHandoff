@@ -15,6 +15,47 @@ export async function saveBridgeSettings({ base, token }) {
   });
 }
 
+/**
+ * Redeem a short pairing code for the bridge token (one-time).
+ * Does not disable auth — only bootstraps the token onto this device.
+ */
+export async function completePairing(base, code) {
+  const root = (base || DEFAULT_BASE).replace(/\/$/, "");
+  let res;
+  try {
+    res = await fetch(`${root}/v1/pair/complete`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: String(code || "").trim() }),
+    });
+  } catch {
+    return {
+      ok: false,
+      error: "bridge_unreachable",
+      message: "Could not reach the local bridge. Start the desktop app first.",
+    };
+  }
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok || !body.ok || !body.token) {
+    return {
+      ok: false,
+      error: body.error || `http_${res.status}`,
+      message: body.message || "Pairing failed.",
+    };
+  }
+  await saveBridgeSettings({
+    base: body.base || root,
+    token: body.token,
+  });
+  return {
+    ok: true,
+    base: body.base || root,
+    message: body.message || "Paired.",
+    /** Never echo the token back into the UI layer unnecessarily */
+    tokenSaved: true,
+  };
+}
+
 export async function probeBridge(settings) {
   const base = settings?.base || DEFAULT_BASE;
   try {

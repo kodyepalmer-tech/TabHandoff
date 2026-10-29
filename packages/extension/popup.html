@@ -164,21 +164,28 @@
       <section id="step-settings" class="panel hidden">
         <h2>Local bridge</h2>
         <p class="note">
-          Required for <strong>Run with AI</strong> and My Activity. Paste the token printed
-          when you start the desktop app or <code>pnpm bridge</code>. API keys stay in the
-          bridge process — never in this extension.
+          Required for <strong>Run with AI</strong> and My Activity. Prefer a short
+          <strong>pairing code</strong> from the desktop app (Settings → Show pairing code).
+          You can still paste the long token. API keys stay in the bridge process — never here.
         </p>
         <label class="field">
           <span>Bridge address</span>
           <input id="bridge-base" type="text" value="http://127.0.0.1:17432" />
         </label>
         <label class="field">
-          <span>Access token</span>
+          <span>Pairing code (8 digits from desktop)</span>
+          <input id="pair-code" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="00000000" maxlength="8" />
+        </label>
+        <div class="actions">
+          <button type="button" id="btn-pair" class="primary">Connect with code</button>
+        </div>
+        <label class="field">
+          <span>Access token (advanced)</span>
           <input id="bridge-token" type="password" autocomplete="off" placeholder="Paste token" />
         </label>
         <p id="bridge-status" class="note">Checking bridge…</p>
         <div class="actions">
-          <button type="button" id="btn-save-settings" class="primary">Save</button>
+          <button type="button" id="btn-save-settings" class="primary">Save token</button>
           <button type="button" id="btn-settings-back" class="ghost">Back</button>
         </div>
       </section>

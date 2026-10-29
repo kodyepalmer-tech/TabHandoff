@@ -23,10 +23,13 @@ API keys / local daemon credentials come from the **bridge / CLI / desktop proce
 
 | Provider | Env | Notes |
 |---|---|---|
-| **Ollama (free/local)** | `TABHANDOFF_AI_PROVIDER=ollama` or live daemon on `:11434` | Auto-detected by bridge; no paid credits |
+| **Ollama (free/local)** | `TABHANDOFF_AI_PROVIDER=ollama` or live daemon on `:11434` | Auto-detected; **exact tags preserved** (`:135m`, `:latest`) |
+| **LM Studio (free/local)** | `TABHANDOFF_AI_PROVIDER=lmstudio` or `:1234` | Auto-detected OpenAI-compatible |
 | OpenAI-compatible | `OPENAI_API_KEY` (+ optional `OPENAI_BASE_URL`) | Cloud or local proxies |
 | Groq | `GROQ_API_KEY` | OpenAI-compatible free-tier friendly |
 | Anthropic | `ANTHROPIC_API_KEY` | Messages API |
+
+Desktop **Settings → Connect your local AI** writes `~/.tabhandoff/ai-settings.json` (provider/model only — **no keys**). Prefer **pairing code** over pasting the long bridge token.
 
 Without a provider, status is honest: **`unavailable`** — TabHandoff does **not** invent a successful run.
 
@@ -36,22 +39,19 @@ Without a provider, status is honest: **`unavailable`** — TabHandoff does **no
 pnpm install && pnpm build
 
 # Preferred free path:
-# install Ollama, then:
-ollama pull llama3.2   # or any chat model
-# leave `ollama serve` running (or the system service)
+ollama pull smollm2:135m   # keep the full tag
+# leave `ollama serve` running
 
-# Optional explicit pin:
+# Optional pin (exact tag):
 export TABHANDOFF_AI_PROVIDER=ollama
-export OLLAMA_MODEL=llama3.2
+export OLLAMA_MODEL=smollm2:135m
 
-# Or a cloud key YOU own (do not paste into the extension):
-# export OPENAI_API_KEY=sk-…
-# export GROQ_API_KEY=gsk_…
-
-pnpm bridge            # or: pnpm desktop
+pnpm desktop   # owns bridge (adopts if port already in use)
+# or: pnpm bridge
 ```
 
-Paste the printed bridge token into the extension **Settings**.
+In desktop: **Show pairing code** → extension Settings → **Connect with code**.  
+Advanced: paste the long token. Never put model API keys in the extension.
 
 ## Extension flow
 
