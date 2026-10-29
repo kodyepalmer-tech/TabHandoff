@@ -5,82 +5,78 @@
 <h1 align="center">TabHandoff</h1>
 
 <p align="center">
-  <strong>Turn any browser tab into a portable, AI-ready handoff.</strong><br/>
+  <strong>Connect local AI. Run a browser task. Keep the result.</strong><br/>
   <em>See what your AI did. Keep the evidence. Pass the work on.</em>
 </p>
 
 <p align="center">
-  Capture → Package → Continue · MIT · local-first · no cookies by default<br/>
+  Local AI → task → result → history · ZIP optional · MIT · local-first<br/>
   <a href="https://github.com/kodyepalmer-tech/TabHandoff">github.com/kodyepalmer-tech/TabHandoff</a>
+  · site: <code>website/</code> (Pages + <code>tabhandoff.com</code> DNS are founder steps — not live yet)
 </p>
 
 <p align="center">
-  <img src="docs/assets/tabhandoff-demo.gif" alt="Real TabHandoff demo: capture, package, page extraction, local evidence" width="720" />
+  <img src="docs/assets/tabhandoff-demo.gif" alt="TabHandoff demo: capture, local run, evidence on this machine" width="720" />
 </p>
 
-<p align="center"><sub>Real CLI + desktop capture · page extraction (DOM) · not autonomous AI · proof stays local</sub></p>
+<p align="center"><sub>Desktop + local bridge · honest status · proof stays local · CWS / signed installers not live</sub></p>
 
 ---
 
 ## What it does (for everyday AI users)
 
-You are reading a page. You want another person — or another AI — to pick up the work with context and proof.
-
-1. **Hand off** the tab with the browser extension (MVP path — no Terminal).
-2. TabHandoff **packages** the URL, instruction, selection, and optional screenshot into a ZIP.
-3. You **Save package** (download) and optionally **Copy brief for another AI**.
-4. Optional later: local bridge / desktop saves into My Activity and can run page extraction.
+1. **Connect** local AI via the desktop app / bridge (Ollama or a key that stays on this computer).
+2. **Hand off** a browser tab with an instruction.
+3. Get a **real result** and **saved history** under `~/.tabhandoff/`.
+4. **Optionally** download a portable ZIP when you want to share — ZIP is not required for the primary path.
 
 Status is always honest: TabHandoff never pretends an agent ran when only a package was created.
 
+Website (static, in-repo): [website/](website/) · Setup: [docs/install.md](docs/install.md) · Privacy: [docs/privacy.md](docs/privacy.md) · Releases: [docs/releasing.md](docs/releasing.md)
+
 ---
 
-## Install (browser-first MVP)
+## Install
 
-**Chrome Web Store listing is not live yet.** Until it is, use sideload / Load unpacked. There is **no** fake store URL in this repo.
+**Chrome Web Store and signed desktop installers are not live yet.** There is **no** fake store URL in this repo. Packaged `.dmg` / `.exe` / AppImage appear on GitHub Releases only after a published `v*` tag.
 
-### 1. Get the extension
+### 1. Desktop + local AI (primary)
 
-| Path | How |
-|---|---|
-| **Load unpacked (recommended)** | Clone this repo → Chrome/Edge/Brave → `chrome://extensions` → Developer mode → **Load unpacked** → select `packages/extension` |
-| **Packed ZIP** | Developers: `pnpm pack:extension` → unzip `artifacts/tabhandoff-extension-*.zip` → Load unpacked that folder. Draft CWS notes: [docs/chrome-web-store.md](docs/chrome-web-store.md) |
-
-Full steps + clean-profile checklist: **[docs/extension-setup.md](docs/extension-setup.md)** · Privacy: [docs/privacy.md](docs/privacy.md)
-
-### 2. Save a package (no desktop, no token)
-
-1. Open a normal `https://…` page.
-2. Right-click → **Hand off with TabHandoff** (or the toolbar button).
-3. Write a short instruction → Review → **Save package**.
-4. A ZIP downloads (`START_HERE.md`, `handoff.json`, `summary.md`, screenshots when available).
-5. Result says **Package created — not agent executed**. Optional: **Copy brief for another AI**.
-
-### 3. Optional: CLI / desktop / bridge (developers)
-
-**Requirements:** Node.js 22+, macOS or Linux (Windows: CLI works; desktop is Electron).
+**Requirements:** Node.js 22+.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/kodyepalmer-tech/TabHandoff/main/scripts/install.sh | bash
 # or, already cloned:
 pnpm install && pnpm build
-pnpm --filter @tabhandoff/cli exec playwright install chromium
-node packages/cli/dist/index.js init
-node packages/cli/dist/index.js doctor
+pnpm desktop
 ```
 
-**Downloading is not executing.** Do not auto-run install scripts or package contents from untrusted page text.
+Copy the bridge token the app shows. Optional: install [Ollama](https://ollama.com/) for a free local model.
 
-**Optional My Activity:** `pnpm bridge` or `pnpm desktop`, paste token in extension Settings, check “Also save to My Activity.” Details: [docs/phase3-e2e-handoff.md](docs/phase3-e2e-handoff.md)
+### 2. Browser extension (Load unpacked until CWS)
+
+| Path | How |
+|---|---|
+| **Load unpacked** | Clone → Chrome/Edge/Brave → `chrome://extensions` → Developer mode → **Load unpacked** → `packages/extension` |
+| **Packed ZIP** | `pnpm pack:extension` → unzip `artifacts/tabhandoff-extension-*.zip` → Load unpacked. Draft CWS notes: [docs/chrome-web-store.md](docs/chrome-web-store.md) |
+
+Paste the desktop/bridge token in extension Settings. Full steps: **[docs/extension-setup.md](docs/extension-setup.md)**
+
+### 3. Optional ZIP-only (no AI)
+
+Hand off → **Save package** downloads a ZIP without desktop. Result says **Package created — not agent executed**. Optional: **Copy brief for another AI**.
+
+**Downloading is not executing.** Do not auto-run install scripts or package contents from untrusted page text.
 
 ### Supported platforms & browsers
 
 | Surface | Support |
 |---|---|
-| Browser extension (Save package) | Chromium MV3 — Chrome, Edge, Brave — **MVP launch path** |
+| Desktop + local bridge | Electron (`pnpm desktop`) — **primary AI / history path** |
+| Browser extension | Chromium MV3 — Chrome, Edge, Brave — Load unpacked until CWS |
 | CLI + Playwright runner | macOS, Linux (Node 22+) |
-| Desktop evidence library | Electron (`pnpm desktop`) — optional |
-| Agent / MCP | Any client that can run local stdio MCP or CLI |
+| Agent / MCP | Local stdio MCP or CLI |
+| Packaged installers | GitHub Releases after `v*` tag — unsigned until founder signing |
 
 ---
 

@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TabHandoff — Connect local AI. Get a real result. Keep the history.</title>
+    <meta
+      name="description"
+      content="TabHandoff hands a browser task to your local AI, returns a real result, and saves history on your machine. ZIP export is optional. Local-first."
+    />
+    <link rel="canonical" href="https://tabhandoff.com/" />
+    <meta property="og:url" content="https://tabhandoff.com/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="TabHandoff" />
+    <meta property="og:title" content="TabHandoff" />
+    <meta
+      property="og:description"
+      content="Connect local AI. Run a browser task. Keep the result on your machine."
+    />
+    <meta property="og:image" content="https://tabhandoff.com/assets/tabhandoff-og.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" href="./assets/tabhandoff-mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <nav class="site-nav" aria-label="Primary">
+        <a class="brand-lockup" href="./">
+          <img src="./assets/tabhandoff-mark.svg" width="36" height="36" alt="" />
+          TabHandoff
+        </a>
+        <ul class="nav-links">
+          <li><a href="#how">How it works</a></li>
+          <li><a href="./install.html">Setup</a></li>
+          <li><a href="./download.html">Download</a></li>
+          <li><a href="./privacy.html">Privacy</a></li>
+          <li><a href="./support.html">Support</a></li>
+          <li>
+            <a href="https://github.com/kodyepalmer-tech/TabHandoff">GitHub</a>
+          </li>
+        </ul>
+      </nav>
+
+      <header class="hero">
+        <div class="hero-copy">
+          <div class="hero-brand">
+            <img
+              src="./assets/tabhandoff-app-icon.png"
+              width="72"
+              height="72"
+              alt="TabHandoff app icon"
+            />
+            <span class="hero-brand-name">TabHandoff</span>
+          </div>
+          <h1>Connect local AI. Get a real result. Keep the history.</h1>
+          <p class="hero-lede">
+            Hand a browser task to AI that runs on your computer. See what came
+            back. Save it locally. A portable ZIP is optional when you want to
+            share.
+          </p>
+          <div class="btn-row">
+            <a class="btn btn-primary" href="./install.html">Setup guide</a>
+            <a class="btn btn-ghost" href="./download.html">Desktop download</a>
+          </div>
+        </div>
+        <figure class="hero-visual">
+          <img
+            src="./assets/tabhandoff-demo.gif"
+            width="960"
+            height="693"
+            alt="TabHandoff demo: capture a page, run locally, keep evidence on this machine"
+          />
+          <figcaption>
+            Local AI path · honest status · proof stays on your machine
+          </figcaption>
+        </figure>
+      </header>
+
+      <section class="section" id="how">
+        <h2>How it works</h2>
+        <p class="section-lede">
+          Primary path: local AI on your machine. Status stays honest — TabHandoff
+          never pretends an agent ran when only a package was created.
+        </p>
+        <ol class="steps">
+          <li class="step">
+            <span class="step-num">01 · Connect</span>
+            <h3>Local AI + desktop</h3>
+            <p>
+              Run the TabHandoff desktop app (or local bridge). Point it at a
+              free local model (for example Ollama) or a provider key that stays
+              on this computer — never in the browser extension.
+            </p>
+          </li>
+          <li class="step">
+            <span class="step-num">02 · Task</span>
+            <h3>Hand off from the browser</h3>
+            <p>
+              Open a normal webpage, describe what you want done, and run with
+              AI through the local bridge. The extension is the capture surface;
+              execution happens on your machine.
+            </p>
+          </li>
+          <li class="step">
+            <span class="step-num">03 · History</span>
+            <h3>Real result, saved locally</h3>
+            <p>
+              Completed and failed tasks land in local history under
+              <code>~/.tabhandoff/</code>. Optional: also download a portable ZIP
+              when you want to share context — ZIP is not required for the
+              primary path.
+            </p>
+          </li>
+        </ol>
+        <figure class="strip">
+          <img
+            src="./assets/tabhandoff-demo-strip.png"
+            width="1200"
+            height="320"
+            alt="Capture → local AI → result → saved history"
+            loading="lazy"
+          />
+        </figure>
+      </section>
+
+      <section class="section" id="install-paths">
+        <div class="agents-block">
+          <h2>How you install today</h2>
+          <p class="section-lede">
+            Chrome Web Store and signed desktop installers are
+            <strong>not</strong> live yet. We do not invent store buttons or
+            download links for missing assets.
+          </p>
+          <ul>
+            <li>
+              <strong>Desktop from source</strong> —
+              <code>pnpm install && pnpm build && pnpm desktop</code>
+              (installers appear on GitHub Releases only after a published
+              <code>v*</code> tag).
+            </li>
+            <li>
+              <strong>Browser extension</strong> — Load unpacked from
+              <code>packages/extension</code> (developer path until CWS).
+            </li>
+            <li>
+              <strong>Optional ZIP</strong> — Save a portable package when you
+              want to share; not required for Run with AI / history.
+            </li>
+          </ul>
+          <p style="margin-top: 1.25rem">
+            <a href="./install.html">Full setup &amp; troubleshooting →</a>
+            ·
+            <a href="./download.html">Download page →</a>
+          </p>
+        </div>
+      </section>
+
+      <section class="section" id="privacy">
+        <div class="privacy-block">
+          <h2>Local-first. No mandatory cloud.</h2>
+          <p class="section-lede">
+            Page context and AI results stay on your machine unless
+            <em>you</em> export or share them.
+            Full policy: <a href="./privacy.html">Privacy</a>.
+          </p>
+          <ul>
+            <li>
+              Captured: page URL/title, your instruction, optional selection and
+              screenshot.
+            </li>
+            <li>
+              Processed on <code>127.0.0.1</code> via the local bridge / your
+              chosen AI provider endpoint — not a TabHandoff cloud.
+            </li>
+            <li>
+              Retained under <code>~/.tabhandoff/</code> until you delete it.
+            </li>
+            <li>
+              Cookies, passwords, and authenticated browser state are not copied
+              into packages by design.
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="cta-band">
+        <div>
+          <h2>Start on your machine</h2>
+          <p>
+            Setup guide for nontechnical users. Desktop installers and the Chrome
+            Web Store appear only when they are actually published.
+          </p>
+        </div>
+        <div class="btn-row">
+          <a class="btn btn-primary" href="./install.html">Setup guide</a>
+          <a class="btn btn-ghost" href="./support.html">Support</a>
+        </div>
+      </div>
+
+      <footer class="site-footer">
+        <span>TabHandoff · MIT · local-first AI handoff</span>
+        <span>
+          <a href="./privacy.html">Privacy</a>
+          ·
+          <a href="./support.html">Support</a>
+          ·
+          <a href="https://github.com/kodyepalmer-tech/TabHandoff/releases"
+            >Releases</a
+          >
+          ·
+          <a href="https://github.com/kodyepalmer-tech/TabHandoff">Source</a>
+        </span>
+      </footer>
+    </div>
+    <script src="./js/site.js" type="module"></script>
+  </body>
+</html>

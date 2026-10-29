@@ -5,57 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>TabHandoff Privacy Policy</title>
     <style>
-      :root {
-        color-scheme: light;
-        --ink: #111;
-        --muted: #444;
-        --bg: #f7f7f5;
-        --line: #ddd;
-      }
-      body {
-        margin: 0;
-        font-family: "Source Sans 3", "Segoe UI", sans-serif;
-        background: linear-gradient(180deg, #eee 0%, var(--bg) 28%);
-        color: var(--ink);
-        line-height: 1.55;
-      }
-      main {
-        max-width: 42rem;
-        margin: 0 auto;
-        padding: 2.5rem 1.25rem 4rem;
-      }
-      h1 {
-        font-family: Syne, "Avenir Next", sans-serif;
-        letter-spacing: -0.02em;
-        margin-bottom: 0.25rem;
-      }
-      .meta {
-        color: var(--muted);
-        font-size: 0.95rem;
-      }
-      h2 {
-        margin-top: 1.75rem;
-        font-size: 1.15rem;
-      }
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 0.92rem;
-      }
-      th,
-      td {
-        border: 1px solid var(--line);
-        padding: 0.5rem 0.6rem;
-        text-align: left;
-        vertical-align: top;
-      }
-      th {
-        background: #fff;
-      }
-      code {
-        font-family: "IBM Plex Mono", ui-monospace, monospace;
-        font-size: 0.85em;
-      }
+      :root { color-scheme: light; --ink: #111; --muted: #444; --bg: #f7f7f5; --line: #ddd; }
+      body { margin: 0; font-family: "Source Sans 3", "Segoe UI", sans-serif; background: linear-gradient(180deg, #eee 0%, var(--bg) 28%); color: var(--ink); line-height: 1.55; }
+      main { max-width: 42rem; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
+      h1 { font-family: Syne, "Avenir Next", sans-serif; letter-spacing: -0.02em; margin-bottom: 0.25rem; }
+      .meta { color: var(--muted); font-size: 0.95rem; }
+      h2 { margin-top: 1.75rem; font-size: 1.15rem; }
+      table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+      th, td { border: 1px solid var(--line); padding: 0.5rem 0.6rem; text-align: left; vertical-align: top; }
+      th { background: #fff; }
+      code { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 0.85em; }
     </style>
   </head>
   <body>
@@ -63,73 +22,55 @@
       <h1>TabHandoff Privacy Policy</h1>
       <p class="meta">Last updated: 2026-10-29</p>
       <p>
-        TabHandoff creates a portable handoff package from a webpage you choose.
-        By default the package is downloaded as a ZIP on your device. There is no
-        TabHandoff cloud account required for that path.
+        TabHandoff hands a browser task to AI on <strong>your</strong> computer
+        (local bridge / provider you configure), saves history locally, and
+        treats ZIP export as optional sharing. No TabHandoff cloud account is
+        required for the core path.
       </p>
       <h2>Summary</h2>
       <ul>
-        <li>Captured data: page URL/title, optional selection, optional screenshot, your instruction.</li>
-        <li>Default: local ZIP download only — not uploaded to TabHandoff servers.</li>
-        <li>Optional: save to a local bridge on <code>127.0.0.1</code> with a token you paste.</li>
+        <li>Captured: page URL/title, optional selection, optional screenshot, your instruction.</li>
+        <li>Processed on <code>127.0.0.1</code> and/or your chosen AI endpoint — not a TabHandoff server.</li>
+        <li>Retained under <code>~/.tabhandoff/</code> until you delete it.</li>
+        <li>ZIP / copy-brief sharing is optional and under your control.</li>
         <li>We do not sell personal data or use page content for advertising.</li>
       </ul>
       <h2>Data the extension may access</h2>
       <table>
-        <thead>
-          <tr>
-            <th>Data</th>
-            <th>Purpose</th>
-          </tr>
-        </thead>
+        <thead><tr><th>Data</th><th>Purpose</th></tr></thead>
         <tbody>
-          <tr>
-            <td>Active tab URL and title</td>
-            <td>Identify the page in the package</td>
-          </tr>
-          <tr>
-            <td>Selected text</td>
-            <td>Include context you chose</td>
-          </tr>
-          <tr>
-            <td>Visible-tab screenshot</td>
-            <td>Evidence when Chrome allows capture</td>
-          </tr>
-          <tr>
-            <td>Your instruction</td>
-            <td>Tell the next person or AI what to do</td>
-          </tr>
-          <tr>
-            <td>Local bridge token (optional)</td>
-            <td>Authenticate to the loopback helper on your machine</td>
-          </tr>
+          <tr><td>Active tab URL and title</td><td>Identify the page</td></tr>
+          <tr><td>Selected text</td><td>Context you chose</td></tr>
+          <tr><td>Visible-tab screenshot</td><td>Evidence when allowed</td></tr>
+          <tr><td>Your instruction</td><td>Task for local AI / next person</td></tr>
+          <tr><td>Local bridge token</td><td>Authenticate to loopback helper</td></tr>
+          <tr><td>Local AI task history</td><td>Show past results on this computer</td></tr>
         </tbody>
       </table>
       <h2>Permissions</h2>
       <ul>
         <li><code>activeTab</code> / <code>scripting</code> — read the page you hand off</li>
         <li><code>contextMenus</code> — right-click Hand off</li>
-        <li><code>storage</code> — onboarding + optional bridge settings</li>
+        <li><code>storage</code> — onboarding, bridge settings, local history cache</li>
         <li><code>http://127.0.0.1/*</code> — optional local bridge only</li>
       </ul>
+      <h2>Retention &amp; sharing</h2>
+      <p>
+        Data stays under <code>~/.tabhandoff/</code> (or <code>TABHANDOFF_HOME</code>)
+        until you delete it. Uninstall does not auto-wipe that folder. Sharing
+        happens only when you export a ZIP, copy a brief, or send files.
+      </p>
       <h2>What we do not collect</h2>
       <p>
-        No page cookies or passwords are copied into packages by design. No
-        TabHandoff cloud sync of browsing history. No advertising SDK in the
-        extension MVP.
-      </p>
-      <h2>Sharing</h2>
-      <p>
-        If you download a ZIP or copy a brief for another AI, you control who
-        receives it. Treat captured page content as untrusted data.
+        No page cookies or passwords in packages by design. No TabHandoff cloud
+        sync of browsing history. No advertising SDK in the extension MVP.
       </p>
       <h2>Contact</h2>
       <p>
-        Use the TabHandoff GitHub repository issues. Host this page at a stable
-        HTTPS URL (for example on tabhandoff.com after the public site ships)
-        for Chrome Web Store submission.
+        <a href="https://github.com/kodyepalmer-tech/TabHandoff/issues">GitHub issues</a>.
+        Production URL after Pages + DNS: <code>https://tabhandoff.com/privacy.html</code>
+        (not live until the founder enables them).
       </p>
-      <p class="meta">Canonical markdown: docs/privacy.md</p>
     </main>
   </body>
 </html>

@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Setup &amp; troubleshoot — TabHandoff</title>
+    <meta
+      name="description"
+      content="Set up TabHandoff: desktop + local AI first, optional ZIP, Load unpacked until Chrome Web Store. Honest about installer and store status."
+    />
+    <link rel="canonical" href="https://tabhandoff.com/install.html" />
+    <meta property="og:url" content="https://tabhandoff.com/install.html" />
+    <meta property="og:title" content="Setup TabHandoff" />
+    <meta property="og:image" content="https://tabhandoff.com/assets/tabhandoff-og.png" />
+    <link rel="icon" href="./assets/tabhandoff-mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <nav class="site-nav" aria-label="Primary">
+        <a class="brand-lockup" href="./">
+          <img src="./assets/tabhandoff-mark.svg" width="36" height="36" alt="" />
+          TabHandoff
+        </a>
+        <ul class="nav-links">
+          <li><a href="./install.html" aria-current="page">Setup</a></li>
+          <li><a href="./download.html">Download</a></li>
+          <li><a href="./privacy.html">Privacy</a></li>
+          <li><a href="./support.html">Support</a></li>
+          <li>
+            <a href="https://github.com/kodyepalmer-tech/TabHandoff">GitHub</a>
+          </li>
+        </ul>
+      </nav>
+
+      <header class="page-hero">
+        <h1>Setup &amp; troubleshoot</h1>
+        <p>
+          Primary path: desktop + local AI → browser task → real result → saved
+          history. ZIP export is optional. This page never invents a live store
+          or installer URL.
+        </p>
+      </header>
+
+      <article class="prose">
+        <p class="warn">
+          <strong>Not live yet:</strong> Chrome Web Store listing · signed
+          macOS/Windows installers · production
+          <code>tabhandoff.com</code> DNS. Until those ship, use the paths below.
+        </p>
+
+        <h2 id="desktop">1. Desktop + local AI (primary)</h2>
+        <p class="ok-note">
+          The desktop app hosts the local bridge, shows activity / AI task
+          history, and keeps results under <code>~/.tabhandoff/</code>.
+        </p>
+
+        <h3 id="from-source">Run from source (works today on every OS)</h3>
+        <ol>
+          <li>Install <a href="https://nodejs.org/">Node.js 22+</a> and enable Corepack (<code>corepack enable</code>).</li>
+          <li>
+            Clone and build:
+            <pre><code>git clone https://github.com/kodyepalmer-tech/TabHandoff.git
+cd TabHandoff
+pnpm install && pnpm build
+pnpm desktop</code></pre>
+          </li>
+          <li>
+            Optional free local model: install
+            <a href="https://ollama.com/">Ollama</a>, pull a small model, leave
+            the Ollama app running.
+          </li>
+          <li>
+            Copy the access token the desktop/bridge shows (needed for the
+            browser extension to talk to this computer).
+          </li>
+        </ol>
+        <p>
+          Packaged installers appear on
+          <a href="./download.html">Download</a> only when a GitHub Release
+          asset exists. Early builds are <strong>unsigned</strong> — expect
+          Gatekeeper / SmartScreen prompts until the founder adds signing.
+        </p>
+
+        <h3 id="macos">macOS installer (when published)</h3>
+        <ol>
+          <li>Download the <code>.dmg</code> for your chip from GitHub Releases.</li>
+          <li>Open the disk image and drag <strong>TabHandoff</strong> to Applications.</li>
+          <li>
+            First launch: if Gatekeeper blocks an unsigned app, open
+            <strong>System Settings → Privacy &amp; Security</strong> →
+            <em>Open Anyway</em>, or right-click → <em>Open</em>.
+          </li>
+        </ol>
+
+        <h3 id="windows">Windows installer (when published)</h3>
+        <ol>
+          <li>Download the NSIS <code>.exe</code> (x64) from GitHub Releases.</li>
+          <li>Run the installer.</li>
+          <li>
+            If SmartScreen appears: <em>More info</em> → <em>Run anyway</em>
+            only for the official GitHub Release asset.
+          </li>
+        </ol>
+
+        <h3 id="linux">Linux installer (when published)</h3>
+        <pre><code>chmod +x TabHandoff-*-linux-*.AppImage
+./TabHandoff-*-linux-*.AppImage
+# or: sudo apt install ./TabHandoff-*-linux-amd64.deb</code></pre>
+
+        <h2 id="extension">2. Browser extension (Load unpacked until CWS)</h2>
+        <p class="warn">
+          <strong>Chrome Web Store is not live.</strong> There is no public CWS
+          listing. Use <strong>Load unpacked</strong> — this is the developer /
+          early-tester path until the founder publishes to the store.
+        </p>
+        <ol>
+          <li>Open Chrome, Edge, or Brave → <code>chrome://extensions</code>.</li>
+          <li>Turn <strong>Developer mode</strong> on.</li>
+          <li>
+            <strong>Load unpacked</strong> → select
+            <code>packages/extension</code> in the cloned repo
+            (or unpack <code>artifacts/tabhandoff-extension-*.zip</code> from
+            <code>pnpm pack:extension</code>).
+          </li>
+          <li>Pin TabHandoff to the toolbar.</li>
+          <li>
+            Extension → <strong>Settings</strong> → paste the desktop/bridge
+            token → Save.
+          </li>
+        </ol>
+
+        <h3>Run a task</h3>
+        <ol>
+          <li>Open a normal <code>https://…</code> page (not <code>chrome://</code>).</li>
+          <li>Right-click → <strong>Hand off with TabHandoff</strong> (or the toolbar button).</li>
+          <li>Write what you want done → Review.</li>
+          <li>
+            <strong>Primary:</strong> Run with AI (local bridge) — result and
+            history stay on this computer.
+          </li>
+          <li>
+            <strong>Optional:</strong> also download a portable ZIP if you want
+            to share context. ZIP is not required for the AI path.
+          </li>
+        </ol>
+        <p>
+          Repo guide:
+          <a
+            href="https://github.com/kodyepalmer-tech/TabHandoff/blob/main/docs/extension-setup.md"
+            >docs/extension-setup.md</a
+          >
+          ·
+          <a href="./privacy.html">Privacy</a>
+        </p>
+
+        <h2 id="zip-only">Optional: ZIP-only (no AI)</h2>
+        <p>
+          You can still <strong>Save package</strong> / download a ZIP without
+          the desktop app. Status will say the package was created — not that an
+          agent ran. Useful for sharing; not the primary AI path.
+        </p>
+
+        <h2 id="data">Where data lives</h2>
+        <ul>
+          <li>macOS / Linux: <code>~/.tabhandoff/</code></li>
+          <li>Windows: <code>%USERPROFILE%\.tabhandoff\</code></li>
+          <li>Override: <code>TABHANDOFF_HOME</code></li>
+        </ul>
+
+        <h2 id="troubleshoot">Troubleshooting (plain language)</h2>
+        <ul>
+          <li>
+            <strong>“Bridge: off” / can’t Run with AI:</strong> Start
+            <code>pnpm desktop</code> (or <code>pnpm bridge</code>), copy the
+            token again into extension Settings.
+          </li>
+          <li>
+            <strong>Port already in use:</strong> Quit the other TabHandoff
+            window, or change the port in <code>~/.tabhandoff/bridge.json</code>.
+          </li>
+          <li>
+            <strong>Local model errors:</strong> Confirm Ollama is running and
+            the model name includes its tag (example:
+            <code>smollm2:135m</code>, not just <code>smollm2</code>).
+          </li>
+          <li>
+            <strong>Can’t hand off <code>chrome://</code> pages:</strong> Open a
+            normal website instead.
+          </li>
+          <li>
+            <strong>No screenshot:</strong> Some pages block capture — URL +
+            instruction still hand off.
+          </li>
+          <li>
+            <strong>Desktop “Coming soon” on Download:</strong> No published
+            installer for that OS yet — use from-source above.
+          </li>
+          <li>
+            More:
+            <a
+              href="https://github.com/kodyepalmer-tech/TabHandoff/blob/main/docs/troubleshooting.md"
+              >docs/troubleshooting.md</a
+            >
+            ·
+            <a href="./support.html">Support</a>
+          </li>
+        </ul>
+
+        <p>
+          <a class="btn btn-primary" href="./download.html">Download page</a>
+          <a class="btn btn-ghost" href="./privacy.html" style="margin-left: 0.5rem"
+            >Privacy</a
+          >
+        </p>
+      </article>
+
+      <footer class="site-footer">
+        <span>TabHandoff · MIT</span>
+        <span>
+          <a href="./privacy.html">Privacy</a>
+          ·
+          <a href="./support.html">Support</a>
+          ·
+          <a
+            href="https://github.com/kodyepalmer-tech/TabHandoff/blob/main/docs/releasing.md"
+            >Publishing releases</a
+          >
+        </span>
+      </footer>
+    </div>
+  </body>
+</html>

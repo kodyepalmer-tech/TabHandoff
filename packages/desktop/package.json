@@ -10,7 +10,13 @@
     "build": "tsup src/main.ts src/preload.ts --format esm --outDir dist --clean --external electron && node ./scripts/copy-renderer.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "start": "electron . --no-sandbox",
-    "dev": "pnpm build && electron . --no-sandbox"
+    "dev": "pnpm build && electron . --no-sandbox",
+    "stage": "node ./scripts/stage-release.mjs",
+    "dist": "pnpm build && pnpm stage && electron-builder --config electron-builder.yml",
+    "dist:linux": "pnpm build && pnpm stage && electron-builder --config electron-builder.yml --linux AppImage deb",
+    "dist:mac": "pnpm build && pnpm stage && electron-builder --config electron-builder.yml --mac dmg",
+    "dist:win": "pnpm build && pnpm stage && electron-builder --config electron-builder.yml --win nsis",
+    "checksums": "node ./scripts/checksums.mjs"
   },
   "dependencies": {
     "@tabhandoff/bridge": "workspace:*",
@@ -18,6 +24,7 @@
   },
   "devDependencies": {
     "electron": "^37.2.0",
+    "electron-builder": "^26.18.0",
     "tsup": "^8.4.0",
     "typescript": "^5.8.2"
   }
