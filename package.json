@@ -22,7 +22,9 @@
     "doctor": "node packages/cli/dist/index.js doctor",
     "smoke": "node packages/cli/dist/index.js run --url https://example.com --instruction \"Extract the main heading and first paragraph as markdown\" --wait",
     "demo": "bash scripts/demo.sh",
-    "demo:capture": "node scripts/capture-demo.mjs"
+    "demo:capture": "node scripts/capture-demo.mjs",
+    "pack:extension": "node scripts/pack-extension.mjs",
+    "test:extension-package": "node scripts/test-extension-package.mjs"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",

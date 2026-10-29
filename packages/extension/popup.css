@@ -298,3 +298,27 @@ button.linkish {
 .pill.bad {
   color: var(--danger);
 }
+
+.lede {
+  margin: 0 0 12px;
+  color: var(--ink);
+  font-size: 0.95rem;
+}
+
+.steps {
+  margin: 0 0 14px;
+  padding-left: 1.2rem;
+  color: var(--muted);
+  display: grid;
+  gap: 8px;
+}
+
+.steps strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+code {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+}
