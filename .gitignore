@@ -12,7 +12,12 @@ test-results/
 *.log
 .turbo/
 packages/desktop/dist/
+packages/desktop/release/
+packages/desktop/release-stage/
+packages/desktop/build/
 *.dmg
 *.AppImage
+*.exe
+*.deb
 out/
 artifacts/
