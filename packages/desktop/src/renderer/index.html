@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; font-src 'self' data:;"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TabHandoff</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="rail" aria-label="Primary">
+        <div class="brand">
+          <img class="brand-mark" src="../resources/mark.svg" alt="" width="44" height="44" />
+          <div class="brand-copy">
+            <div class="brand-name">TabHandoff</div>
+            <div class="brand-tag">See what your AI did</div>
+          </div>
+        </div>
+        <nav class="nav">
+          <button class="nav-item is-active" data-view="activity" type="button">My Activity</button>
+          <button class="nav-item" data-view="evidence" type="button">Evidence</button>
+          <button class="nav-item" data-view="settings" type="button">Settings</button>
+        </nav>
+        <div class="rail-foot">
+          <span class="pill-quiet" id="home-pill">Local evidence</span>
+        </div>
+      </aside>
+
+      <main class="stage">
+        <section id="view-activity" class="view is-visible">
+          <header class="stage-head">
+            <div>
+              <h1>My Activity</h1>
+              <p class="lede">Your AI handoffs, screenshots, and receipts — kept on this Mac.</p>
+            </div>
+            <div class="head-actions">
+              <button type="button" class="btn ghost" id="btn-refresh">Refresh</button>
+            </div>
+          </header>
+
+          <div class="filters" role="search">
+            <input
+              id="filter-query"
+              type="search"
+              placeholder="Search tasks, sites, notes…"
+              autocomplete="off"
+            />
+            <select id="filter-status" aria-label="Status">
+              <option value="all">All statuses</option>
+              <option value="succeeded">Succeeded</option>
+              <option value="failed">Failed</option>
+              <option value="running">Running</option>
+              <option value="queued">Queued</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+            <select id="filter-host" aria-label="Website">
+              <option value="">All websites</option>
+            </select>
+            <input id="filter-since" type="date" aria-label="From date" />
+            <input id="filter-until" type="date" aria-label="To date" />
+          </div>
+
+          <div id="activity-meta" class="meta-line"></div>
+          <div id="activity-grid" class="activity-grid" aria-live="polite"></div>
+          <div id="activity-empty" class="empty hidden">
+            <h2>No activity yet</h2>
+            <p>
+              Run a handoff from the CLI or MCP, then hit Refresh. Evidence lives in
+              <code>~/.tabhandoff/receipts/</code>.
+            </p>
+          </div>
+        </section>
+
+        <section id="view-detail" class="view">
+          <header class="stage-head">
+            <div>
+              <button type="button" class="btn text" id="btn-back">← Back to My Activity</button>
+              <h1 id="detail-title">Activity</h1>
+              <p class="lede" id="detail-sub"></p>
+            </div>
+            <div class="head-actions">
+              <button type="button" class="btn ghost" id="btn-reveal">Reveal folder</button>
+              <button type="button" class="btn primary" id="btn-export">Save a report</button>
+            </div>
+          </header>
+
+          <div class="detail-layout">
+            <div class="detail-main">
+              <div class="shot-stage">
+                <img id="detail-shot" alt="Screenshot evidence" />
+                <div class="shot-thumbs" id="shot-thumbs"></div>
+              </div>
+              <div class="panel">
+                <h3>Timeline</h3>
+                <ol id="detail-timeline" class="timeline"></ol>
+              </div>
+            </div>
+            <aside class="detail-side">
+              <div class="panel">
+                <h3>Request</h3>
+                <dl class="kv" id="detail-kv"></dl>
+                <p class="warn" id="detail-untrusted"></p>
+              </div>
+              <div class="panel">
+                <div class="panel-tabs">
+                  <button type="button" class="tab is-active" data-tab="receipt">Receipt</button>
+                  <button type="button" class="tab" data-tab="card">Card</button>
+                  <button type="button" class="tab" data-tab="json">Structured</button>
+                </div>
+                <pre id="detail-receipt" class="code-block"></pre>
+                <pre id="detail-card" class="code-block hidden"></pre>
+                <pre id="detail-json" class="code-block hidden"></pre>
+              </div>
+              <p class="export-note" id="export-note"></p>
+            </aside>
+          </div>
+        </section>
+
+        <section id="view-evidence" class="view">
+          <header class="stage-head">
+            <div>
+              <h1>Evidence</h1>
+              <p class="lede">
+                Screenshots and receipts stay on your machine. Nothing is uploaded unless you
+                choose to share a report.
+              </p>
+            </div>
+          </header>
+          <div class="panel evidence-blurb">
+            <p>
+              Each handoff keeps a stable ID that links its screenshots, Markdown receipt, Task
+              Card, and structured activity record.
+            </p>
+            <ul class="plain-list" id="evidence-stats"></ul>
+            <button type="button" class="btn primary" id="btn-open-home">Reveal evidence home</button>
+          </div>
+        </section>
+
+        <section id="view-settings" class="view">
+          <header class="stage-head">
+            <div>
+              <h1>Settings</h1>
+              <p class="lede">Local storage for TabHandoff evidence.</p>
+            </div>
+          </header>
+          <div class="panel settings-panel">
+            <label class="field">
+              <span>Evidence folder</span>
+              <input id="settings-home" type="text" spellcheck="false" />
+            </label>
+            <div class="head-actions">
+              <button type="button" class="btn primary" id="btn-save-home">Use this folder</button>
+              <button type="button" class="btn ghost" id="btn-reset-home">Use default (~/.tabhandoff)</button>
+            </div>
+            <p class="fine">
+              Changing the folder only changes where this app looks. Existing evidence is never
+              deleted or overwritten by the library.
+            </p>
+          </div>
+        </section>
+      </main>
+    </div>
+    <div id="toast" class="toast hidden" role="status"></div>
+    <script src="./app.js"></script>
+  </body>
+</html>

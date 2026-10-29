@@ -1,0 +1,23 @@
+{
+  "name": "@tabhandoff/desktop",
+  "version": "0.1.0",
+  "description": "TabHandoff desktop — local AI activity and evidence library",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "main": "./dist/main.js",
+  "scripts": {
+    "build": "tsup src/main.ts src/preload.ts --format esm --outDir dist --clean --external electron && node ./scripts/copy-renderer.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "start": "electron . --no-sandbox",
+    "dev": "pnpm build && electron . --no-sandbox"
+  },
+  "dependencies": {
+    "@tabhandoff/evidence": "workspace:*"
+  },
+  "devDependencies": {
+    "electron": "^37.2.0",
+    "tsup": "^8.4.0",
+    "typescript": "^5.8.2"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "id": "job-only-queued",
+  "url": "https://example.net/",
+  "instruction": "Summarize the page",
+  "status": "queued",
+  "createdAt": "2026-10-29T00:00:00.000Z",
+  "updatedAt": "2026-10-29T00:00:00.000Z",
+  "actions": [],
+  "screenshotPaths": []
+}

@@ -87,6 +87,7 @@ Privacy default: cookies/creds are **not** transferred; proof stays local unless
 | Playwright **ephemeral** Chromium runner | ✅ |
 | CLI (`init` / `run` / `capture` / `status` / `receipt` / `doctor`) | ✅ |
 | Receipt markdown + screenshots + Task Card YAML | ✅ |
+| Desktop evidence library (My Activity) | ✅ Phase 1 — `pnpm desktop` |
 
 **Not in v1:** marketplace, hosted cloud platform, cookie/session vault, general-purpose agent.
 
@@ -141,9 +142,21 @@ packages/
   runner/     @tabhandoff/runner
   mcp/        @tabhandoff/mcp
   cli/        @tabhandoff/cli
+  evidence/   @tabhandoff/evidence   # index/import/export
+  desktop/    @tabhandoff/desktop    # Electron My Activity UI
+fixtures/     sample ~/.tabhandoff tree for tests
 docs/assets/  app icon · OG · static demo stills
 scripts/install.sh
 ```
+
+### Desktop evidence library
+
+```bash
+pnpm build
+TABHANDOFF_HOME="$PWD/fixtures/receipts-home" pnpm desktop
+```
+
+See [docs/phase1-evidence-library.md](docs/phase1-evidence-library.md).
 
 ## License
 

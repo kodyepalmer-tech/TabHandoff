@@ -11,3 +11,7 @@ test-results/
 .tabhandoff-local/
 *.log
 .turbo/
+packages/desktop/dist/
+*.dmg
+*.AppImage
+out/
