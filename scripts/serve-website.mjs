@@ -25,6 +25,11 @@ const server = http.createServer(async (req, res) => {
     let rel = decodeURIComponent(url.pathname);
     if (rel.endsWith("/")) rel += "index.html";
     if (rel === "") rel = "/index.html";
+    // Friendly aliases (static host may use .html directly)
+    if (rel === "/privacy" || rel === "/privacy/") rel = "/privacy.html";
+    if (rel === "/support" || rel === "/support/") rel = "/support.html";
+    if (rel === "/install" || rel === "/install/") rel = "/install.html";
+    if (rel === "/download" || rel === "/download/") rel = "/download.html";
     const file = path.normalize(path.join(root, rel));
     if (!file.startsWith(root)) {
       res.writeHead(403).end("Forbidden");

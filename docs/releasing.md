@@ -43,21 +43,41 @@ pnpm --filter @tabhandoff/desktop checksums
 **Host:** GitHub Pages (simplest for this repo — static `website/` + Actions workflow).  
 `website/CNAME` already contains `tabhandoff.com`.
 
-1. Merge to `main` so [`.github/workflows/pages.yml`](../.github/workflows/pages.yml) can deploy `website/`.
-2. Repo **Settings → Pages → Build and deployment** → Source: **GitHub Actions**.
-3. Repo **Settings → Pages → Custom domain** → enter `tabhandoff.com` → Save (enforce HTTPS after DNS propagates).
-4. In **Porkbun**, add the DNS records from the founder checklist below — **do not** change DNS from CI/agents; founder-only.
-5. Apex + `www` should both resolve; GitHub Pages will serve the site once DNS + custom domain are set.
+**Agents must not** enable production DNS, merge without approval, or treat `tabhandoff.com` as live until the founder finishes the steps below.
 
-Interim URL before custom domain: `https://kodyepalmer-tech.github.io/TabHandoff/`
+### Pages preview notes (Actions — no production DNS)
 
-Local preview:
+Use this to preview the static site **without** Porkbun / custom-domain cutover:
+
+1. After merge to `main` (or from a branch you intentionally deploy), open repo **Settings → Pages**.
+2. **Build and deployment → Source:** GitHub Actions (not “Deploy from a branch”).
+3. Leave **Custom domain empty** until DNS is ready. Do **not** point Porkbun at GitHub Pages yet.
+4. Trigger [`.github/workflows/pages.yml`](../.github/workflows/pages.yml):
+   - Automatic: push to `main` that touches `website/**` or the workflow file.
+   - Manual: **Actions → Deploy website → Run workflow** (`workflow_dispatch`).
+5. When the workflow succeeds, open the deployment URL from the job summary / Pages settings.
+   Expected interim host (no custom domain):  
+   `https://kodyepalmer-tech.github.io/TabHandoff/`  
+   Pages on that host: `/`, `/install.html`, `/download.html`, `/privacy.html`, `/support.html`.
+6. `website/CNAME` lists `tabhandoff.com` for the eventual production cutover. Until DNS exists, GitHub may show a custom-domain warning — ignore it; do **not** “fix” by changing Porkbun from an agent.
+7. Local check anytime (no GitHub required):
 
 ```bash
 pnpm website
 # → http://127.0.0.1:4173/
-# Canonical production host: https://tabhandoff.com
+# Also: /privacy → privacy.html (local alias)
 ```
+
+Privacy for CWS: prefer the Pages URL of `privacy.html` once preview is up; production `https://tabhandoff.com/privacy.html` only after DNS.
+
+### Production cutover (founder-only)
+
+1. Merge the website PR to `main` so Pages can deploy `website/`.
+2. Repo **Settings → Pages → Build and deployment** → Source: **GitHub Actions**.
+3. Confirm the github.io preview looks right (previous section).
+4. Repo **Settings → Pages → Custom domain** → enter `tabhandoff.com` → Save (enforce HTTPS after DNS propagates).
+5. In **Porkbun**, add the DNS records from the founder checklist below — **do not** change DNS from CI/agents; founder-only.
+6. Apex + `www` should both resolve; GitHub Pages will serve the site once DNS + custom domain are set.
 
 ### Porkbun DNS (founder — after site + installers work)
 

@@ -597,6 +597,32 @@ img {
   border-left: 3px solid #b8860b;
 }
 
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+  margin: 1rem 0 1.5rem;
+}
+
+.prose th,
+.prose td {
+  border: 1px solid var(--line);
+  padding: 0.5rem 0.65rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.prose th {
+  background: rgba(255, 255, 255, 0.7);
+  font-weight: 600;
+}
+
+.prose .ok-note {
+  background: rgba(31, 107, 58, 0.08);
+  border-left: 3px solid var(--ok);
+  padding: 0.85rem 1rem;
+}
+
 @keyframes rise {
   from {
     opacity: 0;

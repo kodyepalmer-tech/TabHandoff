@@ -31,10 +31,10 @@
         </a>
         <ul class="nav-links">
           <li><a href="#how">How it works</a></li>
-          <li><a href="#agents">Agents</a></li>
-          <li><a href="#privacy">Privacy</a></li>
-          <li><a href="./download.html">Download</a></li>
           <li><a href="./install.html">Install</a></li>
+          <li><a href="./download.html">Download</a></li>
+          <li><a href="./privacy.html">Privacy</a></li>
+          <li><a href="./support.html">Support</a></li>
           <li>
             <a href="https://github.com/kodyepalmer-tech/TabHandoff">GitHub</a>
           </li>
@@ -58,12 +58,10 @@
             the next AI — continue with proof that stays on your machine.
           </p>
           <div class="btn-row">
-            <a class="btn btn-primary" href="./download.html">Download TabHandoff</a>
-            <a
-              class="btn btn-ghost"
-              href="https://github.com/kodyepalmer-tech/TabHandoff"
-              >View on GitHub</a
+            <a class="btn btn-primary" href="./install.html#extension"
+              >Install browser extension</a
             >
+            <a class="btn btn-ghost" href="./download.html">Desktop / CLI</a>
           </div>
         </div>
         <figure class="hero-visual">
@@ -90,8 +88,9 @@
             <span class="step-num">01 · Capture</span>
             <h3>Hand off a tab</h3>
             <p>
-              Right-click in Chrome, Edge, or Brave — or pass a URL to the CLI.
-              Add an instruction and optional selection.
+              Right-click in Chrome, Edge, or Brave. Add an instruction and
+              optional selection. Chrome Web Store listing is not live yet —
+              load unpacked from the repo today.
             </p>
           </li>
           <li class="step">
@@ -106,8 +105,9 @@
             <span class="step-num">03 · Continue</span>
             <h3>Pick up anywhere</h3>
             <p>
-              Run page extraction locally, continue from the CLI or MCP, and
-              keep receipts in the desktop evidence library.
+              Share the package or paste a brief into another AI. Optional local
+              bridge / desktop adds My Activity and page extraction on your
+              machine.
             </p>
           </li>
         </ol>
@@ -145,11 +145,11 @@
             </li>
           </ul>
           <p style="margin-top: 1.25rem">
-            <a href="https://github.com/kodyepalmer-tech/TabHandoff/blob/main/docs/agents.md"
+            <a href="https://github.com/kodyepalmer-tech/TabHandoff/blob/cursor/website-downloads-3344/docs/agents.md"
               >Agent integration guide →</a
             >
             ·
-            <a href="https://github.com/kodyepalmer-tech/TabHandoff/blob/main/docs/schema.md"
+            <a href="https://github.com/kodyepalmer-tech/TabHandoff/blob/cursor/website-downloads-3344/docs/schema.md"
               >Schema →</a
             >
           </p>
@@ -161,45 +161,53 @@
           <h2>Local-first. No mandatory cloud.</h2>
           <p class="section-lede">
             Core functionality never requires uploading your page content.
+            Full policy:
+            <a href="./privacy.html">Privacy</a>.
           </p>
           <ul>
             <li>
-              Default store: <code>~/.tabhandoff/</code> on this machine
-              (override with <code>TABHANDOFF_HOME</code>).
+              Default: download a package on this device — no TabHandoff cloud
+              account.
             </li>
             <li>
-              Receipts, screenshots, bridge token, and jobs stay local.
+              Optional local bridge on <code>127.0.0.1</code> with a token you
+              paste (<code>~/.tabhandoff/</code>).
             </li>
             <li>
               Cookies, credentials, and authenticated browser state are not
               transferred by default.
             </li>
-            <li>No telemetry or background upload of page content.</li>
+            <li>No telemetry or advertising SDK in the extension MVP.</li>
           </ul>
         </div>
       </section>
 
       <div class="cta-band">
         <div>
-          <h2>Get the desktop app</h2>
-          <p>macOS, Windows, and Linux installers — or run from source today.</p>
+          <h2>Start in the browser</h2>
+          <p>
+            Load unpacked today. Desktop installers appear on GitHub Releases
+            only when published — nothing invented here.
+          </p>
         </div>
         <div class="btn-row">
-          <a class="btn btn-primary" href="./download.html">Download</a>
-          <a class="btn btn-ghost" href="./install.html">Install guide</a>
+          <a class="btn btn-primary" href="./install.html#extension">Install guide</a>
+          <a class="btn btn-ghost" href="./download.html">Download</a>
         </div>
       </div>
 
       <footer class="site-footer">
         <span>TabHandoff · MIT · open handoff protocol</span>
         <span>
+          <a href="./privacy.html">Privacy</a>
+          ·
+          <a href="./support.html">Support</a>
+          ·
           <a href="https://github.com/kodyepalmer-tech/TabHandoff/releases"
             >Releases</a
           >
           ·
           <a href="https://github.com/kodyepalmer-tech/TabHandoff">Source</a>
-          ·
-          <a href="./install.html">Troubleshoot</a>
         </span>
       </footer>
     </div>

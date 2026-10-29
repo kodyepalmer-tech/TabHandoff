@@ -1,53 +1,49 @@
 # Set up TabHandoff in your browser (nontechnical)
 
-You need the TabHandoff project on your computer (already installed if you used the one-command installer).
+**Chrome Web Store is not live.** Install with **Load unpacked** until a founder publishes a store listing.
 
-## 1. Start the local helper
+## Package-first path (recommended)
 
-Open a terminal in the TabHandoff folder and run:
+You can create and download a handoff package without pretending an agent ran. Status stays honest: **package created**.
 
-```bash
-pnpm bridge
-```
+### Load unpacked
 
-**Or** open the TabHandoff desktop app (`pnpm desktop`). Either one starts a small helper that only listens on this computer.
+1. From the TabHandoff repo: `pnpm install && pnpm build` (once).
+2. Open Chrome, Edge, or Brave → `chrome://extensions` (or `edge://extensions`).
+3. Turn **Developer mode** on.
+4. Click **Load unpacked** → choose `packages/extension`.
+5. Pin TabHandoff to the toolbar.
 
-Copy the **access token** it shows (a long random string).
-
-## 2. Load the extension
-
-1. Open Chrome, Edge, or Brave.
-2. Go to `chrome://extensions` (or `edge://extensions`).
-3. Turn **Developer mode** on (top right).
-4. Click **Load unpacked**.
-5. Choose the folder named `extension` inside `packages` in your TabHandoff project.
-6. Pin TabHandoff to the toolbar.
-
-## 3. Connect the extension
-
-1. Click the TabHandoff icon.
-2. Click **Settings**.
-3. Paste the access token → **Save**.
-4. The footer should say **Bridge: on**.
-
-## 4. Hand off a page
+### Hand off a page
 
 1. Open any normal website (`https://…`).
-2. Right-click the page (or selected text) → **Hand off with TabHandoff**.  
-   Or click the toolbar button.
-3. Type what you want done in plain language.
-4. Review — leave **page extraction** checked if you want the isolated browser to extract the page (not autonomous AI).
-5. Confirm → **Hand off**. Watch the real status in the popup.
+2. Right-click → **Hand off with TabHandoff**, or click the toolbar button.
+3. Type what you want done.
+4. Review → confirm.
+5. If the local bridge is **off**, use **Download package** or **Copy summary**. No agent is pretended to have run.
+6. Optional: start desktop / `pnpm bridge`, paste the token in Settings, and save into My Activity or run page extraction on this computer.
 
-If the helper is running, open TabHandoff desktop → **My Activity** (it refreshes automatically) to see receipts and screenshots.
+Token is **not** required for package download / copy summary.
 
-If the helper is not running, use **Download package** or **Copy summary**. The app will **not** claim an AI finished the job when it only saved a package. DOM extraction without an API key is always labeled as **page extraction**, not AI completion.
+Public install page: [website/install.html](../website/install.html#extension) · Privacy: [website/privacy.html](../website/privacy.html)
+
+## Optional: local bridge / My Activity
+
+Only needed if you want packages saved into `~/.tabhandoff` or page extraction on this computer.
+
+1. From the TabHandoff folder: `pnpm bridge` **or** open the desktop app.
+2. Copy the access token it shows.
+3. Extension → **Settings** → paste token → **Save**.
+4. On Review, leave page extraction checked if you want the isolated browser to extract the page (not autonomous AI).
 
 ## Troubleshooting
 
 | Problem | Fix |
 |---|---|
-| Bridge: off | Run `pnpm bridge` or open the desktop app; paste the token again |
+| Bridge: off | Fine for package download/copy. Start bridge + token only for My Activity / extraction |
 | Can’t hand off chrome:// pages | Open a regular website instead |
 | No screenshot | Some pages block capture — the link and text still hand off |
-| Token rejected | Copy the token from desktop **Settings** or the bridge terminal output |
+| Token rejected | Copy token from desktop Settings or bridge terminal |
+| Looking for Chrome Web Store | Not published yet — use Load unpacked |
+
+More: [troubleshooting.md](./troubleshooting.md) · [website/support.html](../website/support.html)

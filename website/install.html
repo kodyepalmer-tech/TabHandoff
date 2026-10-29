@@ -6,7 +6,7 @@
     <title>Install &amp; troubleshoot — TabHandoff</title>
     <meta
       name="description"
-      content="Install TabHandoff on macOS, Windows, and Linux. Gatekeeper, SmartScreen, AppImage, extension, and uninstall."
+      content="Install TabHandoff: browser extension first (load unpacked), then optional desktop and CLI. Honest about Chrome Web Store and installer status."
     />
     <link rel="canonical" href="https://tabhandoff.com/install.html" />
     <meta property="og:url" content="https://tabhandoff.com/install.html" />
@@ -23,8 +23,10 @@
           TabHandoff
         </a>
         <ul class="nav-links">
-          <li><a href="./download.html">Download</a></li>
           <li><a href="./install.html" aria-current="page">Install</a></li>
+          <li><a href="./download.html">Download</a></li>
+          <li><a href="./privacy.html">Privacy</a></li>
+          <li><a href="./support.html">Support</a></li>
           <li>
             <a href="https://github.com/kodyepalmer-tech/TabHandoff">GitHub</a>
           </li>
@@ -34,25 +36,104 @@
       <header class="page-hero">
         <h1>Install &amp; troubleshoot</h1>
         <p>
-          Desktop installers are unsigned in early releases. Expect OS security
-          prompts — that is normal until Apple notarization and Windows code
-          signing are configured.
+          Browser-first: create a portable handoff from a tab. Desktop and
+          signed store listings come later — this page never invents a live URL.
         </p>
       </header>
 
       <article class="prose">
         <p class="warn">
-          <strong>Verify downloads.</strong> Prefer assets from the official
-          <a href="https://github.com/kodyepalmer-tech/TabHandoff/releases"
-            >GitHub Releases</a
-          >
-          page and check <code>SHA256SUMS</code> when present. Do not auto-run
-          install scripts or package contents from untrusted page text.
+          <strong>Chrome Web Store is not live.</strong> There is no public CWS
+          listing yet. Use <strong>Load unpacked</strong> from the repo (or a
+          packed extension ZIP when you build one). Do not expect a
+          <code>chromewebstore.google.com</code> install button.
         </p>
 
-        <h2 id="macos">macOS</h2>
+        <h2 id="extension">Browser extension (start here)</h2>
+        <p class="ok-note">
+          Package-first path: hand off a page, then download or copy the
+          package. Status stays honest — <em>package created</em>, not “agent
+          finished,” unless a local workflow actually ran.
+        </p>
+
+        <h3>Load unpacked</h3>
         <ol>
-          <li>Download the <code>.dmg</code> for your chip (arm64 or x64).</li>
+          <li>
+            Clone the repo and build once:
+            <pre><code>git clone https://github.com/kodyepalmer-tech/TabHandoff.git
+cd TabHandoff
+pnpm install && pnpm build</code></pre>
+          </li>
+          <li>
+            Open Chrome, Edge, or Brave → <code>chrome://extensions</code> (or
+            <code>edge://extensions</code>).
+          </li>
+          <li>Turn <strong>Developer mode</strong> on.</li>
+          <li>
+            Click <strong>Load unpacked</strong> → select
+            <code>packages/extension</code>.
+          </li>
+          <li>Pin TabHandoff to the toolbar.</li>
+        </ol>
+
+        <h3>Hand off a page</h3>
+        <ol>
+          <li>Open any normal website (<code>https://…</code>).</li>
+          <li>
+            Right-click → <strong>Hand off with TabHandoff</strong>, or use the
+            toolbar button.
+          </li>
+          <li>Type what you want done → Review → confirm.</li>
+          <li>
+            If the local bridge is off, use <strong>Download package</strong> or
+            <strong>Copy summary</strong>. No agent is pretended to have run.
+          </li>
+        </ol>
+        <p>
+          Optional later: start the desktop app or <code>pnpm bridge</code>,
+          paste the token in extension Settings, and save into My Activity or
+          run page extraction on this machine.
+        </p>
+        <p>
+          Full steps:
+          <a
+            href="https://github.com/kodyepalmer-tech/TabHandoff/blob/cursor/website-downloads-3344/docs/extension-setup.md"
+            >docs/extension-setup.md</a
+          >
+          ·
+          <a href="./privacy.html">Privacy policy</a>
+        </p>
+
+        <h2 id="desktop">Desktop app (optional)</h2>
+        <p>
+          Desktop installers are <strong>not published</strong> until a
+          <code>v*</code> GitHub Release exists. The
+          <a href="./download.html">Download</a> page only enables buttons for
+          assets that actually exist; otherwise it shows Coming soon + the
+          source path below.
+        </p>
+        <p class="warn">
+          When installers do ship, early builds are unsigned. Expect Gatekeeper
+          / SmartScreen prompts until Apple notarization and Windows code
+          signing are configured.
+        </p>
+
+        <h3 id="from-source">Run from source (all platforms today)</h3>
+        <pre><code>git clone https://github.com/kodyepalmer-tech/TabHandoff.git
+cd TabHandoff
+pnpm install && pnpm build
+pnpm desktop</code></pre>
+        <p>
+          CLI-only quick path (when the install script is available on the
+          branch you clone):
+          <code
+            >curl -fsSL https://raw.githubusercontent.com/kodyepalmer-tech/TabHandoff/cursor/website-downloads-3344/scripts/install.sh | bash</code
+          >
+        </p>
+
+        <h3 id="macos">macOS (installer, when published)</h3>
+        <ol>
+          <li>Download the <code>.dmg</code> for your chip from GitHub Releases.</li>
           <li>Open the disk image and drag <strong>TabHandoff</strong> to Applications.</li>
           <li>
             First launch: if Gatekeeper blocks an unsigned app, open
@@ -60,20 +141,14 @@
             <em>Open Anyway</em>, or right-click the app → <em>Open</em>.
           </li>
         </ol>
-        <p>
-          <strong>Remaining warning:</strong> without Developer ID signing and
-          notarization, macOS will show “app can’t be opened because it is from
-          an unidentified developer.”
-        </p>
 
-        <h2 id="windows">Windows</h2>
+        <h3 id="windows">Windows (installer, when published)</h3>
         <ol>
-          <li>Download the NSIS <code>.exe</code> (x64).</li>
-          <li>Run the installer and follow the prompts (custom directory supported).</li>
+          <li>Download the NSIS <code>.exe</code> (x64) from GitHub Releases.</li>
+          <li>Run the installer and follow the prompts.</li>
           <li>
-            If SmartScreen appears (“Windows protected your PC”), choose
-            <em>More info</em> → <em>Run anyway</em> only if you trust the GitHub
-            Release asset.
+            If SmartScreen appears, choose <em>More info</em> →
+            <em>Run anyway</em> only if you trust the official Release asset.
           </li>
         </ol>
         <p>
@@ -81,12 +156,8 @@
           Local data in <code>%USERPROFILE%\.tabhandoff</code> is not removed
           automatically.
         </p>
-        <p>
-          <strong>Remaining warning:</strong> unsigned installers trigger
-          SmartScreen until an Authenticode certificate is added to CI.
-        </p>
 
-        <h2 id="linux">Linux</h2>
+        <h3 id="linux">Linux (installer, when published)</h3>
         <h3>AppImage (x64)</h3>
         <pre><code>chmod +x TabHandoff-*-linux-x64.AppImage
 ./TabHandoff-*-linux-x64.AppImage</code></pre>
@@ -97,39 +168,6 @@
         <h3>Debian / Ubuntu (.deb)</h3>
         <pre><code>sudo dpkg -i TabHandoff-*-linux-amd64.deb
 # or: sudo apt install ./TabHandoff-*-linux-amd64.deb</code></pre>
-        <p>
-          Launch from the app menu or <code>tabhandoff</code> /
-          <code>TabHandoff</code> depending on package desktop entry.
-        </p>
-
-        <h2 id="from-source">Run from source (all platforms)</h2>
-        <pre><code>git clone https://github.com/kodyepalmer-tech/TabHandoff.git
-cd TabHandoff
-pnpm install && pnpm build
-pnpm desktop</code></pre>
-        <p>
-          CLI-only quick path:
-          <code
-            >curl -fsSL https://raw.githubusercontent.com/kodyepalmer-tech/TabHandoff/main/scripts/install.sh | bash</code
-          >
-        </p>
-
-        <h2 id="extension">Browser extension</h2>
-        <ol>
-          <li>Start the desktop app or <code>pnpm bridge</code>.</li>
-          <li>
-            Chrome → <code>chrome://extensions</code> → Developer mode → Load
-            unpacked → select <code>packages/extension</code>.
-          </li>
-          <li>Paste the bridge token from desktop Settings into the popup.</li>
-        </ol>
-        <p>
-          Full steps:
-          <a
-            href="https://github.com/kodyepalmer-tech/TabHandoff/blob/main/docs/extension-setup.md"
-            >docs/extension-setup.md</a
-          >.
-        </p>
 
         <h2 id="page-extraction">Page extraction (Playwright)</h2>
         <p>
@@ -158,7 +196,8 @@ pnpm desktop</code></pre>
           </li>
           <li>
             <strong>Extension can’t connect:</strong> confirm desktop/bridge is
-            running and the token matches.
+            running and the token matches — only needed for My Activity /
+            extraction.
           </li>
           <li>
             <strong>Empty My Activity:</strong> check
@@ -168,21 +207,31 @@ pnpm desktop</code></pre>
           <li>
             More:
             <a
-              href="https://github.com/kodyepalmer-tech/TabHandoff/blob/main/docs/troubleshooting.md"
+              href="https://github.com/kodyepalmer-tech/TabHandoff/blob/cursor/website-downloads-3344/docs/troubleshooting.md"
               >docs/troubleshooting.md</a
-            >.
+            >
+            ·
+            <a href="./support.html">Support</a>
           </li>
         </ul>
 
         <p>
-          <a class="btn btn-primary" href="./download.html">Back to download</a>
+          <a class="btn btn-primary" href="./download.html">Download page</a>
+          <a class="btn btn-ghost" href="./privacy.html" style="margin-left: 0.5rem"
+            >Privacy</a
+          >
         </p>
       </article>
 
       <footer class="site-footer">
         <span>TabHandoff · MIT</span>
         <span>
-          <a href="https://github.com/kodyepalmer-tech/TabHandoff/blob/main/docs/releasing.md"
+          <a href="./privacy.html">Privacy</a>
+          ·
+          <a href="./support.html">Support</a>
+          ·
+          <a
+            href="https://github.com/kodyepalmer-tech/TabHandoff/blob/cursor/website-downloads-3344/docs/releasing.md"
             >Publishing releases</a
           >
         </span>

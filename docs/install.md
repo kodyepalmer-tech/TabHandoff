@@ -1,6 +1,6 @@
 # Install TabHandoff
 
-Public pages: [website/download.html](../website/download.html) · [website/install.html](../website/install.html)
+Public pages: [website/install.html](../website/install.html) · [website/download.html](../website/download.html) · [website/privacy.html](../website/privacy.html) · [website/support.html](../website/support.html)
 
 ## Desktop installers (GitHub Releases)
 
@@ -48,13 +48,16 @@ curl -fsSL https://raw.githubusercontent.com/kodyepalmer-tech/TabHandoff/main/sc
 
 Code signing and Apple notarization are **not** configured yet. See [releasing.md](./releasing.md).
 
-## Browser extension
+## Browser extension (start here)
 
-1. `pnpm build && pnpm desktop` (or `pnpm bridge`)
+**Chrome Web Store is not live.** Use Load unpacked:
+
+1. `pnpm install && pnpm build`
 2. Load unpacked `packages/extension` in Chromium
-3. Paste bridge token from desktop Settings
+3. Hand off a page → **Download package** / **Copy summary** if the bridge is off
+4. Optional: `pnpm desktop` or `pnpm bridge`, then paste the token for My Activity / extraction
 
-Details: [extension-setup.md](./extension-setup.md)
+Details: [extension-setup.md](./extension-setup.md) · Privacy: [privacy.md](./privacy.md)
 
 ## Page extraction
 

@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Privacy Policy — TabHandoff</title>
+    <meta
+      name="description"
+      content="How the TabHandoff browser extension handles data: local ZIP packages by default, optional loopback bridge, no cloud account required."
+    />
+    <link rel="canonical" href="https://tabhandoff.com/privacy.html" />
+    <meta property="og:url" content="https://tabhandoff.com/privacy.html" />
+    <meta property="og:title" content="TabHandoff Privacy Policy" />
+    <meta property="og:image" content="https://tabhandoff.com/assets/tabhandoff-og.png" />
+    <link rel="icon" href="./assets/tabhandoff-mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <nav class="site-nav" aria-label="Primary">
+        <a class="brand-lockup" href="./">
+          <img src="./assets/tabhandoff-mark.svg" width="36" height="36" alt="" />
+          TabHandoff
+        </a>
+        <ul class="nav-links">
+          <li><a href="./install.html">Install</a></li>
+          <li><a href="./download.html">Download</a></li>
+          <li><a href="./privacy.html" aria-current="page">Privacy</a></li>
+          <li><a href="./support.html">Support</a></li>
+          <li>
+            <a href="https://github.com/kodyepalmer-tech/TabHandoff">GitHub</a>
+          </li>
+        </ul>
+      </nav>
+
+      <header class="page-hero">
+        <h1>Privacy Policy</h1>
+        <p>
+          How the TabHandoff browser extension handles data. Written for Chrome
+          Web Store reviewers and everyday users.
+        </p>
+        <p class="status-note" style="margin-top: 0.75rem">
+          Last updated: 2026-10-29 · Markdown source:
+          <a
+            href="https://github.com/kodyepalmer-tech/TabHandoff/blob/cursor/website-downloads-3344/docs/privacy.md"
+            >docs/privacy.md</a
+          >
+        </p>
+      </header>
+
+      <article class="prose">
+        <p>
+          TabHandoff creates a portable handoff package from a webpage you
+          choose. By default the package is downloaded as a ZIP on your device.
+          There is no TabHandoff cloud account required for that path.
+        </p>
+
+        <h2>Summary</h2>
+        <ul>
+          <li>
+            Captured data: page URL/title, optional selection, optional
+            screenshot, your instruction.
+          </li>
+          <li>
+            Default: local ZIP download only — not uploaded to TabHandoff
+            servers.
+          </li>
+          <li>
+            Optional: save to a local bridge on <code>127.0.0.1</code> with a
+            token you paste.
+          </li>
+          <li>
+            We do not sell personal data or use page content for advertising.
+          </li>
+        </ul>
+
+        <h2>Data the extension may access</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Purpose</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Active tab URL and title</td>
+              <td>Identify the page in the package</td>
+            </tr>
+            <tr>
+              <td>Selected text</td>
+              <td>Include context you chose</td>
+            </tr>
+            <tr>
+              <td>Visible-tab screenshot</td>
+              <td>Evidence when Chrome allows capture</td>
+            </tr>
+            <tr>
+              <td>Your instruction</td>
+              <td>Tell the next person or AI what to do</td>
+            </tr>
+            <tr>
+              <td>Local bridge token (optional)</td>
+              <td>Authenticate to the loopback helper on your machine</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h2>Permissions</h2>
+        <ul>
+          <li>
+            <code>activeTab</code> / <code>scripting</code> — read the page you
+            hand off
+          </li>
+          <li><code>contextMenus</code> — right-click Hand off</li>
+          <li>
+            <code>storage</code> — onboarding + optional bridge settings
+          </li>
+          <li>
+            <code>http://127.0.0.1/*</code> — optional local bridge only
+          </li>
+        </ul>
+
+        <h2>What we do not collect</h2>
+        <p>
+          No page cookies or passwords are copied into packages by design. No
+          TabHandoff cloud sync of browsing history. No advertising SDK in the
+          extension MVP.
+        </p>
+
+        <h2>Sharing</h2>
+        <p>
+          If you download a ZIP or copy a brief for another AI, you control who
+          receives it. Treat captured page content as untrusted data.
+        </p>
+
+        <h2>Children</h2>
+        <p>TabHandoff is not directed at children under 13.</p>
+
+        <h2>Contact</h2>
+        <p>
+          Use the
+          <a href="https://github.com/kodyepalmer-tech/TabHandoff/issues"
+            >TabHandoff GitHub issues</a
+          >.
+          For install help see
+          <a href="./support.html">Support</a>.
+          After the public site ships, this page is the stable HTTPS privacy URL
+          for Chrome Web Store submission (<code>https://tabhandoff.com/privacy.html</code>).
+          That hostname is not live until the founder enables Pages + DNS.
+        </p>
+      </article>
+
+      <footer class="site-footer">
+        <span>TabHandoff · MIT · open handoff protocol</span>
+        <span>
+          <a href="./">Home</a>
+          ·
+          <a href="./install.html">Install</a>
+          ·
+          <a href="./support.html">Support</a>
+          ·
+          <a href="https://github.com/kodyepalmer-tech/TabHandoff">Source</a>
+        </span>
+      </footer>
+    </div>
+  </body>
+</html>
