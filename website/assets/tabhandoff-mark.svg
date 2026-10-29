@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="TabHandoff">
+  <title>TabHandoff</title>
+  <!-- B&W app icon: black squircle + bidirectional arrows (no teal) -->
+  <rect width="1024" height="1024" rx="224" fill="#000000"/>
+  <!-- Top arrow → -->
+  <path d="M256 400 H680" stroke="#FFFFFF" stroke-width="72" stroke-linecap="round"/>
+  <path d="M620 320 L768 400 L620 480" fill="none" stroke="#FFFFFF" stroke-width="72" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Bottom arrow ← -->
+  <path d="M768 624 H344" stroke="#FFFFFF" stroke-width="72" stroke-linecap="round"/>
+  <path d="M404 544 L256 624 L404 704" fill="none" stroke="#FFFFFF" stroke-width="72" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
