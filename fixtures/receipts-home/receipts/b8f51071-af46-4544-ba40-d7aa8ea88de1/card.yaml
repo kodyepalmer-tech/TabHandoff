@@ -1,0 +1,13 @@
+schemaVersion: "0.1"
+name: "tabhandoff-b8f51071"
+description: "Extract the page title and getting-started steps"
+startUrl: "https://playwright.dev/docs/intro"
+instruction: "Extract the page title, the one-sentence summary of Playwright, and the first three getting-started steps as markdown"
+successHints:
+  - "Receipt markdown produced"
+  - "At least one screenshot"
+tags:
+  - "tabhandoff"
+  - "generated"
+sourceHandoffId: "b8f51071-af46-4544-ba40-d7aa8ea88de1"
+createdAt: "2026-10-28T23:26:22.796Z"

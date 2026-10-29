@@ -1,0 +1,57 @@
+{
+  "id": "b8f51071-af46-4544-ba40-d7aa8ea88de1",
+  "url": "https://playwright.dev/docs/intro",
+  "instruction": "Extract the page title, the one-sentence summary of Playwright, and the first three getting-started steps as markdown",
+  "note": "Launch demo: Capture→Package→Continue for TabHandoff v0.1",
+  "status": "succeeded",
+  "createdAt": "2026-10-28T23:26:22.000Z",
+  "updatedAt": "2026-10-28T23:26:22.796Z",
+  "startedAt": "2026-10-28T23:26:22.000Z",
+  "finishedAt": "2026-10-28T23:26:22.796Z",
+  "resultSummary": "# Installation | Playwright\n\nPlaywright Test is an end-to-end test framework...",
+  "actions": [
+    {
+      "at": "2026-10-28T23:26:22.054Z",
+      "tool": "validate_url",
+      "detail": "https://playwright.dev/docs/intro",
+      "ok": true
+    },
+    {
+      "at": "2026-10-28T23:26:22.116Z",
+      "tool": "browser",
+      "detail": "ephemeral chromium context",
+      "ok": true
+    },
+    {
+      "at": "2026-10-28T23:26:22.248Z",
+      "tool": "goto",
+      "detail": "https://playwright.dev/docs/intro",
+      "ok": true
+    },
+    {
+      "at": "2026-10-28T23:26:22.564Z",
+      "tool": "screenshot",
+      "detail": "01-loaded.png",
+      "ok": true
+    },
+    {
+      "at": "2026-10-28T23:26:22.571Z",
+      "tool": "extract",
+      "detail": "dom fallback (no API key)",
+      "ok": true
+    },
+    {
+      "at": "2026-10-28T23:26:22.796Z",
+      "tool": "screenshot",
+      "detail": "02-result.png",
+      "ok": true
+    }
+  ],
+  "screenshotPaths": [
+    "/workspace/fixtures/receipts-home/receipts/b8f51071-af46-4544-ba40-d7aa8ea88de1/screenshots/01-loaded.png",
+    "/workspace/fixtures/receipts-home/receipts/b8f51071-af46-4544-ba40-d7aa8ea88de1/screenshots/02-result.png"
+  ],
+  "receiptDir": "/workspace/fixtures/receipts-home/receipts/b8f51071-af46-4544-ba40-d7aa8ea88de1",
+  "receiptPath": "/workspace/fixtures/receipts-home/receipts/b8f51071-af46-4544-ba40-d7aa8ea88de1/receipt.md",
+  "cardPath": "/workspace/fixtures/receipts-home/receipts/b8f51071-af46-4544-ba40-d7aa8ea88de1/card.yaml"
+}
