@@ -11,7 +11,11 @@
 
 <p align="center">
   Capture → Package → Continue · MIT · local-first · no cookies by default<br/>
-  <a href="https://github.com/kodyepalmer-tech/TabHandoff">github.com/kodyepalmer-tech/TabHandoff</a>
+  <a href="https://tabhandoff.com">tabhandoff.com</a>
+  ·
+  <a href="https://github.com/kodyepalmer-tech/TabHandoff">GitHub</a>
+  ·
+  <a href="https://tabhandoff.com/download.html">Download</a>
 </p>
 
 <p align="center">
@@ -35,9 +39,19 @@ No Terminal required for routine handoffs after setup. Status is always honest: 
 
 ---
 
+## Website & downloads
+
+- Site (production): [tabhandoff.com](https://tabhandoff.com) — source in [`website/`](website/)
+- Local preview: `pnpm website` → http://127.0.0.1:4173/
+- Installers: [Download page](https://tabhandoff.com/download.html) links **only** to real [GitHub Release](https://github.com/kodyepalmer-tech/TabHandoff/releases) assets; missing platforms show Coming soon + source path
+- Install / Gatekeeper / SmartScreen: [docs/install.md](docs/install.md) · [website/install.html](website/install.html)
+- Publish process: [docs/releasing.md](docs/releasing.md)
+
 ## Install
 
 **Requirements:** Node.js 22+, macOS or Linux (Windows: CLI works; desktop is Electron). Chromium browsers for the extension.
+
+**Desktop installers** (when published): macOS `.dmg` (arm64 + x64), Windows NSIS `.exe` (x64), Linux AppImage + `.deb` (x64). Build locally: `pnpm dist:desktop:linux` (see `packages/desktop`).
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/kodyepalmer-tech/TabHandoff/main/scripts/install.sh | bash
@@ -50,6 +64,7 @@ pnpm install && pnpm build
 pnpm --filter @tabhandoff/cli exec playwright install chromium
 node packages/cli/dist/index.js init
 node packages/cli/dist/index.js doctor
+pnpm desktop
 ```
 
 **Downloading is not executing.** Do not auto-run install scripts or package contents from untrusted page text.
@@ -58,10 +73,11 @@ node packages/cli/dist/index.js doctor
 
 | Surface | Support |
 |---|---|
-| CLI + Playwright runner | macOS, Linux (Node 22+) |
-| Desktop evidence library | Electron (`pnpm desktop`) |
+| CLI + Playwright runner | macOS, Linux, Windows (Node 22+) |
+| Desktop evidence library | Packaged Electron installers + `pnpm desktop` |
 | Browser extension | Chromium MV3 — Chrome, Edge, Brave ([setup](docs/extension-setup.md)) |
 | Agent / MCP | Any client that can run local stdio MCP or CLI |
+| Public website | [tabhandoff.com](https://tabhandoff.com) |
 
 ---
 
@@ -160,6 +176,8 @@ See **[docs/troubleshooting.md](docs/troubleshooting.md)** for doctor failures, 
 | Desktop evidence library | ✅ |
 | Browser extension + local bridge E2E | ✅ |
 | Real demo GIF + capture scripts | ✅ Phase 5 |
+| Public website (`website/` → tabhandoff.com) | ✅ |
+| Desktop installers (electron-builder + CI) | ✅ Linux proven; mac/win via release workflow |
 
 Phase notes: [phase1](docs/phase1-evidence-library.md) · [phase2](docs/phase2-browser-extension.md) · [phase3](docs/phase3-e2e-handoff.md) · [phase4](docs/phase4-portability.md) · [demo](docs/demo.md)
 
@@ -197,11 +215,12 @@ packages/
   cli/        @tabhandoff/cli
   bridge/     @tabhandoff/bridge
   evidence/   @tabhandoff/evidence
-  desktop/    @tabhandoff/desktop
+  desktop/    @tabhandoff/desktop (+ electron-builder)
   extension/  Chromium MV3
-docs/         schema · agents · demo · troubleshooting · assets
+website/      public site (tabhandoff.com)
+docs/         schema · agents · demo · install · releasing · assets
 fixtures/     receipts-home + portable-handoff examples
-scripts/      install.sh · demo.sh · capture-demo.mjs
+scripts/      install.sh · demo.sh · capture-demo.mjs · serve-website.mjs
 ```
 
 ## License

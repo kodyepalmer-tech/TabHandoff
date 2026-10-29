@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TabHandoff — Hand off any browser tab. Pick up anywhere.</title>
+    <meta
+      name="description"
+      content="TabHandoff turns any browser tab into a portable, AI-ready handoff. Local-first evidence. Open protocol for agents."
+    />
+    <link rel="canonical" href="https://tabhandoff.com/" />
+    <meta property="og:url" content="https://tabhandoff.com/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="TabHandoff" />
+    <meta property="og:title" content="TabHandoff" />
+    <meta
+      property="og:description"
+      content="Hand off any browser tab. Pick up anywhere."
+    />
+    <meta property="og:image" content="https://tabhandoff.com/assets/tabhandoff-og.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" href="./assets/tabhandoff-mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <nav class="site-nav" aria-label="Primary">
+        <a class="brand-lockup" href="./">
+          <img src="./assets/tabhandoff-mark.svg" width="36" height="36" alt="" />
+          TabHandoff
+        </a>
+        <ul class="nav-links">
+          <li><a href="#how">How it works</a></li>
+          <li><a href="#agents">Agents</a></li>
+          <li><a href="#privacy">Privacy</a></li>
+          <li><a href="./download.html">Download</a></li>
+          <li><a href="./install.html">Install</a></li>
+          <li>
+            <a href="https://github.com/kodyepalmer-tech/TabHandoff">GitHub</a>
+          </li>
+        </ul>
+      </nav>
+
+      <header class="hero">
+        <div class="hero-copy">
+          <div class="hero-brand">
+            <img
+              src="./assets/tabhandoff-app-icon.png"
+              width="72"
+              height="72"
+              alt="TabHandoff app icon"
+            />
+            <span class="hero-brand-name">TabHandoff</span>
+          </div>
+          <h1>Hand off any browser tab. Pick up anywhere.</h1>
+          <p class="hero-lede">
+            Capture a page, package the context, and let the next person — or
+            the next AI — continue with proof that stays on your machine.
+          </p>
+          <div class="btn-row">
+            <a class="btn btn-primary" href="./download.html">Download TabHandoff</a>
+            <a
+              class="btn btn-ghost"
+              href="https://github.com/kodyepalmer-tech/TabHandoff"
+              >View on GitHub</a
+            >
+          </div>
+        </div>
+        <figure class="hero-visual">
+          <img
+            src="./assets/tabhandoff-demo.gif"
+            width="960"
+            height="693"
+            alt="Real TabHandoff demo: capture, package, page extraction, local evidence"
+          />
+          <figcaption>
+            Real CLI + desktop capture · page extraction · proof stays local
+          </figcaption>
+        </figure>
+      </header>
+
+      <section class="section" id="how">
+        <h2>How it works</h2>
+        <p class="section-lede">
+          Three steps. No cookie clone. Status is always honest — TabHandoff
+          never pretends an agent ran when only a package was created.
+        </p>
+        <ol class="steps">
+          <li class="step">
+            <span class="step-num">01 · Capture</span>
+            <h3>Hand off a tab</h3>
+            <p>
+              Right-click in Chrome, Edge, or Brave — or pass a URL to the CLI.
+              Add an instruction and optional selection.
+            </p>
+          </li>
+          <li class="step">
+            <span class="step-num">02 · Package</span>
+            <h3>Portable context</h3>
+            <p>
+              TabHandoff builds a versioned handoff: URL, task, metadata, and
+              permitted evidence — ready for another agent or human.
+            </p>
+          </li>
+          <li class="step">
+            <span class="step-num">03 · Continue</span>
+            <h3>Pick up anywhere</h3>
+            <p>
+              Run page extraction locally, continue from the CLI or MCP, and
+              keep receipts in the desktop evidence library.
+            </p>
+          </li>
+        </ol>
+        <figure class="strip">
+          <img
+            src="./assets/tabhandoff-demo-strip.png"
+            width="1200"
+            height="320"
+            alt="CAPTURE → PACKAGE → PAGE EXTRACTION → EVIDENCE"
+            loading="lazy"
+          />
+        </figure>
+      </section>
+
+      <section class="section" id="agents">
+        <div class="agents-block">
+          <h2>Built for compatible AI agents</h2>
+          <p class="section-lede">
+            TabHandoff is an open handoff protocol. Agents can consume a
+            package, continue the work, and return a result with an execution
+            receipt.
+          </p>
+          <ul>
+            <li>
+              Validate and read packages via CLI or MCP
+              (<code>handoff_validate</code> / <code>handoff_read</code>).
+            </li>
+            <li>
+              Create, continue, export, and attach evidence with stable handoff
+              IDs.
+            </li>
+            <li>
+              Distinguishes verified actions from agent-reported summaries —
+              hashes stay honest.
+            </li>
+          </ul>
+          <p style="margin-top: 1.25rem">
+            <a href="https://github.com/kodyepalmer-tech/TabHandoff/blob/main/docs/agents.md"
+              >Agent integration guide →</a
+            >
+            ·
+            <a href="https://github.com/kodyepalmer-tech/TabHandoff/blob/main/docs/schema.md"
+              >Schema →</a
+            >
+          </p>
+        </div>
+      </section>
+
+      <section class="section" id="privacy">
+        <div class="privacy-block">
+          <h2>Local-first. No mandatory cloud.</h2>
+          <p class="section-lede">
+            Core functionality never requires uploading your page content.
+          </p>
+          <ul>
+            <li>
+              Default store: <code>~/.tabhandoff/</code> on this machine
+              (override with <code>TABHANDOFF_HOME</code>).
+            </li>
+            <li>
+              Receipts, screenshots, bridge token, and jobs stay local.
+            </li>
+            <li>
+              Cookies, credentials, and authenticated browser state are not
+              transferred by default.
+            </li>
+            <li>No telemetry or background upload of page content.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="cta-band">
+        <div>
+          <h2>Get the desktop app</h2>
+          <p>macOS, Windows, and Linux installers — or run from source today.</p>
+        </div>
+        <div class="btn-row">
+          <a class="btn btn-primary" href="./download.html">Download</a>
+          <a class="btn btn-ghost" href="./install.html">Install guide</a>
+        </div>
+      </div>
+
+      <footer class="site-footer">
+        <span>TabHandoff · MIT · open handoff protocol</span>
+        <span>
+          <a href="https://github.com/kodyepalmer-tech/TabHandoff/releases"
+            >Releases</a
+          >
+          ·
+          <a href="https://github.com/kodyepalmer-tech/TabHandoff">Source</a>
+          ·
+          <a href="./install.html">Troubleshoot</a>
+        </span>
+      </footer>
+    </div>
+    <script src="./js/site.js" type="module"></script>
+  </body>
+</html>

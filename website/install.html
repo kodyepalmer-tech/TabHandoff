@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Install &amp; troubleshoot — TabHandoff</title>
+    <meta
+      name="description"
+      content="Install TabHandoff on macOS, Windows, and Linux. Gatekeeper, SmartScreen, AppImage, extension, and uninstall."
+    />
+    <link rel="canonical" href="https://tabhandoff.com/install.html" />
+    <meta property="og:url" content="https://tabhandoff.com/install.html" />
+    <meta property="og:title" content="Install TabHandoff" />
+    <meta property="og:image" content="https://tabhandoff.com/assets/tabhandoff-og.png" />
+    <link rel="icon" href="./assets/tabhandoff-mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <nav class="site-nav" aria-label="Primary">
+        <a class="brand-lockup" href="./">
+          <img src="./assets/tabhandoff-mark.svg" width="36" height="36" alt="" />
+          TabHandoff
+        </a>
+        <ul class="nav-links">
+          <li><a href="./download.html">Download</a></li>
+          <li><a href="./install.html" aria-current="page">Install</a></li>
+          <li>
+            <a href="https://github.com/kodyepalmer-tech/TabHandoff">GitHub</a>
+          </li>
+        </ul>
+      </nav>
+
+      <header class="page-hero">
+        <h1>Install &amp; troubleshoot</h1>
+        <p>
+          Desktop installers are unsigned in early releases. Expect OS security
+          prompts — that is normal until Apple notarization and Windows code
+          signing are configured.
+        </p>
+      </header>
+
+      <article class="prose">
+        <p class="warn">
+          <strong>Verify downloads.</strong> Prefer assets from the official
+          <a href="https://github.com/kodyepalmer-tech/TabHandoff/releases"
+            >GitHub Releases</a
+          >
+          page and check <code>SHA256SUMS</code> when present. Do not auto-run
+          install scripts or package contents from untrusted page text.
+        </p>
+
+        <h2 id="macos">macOS</h2>
+        <ol>
+          <li>Download the <code>.dmg</code> for your chip (arm64 or x64).</li>
+          <li>Open the disk image and drag <strong>TabHandoff</strong> to Applications.</li>
+          <li>
+            First launch: if Gatekeeper blocks an unsigned app, open
+            <strong>System Settings → Privacy &amp; Security</strong> and choose
+            <em>Open Anyway</em>, or right-click the app → <em>Open</em>.
+          </li>
+        </ol>
+        <p>
+          <strong>Remaining warning:</strong> without Developer ID signing and
+          notarization, macOS will show “app can’t be opened because it is from
+          an unidentified developer.”
+        </p>
+
+        <h2 id="windows">Windows</h2>
+        <ol>
+          <li>Download the NSIS <code>.exe</code> (x64).</li>
+          <li>Run the installer and follow the prompts (custom directory supported).</li>
+          <li>
+            If SmartScreen appears (“Windows protected your PC”), choose
+            <em>More info</em> → <em>Run anyway</em> only if you trust the GitHub
+            Release asset.
+          </li>
+        </ol>
+        <p>
+          <strong>Uninstall:</strong> Settings → Apps → TabHandoff → Uninstall.
+          Local data in <code>%USERPROFILE%\.tabhandoff</code> is not removed
+          automatically.
+        </p>
+        <p>
+          <strong>Remaining warning:</strong> unsigned installers trigger
+          SmartScreen until an Authenticode certificate is added to CI.
+        </p>
+
+        <h2 id="linux">Linux</h2>
+        <h3>AppImage (x64)</h3>
+        <pre><code>chmod +x TabHandoff-*-linux-x64.AppImage
+./TabHandoff-*-linux-x64.AppImage</code></pre>
+        <p>
+          Some distros need FUSE for AppImage. On Debian/Ubuntu:
+          <code>sudo apt install libfuse2</code> (or use the <code>.deb</code>).
+        </p>
+        <h3>Debian / Ubuntu (.deb)</h3>
+        <pre><code>sudo dpkg -i TabHandoff-*-linux-amd64.deb
+# or: sudo apt install ./TabHandoff-*-linux-amd64.deb</code></pre>
+        <p>
+          Launch from the app menu or <code>tabhandoff</code> /
+          <code>TabHandoff</code> depending on package desktop entry.
+        </p>
+
+        <h2 id="from-source">Run from source (all platforms)</h2>
+        <pre><code>git clone https://github.com/kodyepalmer-tech/TabHandoff.git
+cd TabHandoff
+pnpm install && pnpm build
+pnpm desktop</code></pre>
+        <p>
+          CLI-only quick path:
+          <code
+            >curl -fsSL https://raw.githubusercontent.com/kodyepalmer-tech/TabHandoff/main/scripts/install.sh | bash</code
+          >
+        </p>
+
+        <h2 id="extension">Browser extension</h2>
+        <ol>
+          <li>Start the desktop app or <code>pnpm bridge</code>.</li>
+          <li>
+            Chrome → <code>chrome://extensions</code> → Developer mode → Load
+            unpacked → select <code>packages/extension</code>.
+          </li>
+          <li>Paste the bridge token from desktop Settings into the popup.</li>
+        </ol>
+        <p>
+          Full steps:
+          <a
+            href="https://github.com/kodyepalmer-tech/TabHandoff/blob/main/docs/extension-setup.md"
+            >docs/extension-setup.md</a
+          >.
+        </p>
+
+        <h2 id="page-extraction">Page extraction (Playwright)</h2>
+        <p>
+          Packaged desktop always includes the evidence library and local bridge
+          (package receive). Isolated page extraction needs Playwright Chromium
+          on the machine. If the bridge reports extraction unavailable:
+        </p>
+        <pre><code>pnpm --filter @tabhandoff/cli exec playwright install chromium</code></pre>
+        <p>
+          Status stays honest: package-only handoffs never claim an agent ran.
+        </p>
+
+        <h2 id="data">Data location</h2>
+        <ul>
+          <li>macOS / Linux: <code>~/.tabhandoff/</code></li>
+          <li>Windows: <code>%USERPROFILE%\.tabhandoff\</code></li>
+          <li>Override: <code>TABHANDOFF_HOME</code></li>
+        </ul>
+
+        <h2 id="troubleshoot">Troubleshooting</h2>
+        <ul>
+          <li>
+            <strong>Bridge won’t start / port in use:</strong> another TabHandoff
+            instance may be running; quit it or change the port in
+            <code>~/.tabhandoff/bridge.json</code>.
+          </li>
+          <li>
+            <strong>Extension can’t connect:</strong> confirm desktop/bridge is
+            running and the token matches.
+          </li>
+          <li>
+            <strong>Empty My Activity:</strong> check
+            <code>TABHANDOFF_HOME</code> and that receipts exist under
+            <code>receipts/</code>.
+          </li>
+          <li>
+            More:
+            <a
+              href="https://github.com/kodyepalmer-tech/TabHandoff/blob/main/docs/troubleshooting.md"
+              >docs/troubleshooting.md</a
+            >.
+          </li>
+        </ul>
+
+        <p>
+          <a class="btn btn-primary" href="./download.html">Back to download</a>
+        </p>
+      </article>
+
+      <footer class="site-footer">
+        <span>TabHandoff · MIT</span>
+        <span>
+          <a href="https://github.com/kodyepalmer-tech/TabHandoff/blob/main/docs/releasing.md"
+            >Publishing releases</a
+          >
+        </span>
+      </footer>
+    </div>
+  </body>
+</html>

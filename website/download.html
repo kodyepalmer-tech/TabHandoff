@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Download TabHandoff</title>
+    <meta
+      name="description"
+      content="Download TabHandoff for macOS, Windows, and Linux. GitHub Releases with checksums."
+    />
+    <link rel="canonical" href="https://tabhandoff.com/download.html" />
+    <meta property="og:url" content="https://tabhandoff.com/download.html" />
+    <meta property="og:title" content="Download TabHandoff" />
+    <meta property="og:image" content="https://tabhandoff.com/assets/tabhandoff-og.png" />
+    <link rel="icon" href="./assets/tabhandoff-mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <nav class="site-nav" aria-label="Primary">
+        <a class="brand-lockup" href="./">
+          <img src="./assets/tabhandoff-mark.svg" width="36" height="36" alt="" />
+          TabHandoff
+        </a>
+        <ul class="nav-links">
+          <li><a href="./#how">How it works</a></li>
+          <li><a href="./download.html" aria-current="page">Download</a></li>
+          <li><a href="./install.html">Install</a></li>
+          <li>
+            <a href="https://github.com/kodyepalmer-tech/TabHandoff">GitHub</a>
+          </li>
+        </ul>
+      </nav>
+
+      <header class="page-hero">
+        <h1>Download</h1>
+        <p>
+          Installers ship on
+          <a href="https://github.com/kodyepalmer-tech/TabHandoff/releases"
+            >GitHub Releases</a
+          >.
+          We only show a download button when that asset actually exists — otherwise
+          you’ll see Coming soon and the current source path.
+        </p>
+      </header>
+
+      <p class="status-note" id="release-status">Checking latest release…</p>
+
+      <div class="platform-tabs" role="tablist" aria-label="Operating system">
+        <button type="button" role="tab" id="tab-mac" data-platform="mac" aria-selected="false">
+          macOS
+        </button>
+        <button type="button" role="tab" id="tab-win" data-platform="win" aria-selected="false">
+          Windows
+        </button>
+        <button type="button" role="tab" id="tab-linux" data-platform="linux" aria-selected="false">
+          Linux
+        </button>
+      </div>
+
+      <section
+        class="download-panel"
+        id="panel-mac"
+        role="tabpanel"
+        aria-labelledby="tab-mac"
+        hidden
+      >
+        <h2>macOS</h2>
+        <p class="download-meta">
+          Disk image · Apple Silicon and Intel when published
+        </p>
+        <ul class="asset-list" data-os="mac"></ul>
+        <div class="fallback-path">
+          <strong>Current path if the installer isn’t ready:</strong>
+          clone the repo, then
+          <code>pnpm install && pnpm build && pnpm desktop</code>.
+          See <a href="./install.html#macos">install notes</a>.
+        </div>
+      </section>
+
+      <section
+        class="download-panel"
+        id="panel-win"
+        role="tabpanel"
+        aria-labelledby="tab-win"
+        hidden
+      >
+        <h2>Windows</h2>
+        <p class="download-meta">NSIS installer · x64</p>
+        <ul class="asset-list" data-os="win"></ul>
+        <div class="fallback-path">
+          <strong>Current path if the installer isn’t ready:</strong>
+          Node 22+, then
+          <code>pnpm install && pnpm build && pnpm desktop</code>.
+          CLI works on Windows today.
+          See <a href="./install.html#windows">install notes</a>.
+        </div>
+      </section>
+
+      <section
+        class="download-panel"
+        id="panel-linux"
+        role="tabpanel"
+        aria-labelledby="tab-linux"
+        hidden
+      >
+        <h2>Linux</h2>
+        <p class="download-meta">AppImage and .deb · x64</p>
+        <ul class="asset-list" data-os="linux"></ul>
+        <div class="fallback-path">
+          <strong>Current path if the installer isn’t ready:</strong>
+          <code>pnpm install && pnpm build && pnpm desktop</code>
+          or
+          <code>curl -fsSL https://raw.githubusercontent.com/kodyepalmer-tech/TabHandoff/main/scripts/install.sh | bash</code>
+          for the CLI.
+          See <a href="./install.html#linux">install notes</a>.
+        </div>
+      </section>
+
+      <section class="section" style="border-top: none; padding-top: 1rem">
+        <h2>Also available</h2>
+        <p class="section-lede">
+          Desktop is the evidence library + local bridge. Capture still uses the
+          browser extension; agents use the CLI / MCP.
+        </p>
+        <ul>
+          <li>
+            <a
+              href="https://github.com/kodyepalmer-tech/TabHandoff/blob/main/docs/extension-setup.md"
+              >Browser extension setup</a
+            >
+            (Chromium MV3)
+          </li>
+          <li>
+            <a href="https://github.com/kodyepalmer-tech/TabHandoff#install"
+              >CLI one-command install</a
+            >
+          </li>
+          <li>
+            <a href="https://github.com/kodyepalmer-tech/TabHandoff/releases"
+              >All releases &amp; checksums</a
+            >
+          </li>
+          <li>
+            <a href="https://github.com/kodyepalmer-tech/TabHandoff"
+              >Source repository</a
+            >
+          </li>
+        </ul>
+      </section>
+
+      <footer class="site-footer">
+        <span>TabHandoff · MIT</span>
+        <span>
+          <a href="./install.html">Install &amp; troubleshoot</a>
+          ·
+          <a href="https://github.com/kodyepalmer-tech/TabHandoff">GitHub</a>
+        </span>
+      </footer>
+    </div>
+    <script src="./js/download.js" type="module"></script>
+  </body>
+</html>
