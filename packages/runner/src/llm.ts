@@ -21,12 +21,12 @@ type ToolCall = {
 export async function runLlmAgent(
   page: Page,
   instruction: string,
-  onAction: (tool: string, detail: string, ok: boolean) => void,
+  onAction: (tool: string, detail: string, ok: boolean) => void | Promise<void>,
 ): Promise<{ markdown: string; title: string; mode: "dom" | "llm" }> {
   const provider = detectLlmProvider();
   if (!provider) {
     const r = await extractFromPage(page, instruction);
-    onAction("extract", "dom fallback (no API key)", true);
+    await onAction("extract", "dom fallback (no API key)", true);
     return r;
   }
 
@@ -49,29 +49,29 @@ export async function runLlmAgent(
     });
 
     const plan = await askModel(provider, instruction, snapshot);
-    onAction("plan", `${provider}: ${plan.raw.slice(0, 200)}`, true);
+    await onAction("plan", `${provider}: ${plan.raw.slice(0, 200)}`, true);
 
     for (const step of plan.tools.slice(0, 8)) {
       try {
         if (step.name === "click" && step.args.selector) {
           await page.click(step.args.selector, { timeout: 8_000 });
-          onAction("click", step.args.selector, true);
+          await onAction("click", step.args.selector, true);
         } else if (step.name === "type" && step.args.selector && step.args.text) {
           await page.fill(step.args.selector, step.args.text, { timeout: 8_000 });
-          onAction("type", `${step.args.selector} ← ${step.args.text}`, true);
+          await onAction("type", `${step.args.selector} ← ${step.args.text}`, true);
         } else if (step.name === "done") {
           break;
         }
       } catch (err) {
-        onAction(step.name, String(err), false);
+        await onAction(step.name, String(err), false);
       }
     }
 
     const extracted = await extractFromPage(page, instruction);
-    onAction("extract", "post-llm dom extract", true);
+    await onAction("extract", "post-llm dom extract", true);
     return { ...extracted, mode: "llm" };
   } catch (err) {
-    onAction("llm", `failed: ${String(err)}; falling back to dom`, false);
+    await onAction("llm", `failed: ${String(err)}; falling back to dom`, false);
     const r = await extractFromPage(page, instruction);
     return r;
   }

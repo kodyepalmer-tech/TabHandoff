@@ -12,7 +12,8 @@ export type RunHandoffInput = {
   note?: string;
   receiptDir: string;
   timeoutMs?: number;
-  onAction?: (action: HandoffAction) => void;
+  /** May be sync or async — always awaited so job updates cannot race. */
+  onAction?: (action: HandoffAction) => void | Promise<void>;
 };
 
 export type RunHandoffResult = {
@@ -44,13 +45,13 @@ export async function closeSharedBrowser(): Promise<void> {
   }
 }
 
-function pushAction(
+async function pushAction(
   actions: HandoffAction[],
   onAction: RunHandoffInput["onAction"],
   tool: string,
   detail: string,
   ok: boolean,
-): void {
+): Promise<void> {
   const action: HandoffAction = {
     at: new Date().toISOString(),
     tool,
@@ -58,7 +59,7 @@ function pushAction(
     ok,
   };
   actions.push(action);
-  onAction?.(action);
+  await onAction?.(action);
 }
 
 /**
@@ -77,7 +78,7 @@ export async function runHandoff(input: RunHandoffInput): Promise<RunHandoffResu
   let browser: Browser | undefined;
   try {
     const safeUrl = assertSafeUrl(input.url);
-    pushAction(actions, input.onAction, "validate_url", safeUrl.toString(), true);
+    await pushAction(actions, input.onAction, "validate_url", safeUrl.toString(), true);
 
     browser = await getBrowser();
     const context = await browser.newContext({
@@ -90,18 +91,18 @@ export async function runHandoff(input: RunHandoffInput): Promise<RunHandoffResu
     context.setDefaultTimeout(Math.min(timeoutMs, 30_000));
 
     const page = await context.newPage();
-    pushAction(actions, input.onAction, "browser", "ephemeral chromium context", true);
+    await pushAction(actions, input.onAction, "browser", "ephemeral chromium context", true);
 
     await page.goto(safeUrl.toString(), {
       waitUntil: "domcontentloaded",
       timeout: Math.min(timeoutMs, 45_000),
     });
-    pushAction(actions, input.onAction, "goto", safeUrl.toString(), true);
+    await pushAction(actions, input.onAction, "goto", safeUrl.toString(), true);
 
     const shot1 = path.join(input.receiptDir, "screenshots", "01-loaded.png");
     await page.screenshot({ path: shot1, fullPage: true });
     screenshotPaths.push(shot1);
-    pushAction(actions, input.onAction, "screenshot", shot1, true);
+    await pushAction(actions, input.onAction, "screenshot", shot1, true);
 
     const remaining = timeoutMs - (Date.now() - started);
     if (remaining < 5_000) {
@@ -109,8 +110,8 @@ export async function runHandoff(input: RunHandoffInput): Promise<RunHandoffResu
     }
 
     const extraction = await Promise.race([
-      runLlmAgent(page, input.instruction, (tool, detail, ok) => {
-        pushAction(actions, input.onAction, tool, detail, ok);
+      runLlmAgent(page, input.instruction, async (tool, detail, ok) => {
+        await pushAction(actions, input.onAction, tool, detail, ok);
       }),
       new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error("Extraction timed out")), remaining),
@@ -120,7 +121,7 @@ export async function runHandoff(input: RunHandoffInput): Promise<RunHandoffResu
     const shot2 = path.join(input.receiptDir, "screenshots", "02-result.png");
     await page.screenshot({ path: shot2, fullPage: true });
     screenshotPaths.push(shot2);
-    pushAction(actions, input.onAction, "screenshot", shot2, true);
+    await pushAction(actions, input.onAction, "screenshot", shot2, true);
 
     const receiptPath = path.join(input.receiptDir, "receipt.md");
     const cardPath = path.join(input.receiptDir, "card.yaml");
@@ -169,7 +170,7 @@ export async function runHandoff(input: RunHandoffInput): Promise<RunHandoffResu
       "utf8",
     );
 
-    pushAction(actions, input.onAction, "receipt", receiptPath, true);
+    await pushAction(actions, input.onAction, "receipt", receiptPath, true);
     await context.close();
 
     return {
@@ -183,7 +184,7 @@ export async function runHandoff(input: RunHandoffInput): Promise<RunHandoffResu
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    pushAction(actions, input.onAction, "error", message, false);
+    await pushAction(actions, input.onAction, "error", message, false);
 
     const receiptPath = path.join(input.receiptDir, "receipt.md");
     const cardPath = path.join(input.receiptDir, "card.yaml");

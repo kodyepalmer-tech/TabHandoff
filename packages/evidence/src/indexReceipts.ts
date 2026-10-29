@@ -191,6 +191,17 @@ async function buildRecord(home: string, id: string): Promise<ActivityRecord | n
     if (!snap) indexNotes.push("Corrupt receipt job.json");
   }
 
+  const handoffPath = path.join(receiptDir, "handoff.json");
+  let portableStatus: string | undefined;
+  if (await exists(handoffPath)) {
+    const handoff = safeJsonParse<{
+      execution?: { status?: string };
+      page?: { title?: string; url?: string };
+      instruction?: string;
+    }>(await readFile(handoffPath, "utf8"));
+    portableStatus = handoff?.execution?.status;
+  }
+
   let card = undefined as ReturnType<typeof parseCardYaml> | undefined;
   if (await exists(cardPath)) {
     card = parseCardYaml(await readFile(cardPath, "utf8"));
@@ -217,9 +228,16 @@ async function buildRecord(home: string, id: string): Promise<ActivityRecord | n
     card?.instruction ||
     "(missing instruction)";
 
+  // Prefer honest package_created over a misleading queued job snapshot.
   const status: HandoffStatus = asStatus(
-    storeJob?.status ?? snap?.status ?? receiptParsed?.status,
-    storeJob ? storeJob.status : receiptParsed?.status === "failed" ? "failed" : "succeeded",
+    portableStatus === "package_created"
+      ? "package_created"
+      : storeJob?.status ?? snap?.status ?? portableStatus ?? receiptParsed?.status,
+    storeJob
+      ? storeJob.status
+      : receiptParsed?.status === "failed"
+        ? "failed"
+        : "succeeded",
   );
 
   const actions: HandoffAction[] =
@@ -254,10 +272,11 @@ async function buildRecord(home: string, id: string): Promise<ActivityRecord | n
   const mode = snap?.mode || receiptParsed?.mode;
 
   const partial =
-    !storeJob ||
-    !(await exists(receiptPath)) ||
-    screenshotPaths.length === 0 ||
-    indexNotes.length > 0;
+    status !== "package_created" &&
+    (!storeJob ||
+      !(await exists(receiptPath)) ||
+      screenshotPaths.length === 0 ||
+      indexNotes.length > 0);
 
   if (!(await exists(receiptDir))) {
     indexNotes.push("Receipt folder missing; using store job only");

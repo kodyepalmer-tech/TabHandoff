@@ -66,7 +66,7 @@ export async function writeHandoffToHome(
     note: pkg.page.selectedText
       ? `Selected text captured (${pkg.page.selectedText.length} chars). Package only — no agent launched.`
       : "Package only — no agent launched.",
-    status: "queued",
+    status: "package_created",
     createdAt: pkg.capturedAt,
     updatedAt: now,
     actions: pkg.execution.events.map((e) => ({
@@ -79,6 +79,8 @@ export async function writeHandoffToHome(
     receiptDir,
     receiptPath,
     cardPath,
+    resultSummary:
+      "Package created only — no agent was launched. Open or export this folder to continue elsewhere.",
   };
 
   await writeFile(jobSnapPath, JSON.stringify(job, null, 2), "utf8");

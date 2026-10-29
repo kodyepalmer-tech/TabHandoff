@@ -343,6 +343,9 @@ select:focus {
 .status.running {
   color: var(--warn);
 }
+.status.package_created {
+  color: var(--muted);
+}
 
 .item-title {
   font-family: var(--font-display);
