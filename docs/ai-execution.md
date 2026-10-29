@@ -1,45 +1,66 @@
-# Run with AI (Priority 4 vertical slice)
+# Run with AI (Phase 1)
 
-Smallest path: **Hand off → instruction → capture context → configured model runs → result appears.**
+Primary path: **Hand off → “What do you want done?” → capture context → configured model runs → result appears → reopen finds the saved task.**
 
-ZIP export stays secondary (still always available). This slice does **not** expand Chrome Web Store host permissions to OpenAI/Anthropic — the extension talks only to the existing loopback bridge.
+ZIP export is optional sharing — not required to see or revisit a result.
 
-## Why bridge / CLI first
+## Architecture (provider-agnostic)
 
 | Path | Calls model? | CWS impact |
 |---|---|---|
-| Extension → `https://api.openai.com` directly | Would need new host permissions | Hurts review / permission surface |
+| Extension → cloud APIs directly | Would need new host permissions | Hurts review |
 | Extension → `http://127.0.0.1` bridge → provider | Yes | **No change** — already allowed |
 | CLI `tabhandoff run-ai` | Yes | N/A |
+| Desktop **AI tasks** view | Reads persisted results | N/A |
 
-API keys come from the **bridge/CLI process environment** (or future local settings file). They are **never**:
+API keys / local daemon credentials come from the **bridge / CLI / desktop process environment**. They are **never**:
 
 - stored in the extension
 - written into portable ZIP / `handoff.json`
 - printed in bridge logs
 
-## Prerequisites
+## Providers
+
+| Provider | Env | Notes |
+|---|---|---|
+| **Ollama (free/local)** | `TABHANDOFF_AI_PROVIDER=ollama` or live daemon on `:11434` | Auto-detected by bridge; no paid credits |
+| OpenAI-compatible | `OPENAI_API_KEY` (+ optional `OPENAI_BASE_URL`) | Cloud or local proxies |
+| Groq | `GROQ_API_KEY` | OpenAI-compatible free-tier friendly |
+| Anthropic | `ANTHROPIC_API_KEY` | Messages API |
+
+Without a provider, status is honest: **`unavailable`** — TabHandoff does **not** invent a successful run.
+
+## Founder setup (credentials)
 
 ```bash
 pnpm install && pnpm build
-export OPENAI_API_KEY=sk-…          # or ANTHROPIC_API_KEY=…
-# optional: OPENAI_MODEL, OPENAI_BASE_URL (OpenAI-compatible proxies)
-pnpm bridge                         # or: pnpm desktop
+
+# Preferred free path:
+# install Ollama, then:
+ollama pull llama3.2   # or any chat model
+# leave `ollama serve` running (or the system service)
+
+# Optional explicit pin:
+export TABHANDOFF_AI_PROVIDER=ollama
+export OLLAMA_MODEL=llama3.2
+
+# Or a cloud key YOU own (do not paste into the extension):
+# export OPENAI_API_KEY=sk-…
+# export GROQ_API_KEY=gsk_…
+
+pnpm bridge            # or: pnpm desktop
 ```
 
-Paste the printed bridge token into the extension Settings (same as My Activity).
-
-Without a key, status is honest: **`unavailable`** — TabHandoff does **not** invent a successful external run.
+Paste the printed bridge token into the extension **Settings**.
 
 ## Extension flow
 
-1. Capture tab (URL, title, selection, visible text, optional screenshot).
-2. Write instruction → Review.
-3. Optional checkbox **Run with AI** (shown only when `/v1/status` reports `aiCompletion: true`).
-4. Confirm → ZIP downloads; if checked, popup `POST`s `/v1/ai/run` on loopback.
-5. Result panel shows **running / failed / done / unavailable** and the model text.
-
-You can still **Download ZIP** and **Copy brief for another AI** afterward.
+1. Open a normal `https://…` page.
+2. Toolbar / right-click → TabHandoff.
+3. Answer **What do you want done?**
+4. **Run with AI** (primary). Package / ZIP options remain under **Package / options**.
+5. Progress → real model text (or honest unavailable / failed).
+6. Close the popup; reopen → **Saved tasks** lists the result (bridge `~/.tabhandoff/ai-tasks/` + local cache).
 
 ## CLI
 
@@ -49,12 +70,9 @@ tabhandoff run-ai \
   --url https://example.com \
   --title "Example Domain" \
   --context ./page.txt
-
-# Attach under an existing receipt folder:
-tabhandoff run-ai --instruction "…" --handoff <id> --context ./page.txt
 ```
 
-Exit codes: `0` done, `1` failed, `2` unavailable (no key).
+Exit codes: `0` done, `1` failed, `2` unavailable (no provider).
 
 ## Bridge HTTP
 
@@ -69,37 +87,45 @@ Content-Type: application/json
   "selectedText": "…",
   "pageText": "…",
   "instruction": "Summarize",
-  "handoffId": "optional-existing-id"
+  "handoffId": "optional-existing-id",
+  "taskId": "optional-client-id"
 }
 ```
 
-Responses:
+```http
+GET /v1/ai/tasks
+GET /v1/ai/tasks/:id
+```
 
 | HTTP | `status` | Meaning |
 |---|---|---|
 | 200 | `done` | Model returned text |
-| 503 | `unavailable` | No API key in bridge env |
+| 503 | `unavailable` | No provider configured / reachable |
 | 502 | `failed` | Provider error / empty response |
 | 401 | — | Bad bridge token |
 
-`apiKeyIncluded` is always `false` in the JSON body.
+`apiKeyIncluded` is always `false`.
 
-`GET /v1/status` includes `aiCompletion: boolean` plus existing `pageExtraction` / `agentExecution`.
+`GET /v1/status` includes `aiCompletion`, `aiProvider`, `aiModel`.
 
-## Provider
+## Persistence
 
-OpenAI-compatible chat completions first (`OPENAI_API_KEY`, optional `OPENAI_BASE_URL`). If only `ANTHROPIC_API_KEY` is set, Anthropic Messages is used.
+```text
+~/.tabhandoff/ai-tasks/<task-id>/
+├── task.json      # status, instruction, result (no secrets)
+└── result.md      # human-readable
+```
 
-This is **context → completion**, not the Playwright browser agent loop (`tabhandoff run` / `llm_browser`). Both share the same env keys.
+Desktop **AI tasks** reads the same folder (Phase 2 companion surface).
 
 ## Tests
 
 ```bash
-pnpm test:runner    # mocked provider
-pnpm test:bridge    # includes /v1/ai/run mocked + honest no-key
+pnpm test:runner    # mocked provider + ollama/groq resolve
+pnpm test:bridge    # /v1/ai/run mocked + honest no-key + task list
 ```
 
-A live call runs only when `OPENAI_API_KEY` is present; otherwise that case is skipped honestly.
+A live call runs when Ollama (or a key) is present; otherwise that case is skipped honestly.
 
 ## Security notes
 

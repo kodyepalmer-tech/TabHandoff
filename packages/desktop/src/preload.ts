@@ -38,8 +38,20 @@ export type DesktopApi = {
     error?: string | null;
     agentExecution?: boolean;
     pageExtraction?: boolean;
+    aiCompletion?: boolean;
+    aiProvider?: string | null;
+    aiModel?: string | null;
     workflows?: Array<{ id: string; label: string; description: string }>;
     message?: string;
+  }>;
+  listAiTasks: (limit?: number) => Promise<{
+    ok: boolean;
+    tasks: Array<Record<string, unknown>>;
+    home: string;
+  }>;
+  getAiTask: (id: string) => Promise<{
+    ok: boolean;
+    task: Record<string, unknown> | null;
   }>;
   pickFiles: () => Promise<{
     canceled: boolean;
@@ -84,6 +96,8 @@ const api: DesktopApi = {
   openExternal: (url) => ipcRenderer.invoke("evidence:openExternal", url),
   readImage: (filePath) => ipcRenderer.invoke("evidence:readImage", filePath),
   bridgeStatus: () => ipcRenderer.invoke("bridge:status"),
+  listAiTasks: (limit) => ipcRenderer.invoke("ai:listTasks", limit),
+  getAiTask: (id) => ipcRenderer.invoke("ai:getTask", id),
   pickFiles: () => ipcRenderer.invoke("handoff:pickFiles"),
   registerDroppedPaths: (paths) =>
     ipcRenderer.invoke("handoff:registerDroppedPaths", paths),

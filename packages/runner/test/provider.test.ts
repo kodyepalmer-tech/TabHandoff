@@ -30,6 +30,23 @@ describe("AI provider abstraction", () => {
     assert.equal(resolveAiProvider({}), null);
   });
 
+  it("resolves Ollama when TABHANDOFF_AI_PROVIDER=ollama without a cloud key", () => {
+    const cfg = resolveAiProvider({
+      TABHANDOFF_AI_PROVIDER: "ollama",
+      OLLAMA_MODEL: "smollm2:135m",
+    });
+    assert.ok(cfg);
+    assert.equal(cfg!.id, "ollama");
+    assert.equal(cfg!.model, "smollm2:135m");
+    assert.match(cfg!.baseUrl ?? "", /11434/);
+  });
+
+  it("resolves Groq from GROQ_API_KEY", () => {
+    const cfg = resolveAiProvider({ GROQ_API_KEY: "gsk-test" });
+    assert.ok(cfg);
+    assert.equal(cfg!.id, "groq");
+  });
+
   it("runAiCompletion with mock fetch", async () => {
     const fakeFetch: typeof fetch = async (url) => {
       assert.match(String(url), /chat\/completions$/);

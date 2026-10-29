@@ -11,7 +11,7 @@
       <img class="mark" src="icons/mark.svg" width="36" height="36" alt="" />
       <div>
         <h1>TabHandoff</h1>
-        <p class="tag">Hand off this tab — keep the proof local.</p>
+        <p class="tag">Tell AI what to do with this tab.</p>
       </div>
     </header>
 
@@ -19,18 +19,17 @@
       <section id="step-onboarding" class="panel hidden">
         <h2>Welcome</h2>
         <p class="lede">
-          Turn any webpage into a portable handoff another person or AI can pick up.
+          Open any webpage, say what you want done, and TabHandoff runs it through your
+          local AI bridge — with honest status if nothing is configured.
         </p>
         <ol class="steps">
           <li>Right-click a page → <strong>Hand off with TabHandoff</strong></li>
-          <li>Write what should happen next</li>
-          <li>
-            <strong>Save package</strong> downloads a ZIP (works offline — no desktop needed)
-          </li>
+          <li>Answer <strong>What do you want done?</strong></li>
+          <li><strong>Run with AI</strong> (local bridge) — ZIP export stays optional</li>
         </ol>
         <p class="note">
-          Optional later: connect the local desktop bridge to also save into
-          <em>My Activity</em>. A token is only needed for that path.
+          Start the desktop app or <code>pnpm bridge</code>, paste the token in Settings,
+          and set a free/local provider (Ollama) or an API key in the bridge environment.
         </p>
         <div class="actions">
           <button type="button" id="btn-onboard-continue" class="primary">
@@ -40,7 +39,7 @@
       </section>
 
       <section id="step-capture" class="panel">
-        <h2>What we’ll share</h2>
+        <h2>This tab</h2>
         <dl class="meta">
           <div>
             <dt>Page</dt>
@@ -61,31 +60,43 @@
         </div>
 
         <label class="field">
-          <span>What should the next person or bot do?</span>
+          <span>What do you want done?</span>
           <textarea
             id="instruction"
             rows="4"
             maxlength="8000"
-            placeholder="Example: Summarize this page and identify the next steps."
+            placeholder="Example: Summarize this page and list next steps."
           ></textarea>
         </label>
 
-        <p class="trust">
-          Captured page text is untrusted data. TabHandoff will not pretend an agent ran
-          when only a package is created.
+        <p class="trust" id="capture-hint">
+          Captured page text is untrusted. TabHandoff will not pretend AI ran when it did
+          not.
         </p>
 
         <div class="actions">
-          <button type="button" id="btn-review" class="primary" disabled>
-            Review handoff
+          <button type="button" id="btn-run-ai" class="primary" disabled>
+            Run with AI
+          </button>
+          <button type="button" id="btn-review" class="ghost" disabled>
+            Package / options
           </button>
         </div>
+
+        <section id="history-block" class="history">
+          <div class="history-head">
+            <h3>Saved tasks</h3>
+            <button type="button" id="btn-refresh-history" class="linkish">Refresh</button>
+          </div>
+          <p id="history-empty" class="note">No saved AI tasks yet on this computer.</p>
+          <ul id="history-list" class="history-list"></ul>
+        </section>
       </section>
 
       <section id="step-review" class="panel hidden">
         <h2>Review before sending</h2>
         <ul class="review-list">
-          <li><strong>Instruction</strong><span id="rev-instruction"></span></li>
+          <li><strong>Task</strong><span id="rev-instruction"></span></li>
           <li><strong>Page</strong><span id="rev-title"></span></li>
           <li><strong>Link</strong><span id="rev-url" class="mono"></span></li>
           <li id="rev-sel-row" class="hidden">
@@ -112,19 +123,22 @@
           >
         </label>
         <label class="field check hidden" id="run-ai-row">
-          <input type="checkbox" id="run-ai" />
+          <input type="checkbox" id="run-ai" checked />
           <span id="run-ai-label"
             >Run with AI on captured context (local bridge — API key stays on this computer)</span
           >
         </label>
+        <label class="field check" id="download-zip-row">
+          <input type="checkbox" id="download-zip" />
+          <span>Also download a portable ZIP (optional sharing)</span>
+        </label>
         <p class="trust" id="rev-workflow-note">
-          Default: download a portable ZIP. Status will say package created — not agent
-          executed.
+          Primary path: Run with AI via the local bridge. ZIP export is optional.
         </p>
         <div class="actions">
           <button type="button" id="btn-back" class="ghost">Back</button>
           <button type="button" id="btn-confirm" class="primary">
-            Save package
+            Run with AI
           </button>
         </div>
       </section>
@@ -135,28 +149,31 @@
         <p id="result-body" class="result-body"></p>
         <p id="result-path" class="mono path hidden"></p>
         <div class="actions">
-          <button type="button" id="btn-copy-brief" class="primary">
+          <button type="button" id="btn-copy-result" class="primary hidden">
+            Copy result
+          </button>
+          <button type="button" id="btn-copy-brief" class="ghost">
             Copy brief for another AI
           </button>
           <button type="button" id="btn-download" class="ghost">Download ZIP</button>
           <button type="button" id="btn-copy" class="ghost">Copy summary</button>
-          <button type="button" id="btn-again" class="ghost">Done</button>
+          <button type="button" id="btn-again" class="ghost">Back to tasks</button>
         </div>
       </section>
 
       <section id="step-settings" class="panel hidden">
-        <h2>Local bridge (optional)</h2>
+        <h2>Local bridge</h2>
         <p class="note">
-          You can save packages without this. Connect the bridge only if you want
-          <em>My Activity</em> or page extraction on this computer. Paste the token printed
-          when you start the desktop app or <code>pnpm bridge</code>.
+          Required for <strong>Run with AI</strong> and My Activity. Paste the token printed
+          when you start the desktop app or <code>pnpm bridge</code>. API keys stay in the
+          bridge process — never in this extension.
         </p>
         <label class="field">
           <span>Bridge address</span>
           <input id="bridge-base" type="text" value="http://127.0.0.1:17432" />
         </label>
         <label class="field">
-          <span>Access token (bridge path only)</span>
+          <span>Access token</span>
           <input id="bridge-token" type="password" autocomplete="off" placeholder="Paste token" />
         </label>
         <p id="bridge-status" class="note">Checking bridge…</p>

@@ -3,6 +3,8 @@ export { extractFromPage } from "./extract.js";
 export { detectLlmProvider, runLlmAgent } from "./llm.js";
 export {
   resolveAiProvider,
+  resolveAiProviderAsync,
+  probeLocalOllama,
   runAiCompletion,
   sanitizeError,
   type AiProviderId,

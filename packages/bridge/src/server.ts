@@ -15,7 +15,12 @@ import {
   startSupportedWorkflow,
   workflowInflightCount,
 } from "./execute.js";
-import { executeAiRun, type AiRunRequest } from "./ai-run.js";
+import {
+  executeAiRun,
+  listAiTasks,
+  getAiTask,
+  type AiRunRequest,
+} from "./ai-run.js";
 import type { AiProviderDeps } from "@tabhandoff/runner";
 
 export type BridgeServer = {
@@ -164,7 +169,7 @@ export async function startBridgeServer(options: {
 
       if (req.method === "GET" && url.pathname === "/v1/status") {
         if (!requireAuth(req, res, config, origin)) return;
-        const caps = await probeBridgeCapabilities();
+        const caps = await probeBridgeCapabilities({ fresh: true });
         sendJson(
           res,
           200,
@@ -175,12 +180,40 @@ export async function startBridgeServer(options: {
             agentExecution: caps.llmAgent,
             pageExtraction: caps.pageExtraction,
             aiCompletion: caps.aiCompletion,
+            aiProvider: caps.aiProvider ?? null,
+            aiModel: caps.aiModel ?? null,
             workflows: caps.workflows,
             inflight: workflowInflightCount(),
             message: caps.message,
           },
           origin,
         );
+        return;
+      }
+
+      if (req.method === "GET" && url.pathname === "/v1/ai/tasks") {
+        if (!requireAuth(req, res, config, origin)) return;
+        const limitRaw = url.searchParams.get("limit");
+        const limit = limitRaw ? Number(limitRaw) : 50;
+        const tasks = await listAiTasks({
+          home,
+          limit: Number.isFinite(limit) ? Math.min(Math.max(limit, 1), 100) : 50,
+        });
+        sendJson(res, 200, { ok: true, tasks }, origin);
+        return;
+      }
+
+      if (req.method === "GET" && url.pathname.startsWith("/v1/ai/tasks/")) {
+        if (!requireAuth(req, res, config, origin)) return;
+        const id = decodeURIComponent(
+          url.pathname.slice("/v1/ai/tasks/".length),
+        );
+        const task = await getAiTask(id, { home });
+        if (!task) {
+          sendJson(res, 404, { ok: false, error: "not_found" }, origin);
+          return;
+        }
+        sendJson(res, 200, { ok: true, task }, origin);
         return;
       }
 
@@ -234,6 +267,7 @@ export async function startBridgeServer(options: {
           pageText: typeof json.pageText === "string" ? json.pageText : undefined,
           handoffId:
             typeof json.handoffId === "string" ? json.handoffId : undefined,
+          taskId: typeof json.taskId === "string" ? json.taskId : undefined,
         };
 
         logLine(
@@ -269,7 +303,9 @@ export async function startBridgeServer(options: {
             error: result.error,
             message: result.message,
             handoffId: result.handoffId,
+            taskId: result.taskId,
             resultPath: result.resultPath,
+            taskPath: result.taskPath,
             apiKeyIncluded: false,
           },
           origin,

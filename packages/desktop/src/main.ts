@@ -166,10 +166,12 @@ function registerIpc(): void {
         agentExecution: false,
         pageExtraction: false,
         aiCompletion: false,
+        aiProvider: null,
+        aiModel: null,
       };
     }
     const { probeBridgeCapabilities } = await import("@tabhandoff/bridge");
-    const caps = await probeBridgeCapabilities();
+    const caps = await probeBridgeCapabilities({ fresh: true });
     return {
       running: true,
       url: bridge.url,
@@ -180,9 +182,26 @@ function registerIpc(): void {
       agentExecution: caps.llmAgent,
       pageExtraction: caps.pageExtraction,
       aiCompletion: caps.aiCompletion,
+      aiProvider: caps.aiProvider ?? null,
+      aiModel: caps.aiModel ?? null,
       workflows: caps.workflows,
       message: caps.message,
     };
+  });
+
+  ipcMain.handle("ai:listTasks", async (_e, limit?: number) => {
+    const { listAiTasks } = await import("@tabhandoff/bridge");
+    const tasks = await listAiTasks({
+      home: cachedHome,
+      limit: typeof limit === "number" ? limit : 50,
+    });
+    return { ok: true, tasks, home: cachedHome };
+  });
+
+  ipcMain.handle("ai:getTask", async (_e, id: string) => {
+    const { getAiTask } = await import("@tabhandoff/bridge");
+    const task = await getAiTask(id, { home: cachedHome });
+    return { ok: Boolean(task), task };
   });
 
   ipcMain.handle("handoff:pickFiles", async () => {

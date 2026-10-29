@@ -9,6 +9,7 @@ const state = {
   records: [],
   hostnames: [],
   selectedId: null,
+  selectedAiId: null,
   selected: null,
   home: "",
   imageCache: new Map(),
@@ -31,6 +32,7 @@ function showView(name) {
   $$(".view").forEach((v) => v.classList.remove("is-visible"));
   const map = {
     activity: "#view-activity",
+    ai: "#view-ai",
     handoff: "#view-handoff",
     detail: "#view-detail",
     evidence: "#view-evidence",
@@ -41,8 +43,15 @@ function showView(name) {
 
   $$(".nav-item").forEach((btn) => {
     const view = btn.getAttribute("data-view");
-    btn.classList.toggle("is-active", view === name || (name === "detail" && view === "activity"));
+    btn.classList.toggle(
+      "is-active",
+      view === name || (name === "detail" && view === "activity"),
+    );
   });
+
+  if (name === "ai") {
+    void refreshAiTasks();
+  }
 }
 
 function filtersFromUi() {
@@ -403,6 +412,7 @@ function wire() {
   });
 
   wireHandoff();
+  wireAiTasks();
 }
 
 function renderHandoffFiles() {
@@ -507,19 +517,25 @@ async function refreshBridgeStatus() {
   if (typeof api.bridgeStatus !== "function") {
     $("#bridge-status-line").textContent =
       "Bridge status unavailable in this build.";
+    const line = $("#ai-provider-line");
+    if (line) line.textContent = "AI provider status unavailable in this build.";
     return;
   }
   const st = await api.bridgeStatus();
   if (st.running) {
     const bits = [`Listening at ${st.url} (this computer only).`];
-    if (st.pageExtraction) {
+    if (st.aiCompletion) {
+      bits.push(
+        `Run with AI ready (${st.aiProvider || "provider"} / ${st.aiModel || "model"}).`,
+      );
+    } else if (st.pageExtraction) {
       bits.push(
         st.agentExecution
           ? "Can run page extraction or model-assisted browser steps."
-          : "Can run page extraction (DOM — not autonomous AI).",
+          : "Can run page extraction (DOM — not autonomous AI). Run with AI needs a provider.",
       );
     } else {
-      bits.push("Packages only — Playwright unavailable for extraction.");
+      bits.push("Packages only — no Playwright and no AI provider.");
     }
     $("#bridge-status-line").textContent = bits.join(" ");
     $("#settings-bridge-token").value = st.token || "";
@@ -529,6 +545,95 @@ async function refreshBridgeStatus() {
       : "Bridge not running. Start desktop again or run: pnpm bridge";
     $("#settings-bridge-token").value = "";
   }
+
+  const providerLine = $("#ai-provider-line");
+  if (providerLine) {
+    if (st.aiCompletion) {
+      providerLine.textContent = `Ready: ${st.aiProvider || "provider"} · model ${st.aiModel || "(default)"}. Keys are never displayed.`;
+    } else if (st.running) {
+      providerLine.textContent =
+        "No provider detected. Set OPENAI_API_KEY / GROQ_API_KEY / ANTHROPIC_API_KEY, or run Ollama on 127.0.0.1:11434, then restart desktop.";
+    } else {
+      providerLine.textContent = "Bridge offline — start desktop to probe providers.";
+    }
+  }
+}
+
+function wireAiTasks() {
+  $("#btn-refresh-ai")?.addEventListener("click", () => void refreshAiTasks());
+  $("#btn-reveal-ai")?.addEventListener("click", async () => {
+    const id = state.selectedAiId;
+    if (!id || !state.home) return;
+    await api.reveal(`${state.home}/ai-tasks/${id}`);
+  });
+}
+
+async function refreshAiTasks() {
+  const list = $("#ai-list");
+  const empty = $("#ai-empty");
+  const meta = $("#ai-meta");
+  const detail = $("#ai-detail");
+  if (!list || typeof api.listAiTasks !== "function") return;
+
+  const { tasks } = await api.listAiTasks(50);
+  meta.textContent = `${tasks.length} saved AI task(s)`;
+  if (!tasks.length) {
+    list.innerHTML = "";
+    empty?.classList.remove("hidden");
+    detail?.classList.add("hidden");
+    return;
+  }
+  empty?.classList.add("hidden");
+  list.innerHTML = tasks
+    .map((t) => {
+      const title = escapeHtml(
+        String(t.instruction || t.title || t.url || t.id || "").slice(0, 120),
+      );
+      const when = formatWhen(String(t.at || ""));
+      const status = escapeHtml(String(t.status || "?"));
+      const provider = escapeHtml(
+        [t.provider, t.model].filter(Boolean).join(" / ") || "—",
+      );
+      return `<button type="button" class="activity-card" data-ai-id="${escapeHtml(String(t.id))}">
+        <div class="activity-title">${title}</div>
+        <div class="activity-meta">${status} · ${provider} · ${escapeHtml(when)}</div>
+      </button>`;
+    })
+    .join("");
+
+  list.querySelectorAll("[data-ai-id]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      void openAiTask(btn.getAttribute("data-ai-id"));
+    });
+  });
+}
+
+async function openAiTask(id) {
+  if (!id || typeof api.getAiTask !== "function") return;
+  const { ok, task } = await api.getAiTask(id);
+  const detail = $("#ai-detail");
+  if (!ok || !task || !detail) {
+    toast("Could not open AI task");
+    return;
+  }
+  state.selectedAiId = id;
+  detail.classList.remove("hidden");
+  $("#ai-detail-title").textContent = String(task.instruction || "AI result").slice(
+    0,
+    160,
+  );
+  $("#ai-detail-meta").textContent = [
+    task.status,
+    task.provider,
+    task.model,
+    task.url,
+    formatWhen(String(task.at || "")),
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  $("#ai-detail-body").textContent =
+    String(task.result || task.message || "(no result)") +
+    (task.error ? `\n\nError: ${task.error}` : "");
 }
 
 function debounce(fn, ms) {
@@ -552,6 +657,9 @@ async function boot() {
   setInterval(() => {
     if (state.view === "activity" || state.view === "evidence") {
       void refresh();
+    }
+    if (state.view === "ai") {
+      void refreshAiTasks();
     }
   }, 4000);
 }

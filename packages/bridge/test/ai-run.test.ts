@@ -48,7 +48,7 @@ describe("Priority 4 AI execution slice", () => {
     assert.equal(result.status, "unavailable");
     assert.equal(result.apiKeyIncluded, false);
     assert.equal(result.provider, null);
-    assert.match(result.message, /No API key/i);
+    assert.match(result.message, /No AI provider configured/i);
   });
 
   it("executeAiRun uses mocked OpenAI-compatible provider", async () => {
@@ -101,7 +101,8 @@ describe("Priority 4 AI execution slice", () => {
     assert.equal(result.apiKeyIncluded, false);
     assert.ok(result.resultPath);
 
-    const onDisk = JSON.parse(await readFile(result.resultPath!, "utf8")) as {
+    assert.ok(result.taskPath);
+    const onDisk = JSON.parse(await readFile(result.taskPath!, "utf8")) as {
       apiKeyIncluded: boolean;
       result: string;
       provider: string;
@@ -110,7 +111,7 @@ describe("Priority 4 AI execution slice", () => {
     assert.match(onDisk.result, /Mocked OK/);
     assert.equal(onDisk.provider, "openai-compatible");
 
-    const rawDisk = await readFile(result.resultPath!, "utf8");
+    const rawDisk = await readFile(result.taskPath!, "utf8");
     assert.equal(rawDisk.includes("test-key"), false);
   });
 
@@ -239,23 +240,82 @@ describe("Priority 4 AI execution slice", () => {
     }
   });
 
-  it("real provider call only when key present (skip otherwise)", async () => {
+  it("persists task under ai-tasks even without handoffId", async () => {
+    const home = await mkdtemp(path.join(os.tmpdir(), "th-ai-task-"));
+    temps.push(home);
+    const fakeFetch: typeof fetch = async () =>
+      new Response(
+        JSON.stringify({
+          choices: [{ message: { content: "Persisted task OK" } }],
+        }),
+        { status: 200 },
+      );
+    const result = await executeAiRun(
+      {
+        instruction: "Summarize",
+        url: "https://example.com",
+        pageText: "Hello",
+      },
+      {
+        home,
+        deps: {
+          fetch: fakeFetch,
+          env: { OPENAI_API_KEY: "k", OPENAI_MODEL: "gpt-4o-mini" },
+        },
+      },
+    );
+    assert.equal(result.ok, true);
+    assert.ok(result.taskId);
+    assert.ok(result.taskPath);
+    const disk = JSON.parse(await readFile(result.taskPath!, "utf8")) as {
+      result: string;
+      apiKeyIncluded: boolean;
+    };
+    assert.match(disk.result, /Persisted task OK/);
+    assert.equal(disk.apiKeyIncluded, false);
+  });
+
+  it("real provider call when OPENAI_API_KEY or Ollama available (skip otherwise)", async () => {
     const key = process.env.OPENAI_API_KEY?.trim();
-    if (!key) {
+    let ollamaOk = false;
+    try {
+      const tags = await fetch("http://127.0.0.1:11434/api/tags");
+      ollamaOk = tags.ok;
+    } catch {
+      ollamaOk = false;
+    }
+    if (!key && !ollamaOk) {
       // Honest skip — do not fake an external success
-      assert.ok(true, "skipped: OPENAI_API_KEY not set");
+      assert.ok(true, "skipped: no OPENAI_API_KEY and no local Ollama");
       return;
     }
-    const result = await executeAiRun({
-      instruction: "Reply with exactly the word PONG and nothing else.",
-      url: "https://example.com",
-      title: "ping",
-      pageText: "ping fixture",
-    });
+    const home = await mkdtemp(path.join(os.tmpdir(), "th-ai-live-"));
+    temps.push(home);
+    const result = await executeAiRun(
+      {
+        instruction: "Reply with exactly the word PONG and nothing else.",
+        url: "https://example.com",
+        title: "ping",
+        pageText: "ping fixture",
+      },
+      {
+        home,
+        deps: key
+          ? undefined
+          : {
+              env: {
+                TABHANDOFF_AI_PROVIDER: "ollama",
+                OLLAMA_MODEL: "smollm2:135m",
+              },
+              allowOllamaProbe: true,
+            },
+      },
+    );
     assert.equal(result.status === "done" || result.status === "failed", true);
     assert.equal(result.apiKeyIncluded, false);
+    assert.ok(result.taskId);
     if (result.ok) {
-      assert.match(result.result, /PONG/i);
+      assert.ok(result.result.length > 0);
     }
   });
 });

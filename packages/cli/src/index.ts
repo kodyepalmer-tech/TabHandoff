@@ -338,7 +338,7 @@ async function cmdMcp(): Promise<void> {
 
 async function cmdRunAi(args: Args): Promise<void> {
   const { executeAiRun } = await import("@tabhandoff/bridge");
-  const { resolveAiProvider } = await import("@tabhandoff/runner");
+  const { resolveAiProviderAsync } = await import("@tabhandoff/runner");
   const instruction = flag(args, "instruction");
   if (!instruction) {
     console.error(
@@ -358,7 +358,7 @@ async function cmdRunAi(args: Args): Promise<void> {
     }
   }
 
-  const provider = resolveAiProvider();
+  const provider = await resolveAiProviderAsync();
   if (!provider) {
     console.log(
       JSON.stringify(
@@ -370,7 +370,7 @@ async function cmdRunAi(args: Args): Promise<void> {
           result: "",
           error: "no_api_key",
           message:
-            "No API key configured. Set OPENAI_API_KEY (or ANTHROPIC_API_KEY) — TabHandoff did not call an external model.",
+            "No AI provider configured. Set OPENAI_API_KEY, ANTHROPIC_API_KEY, GROQ_API_KEY, or run Ollama locally — TabHandoff did not call a model.",
           apiKeyIncluded: false,
         },
         null,
@@ -382,7 +382,7 @@ async function cmdRunAi(args: Args): Promise<void> {
   }
 
   console.error(
-    `🕊️ run-ai via ${provider.id} (${provider.model}) — key from env only`,
+    `🕊️ run-ai via ${provider.id} (${provider.model}) — credentials from env / local daemon only`,
   );
   const result = await executeAiRun({
     instruction,
@@ -404,7 +404,9 @@ async function cmdRunAi(args: Args): Promise<void> {
         error: result.error,
         message: result.message,
         handoffId: result.handoffId,
+        taskId: result.taskId,
         resultPath: result.resultPath,
+        taskPath: result.taskPath,
         apiKeyIncluded: false,
       },
       null,

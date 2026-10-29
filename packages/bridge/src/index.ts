@@ -55,8 +55,13 @@ export {
 export {
   executeAiRun,
   aiCompletionAvailable,
+  aiCompletionAvailableAsync,
+  listAiTasks,
+  getAiTask,
+  aiTasksDir,
   type AiRunRequest,
   type AiRunResponse,
+  type AiTaskRecord,
 } from "./ai-run.js";
 export {
   PortableError,

@@ -1,17 +1,23 @@
 /**
- * OpenAI-compatible chat provider for TabHandoff AI execution slice.
+ * Multi-provider chat completion for TabHandoff AI execution.
  *
- * Keys come from process.env (or an explicit options override for tests).
+ * Keys / local endpoints come from process.env (or test overrides).
  * Never log keys. Never write keys into packages/ZIPs.
+ *
+ * Supported (provider-agnostic):
+ * - OpenAI-compatible (`OPENAI_API_KEY` + optional `OPENAI_BASE_URL`)
+ * - Anthropic Messages (`ANTHROPIC_API_KEY`)
+ * - Groq free/OpenAI-compatible (`GROQ_API_KEY`)
+ * - Ollama local (`TABHANDOFF_AI_PROVIDER=ollama` or local `OPENAI_BASE_URL`)
  */
 
-export type AiProviderId = "openai-compatible" | "anthropic";
+export type AiProviderId = "openai-compatible" | "anthropic" | "ollama" | "groq";
 
 export type AiProviderConfig = {
   id: AiProviderId;
   /** Display / request model id */
   model: string;
-  /** Chat completions base (OpenAI-compatible only) */
+  /** Chat completions base (OpenAI-compatible family) */
   baseUrl?: string;
   /** Present only in-memory — never serialize */
   apiKey: string;
@@ -43,29 +49,96 @@ export type AiProviderDeps = {
   /** Injectable for tests */
   fetch?: typeof globalThis.fetch;
   env?: NodeJS.ProcessEnv;
+  /**
+   * When false, skip probing a live local Ollama daemon.
+   * Defaults to true only when `env` is omitted (real process env).
+   */
+  allowOllamaProbe?: boolean;
 };
 
 const DEFAULT_OPENAI_BASE = "https://api.openai.com/v1";
 const DEFAULT_OPENAI_MODEL = "gpt-4o-mini";
 const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-20250514";
+const DEFAULT_GROQ_BASE = "https://api.groq.com/openai/v1";
+const DEFAULT_GROQ_MODEL = "llama-3.1-8b-instant";
+const DEFAULT_OLLAMA_BASE = "http://127.0.0.1:11434/v1";
+const DEFAULT_OLLAMA_MODEL = "llama3.2";
 const MAX_CONTEXT_CHARS = 24_000;
 
-/** Resolve configured provider from env. Returns null when no key is set. */
+function isLocalBaseUrl(url: string): boolean {
+  try {
+    const u = new URL(url);
+    return (
+      u.hostname === "127.0.0.1" ||
+      u.hostname === "localhost" ||
+      u.hostname === "::1"
+    );
+  } catch {
+    return false;
+  }
+}
+
+/** Resolve configured provider from env. Returns null when nothing is configured. */
 export function resolveAiProvider(
   env: NodeJS.ProcessEnv = process.env,
 ): AiProviderConfig | null {
+  const forced = (env.TABHANDOFF_AI_PROVIDER || "").trim().toLowerCase();
+
+  if (forced === "ollama" || forced === "local") {
+    const baseUrl = (
+      env.OPENAI_BASE_URL?.trim() ||
+      env.OLLAMA_HOST?.trim() ||
+      DEFAULT_OLLAMA_BASE
+    )
+      .replace(/\/$/, "")
+      .replace(/\/api$/, "/v1");
+    const normalized = baseUrl.endsWith("/v1") ? baseUrl : `${baseUrl}/v1`;
+    return {
+      id: "ollama",
+      model: env.OLLAMA_MODEL?.trim() || env.OPENAI_MODEL?.trim() || DEFAULT_OLLAMA_MODEL,
+      baseUrl: normalized,
+      // Ollama ignores the bearer token; placeholder keeps OpenAI-compatible clients happy.
+      apiKey: env.OPENAI_API_KEY?.trim() || "ollama",
+    };
+  }
+
+  if (forced === "groq" || env.GROQ_API_KEY?.trim()) {
+    const groqKey = env.GROQ_API_KEY?.trim() || env.OPENAI_API_KEY?.trim();
+    if (groqKey) {
+      return {
+        id: "groq",
+        model: env.GROQ_MODEL?.trim() || env.OPENAI_MODEL?.trim() || DEFAULT_GROQ_MODEL,
+        baseUrl: (env.OPENAI_BASE_URL?.trim() || DEFAULT_GROQ_BASE).replace(/\/$/, ""),
+        apiKey: groqKey,
+      };
+    }
+  }
+
   const openaiKey = env.OPENAI_API_KEY?.trim();
+  const baseUrl = (env.OPENAI_BASE_URL?.trim() || DEFAULT_OPENAI_BASE).replace(
+    /\/$/,
+    "",
+  );
+
+  // Local OpenAI-compatible endpoint (Ollama, LM Studio, etc.) — key optional.
+  if (!openaiKey && isLocalBaseUrl(baseUrl)) {
+    return {
+      id: "ollama",
+      model: env.OPENAI_MODEL?.trim() || env.OLLAMA_MODEL?.trim() || DEFAULT_OLLAMA_MODEL,
+      baseUrl,
+      apiKey: "ollama",
+    };
+  }
+
   if (openaiKey) {
     return {
-      id: "openai-compatible",
+      id: isLocalBaseUrl(baseUrl) ? "ollama" : "openai-compatible",
       model: env.OPENAI_MODEL?.trim() || DEFAULT_OPENAI_MODEL,
-      baseUrl: (env.OPENAI_BASE_URL?.trim() || DEFAULT_OPENAI_BASE).replace(
-        /\/$/,
-        "",
-      ),
+      baseUrl,
       apiKey: openaiKey,
     };
   }
+
   const anthropicKey = env.ANTHROPIC_API_KEY?.trim();
   if (anthropicKey) {
     return {
@@ -74,6 +147,7 @@ export function resolveAiProvider(
       apiKey: anthropicKey,
     };
   }
+
   return null;
 }
 
@@ -83,7 +157,69 @@ export function detectLlmProvider(
 ): "openai" | "anthropic" | null {
   const cfg = resolveAiProvider(env);
   if (!cfg) return null;
-  return cfg.id === "openai-compatible" ? "openai" : "anthropic";
+  return cfg.id === "anthropic" ? "anthropic" : "openai";
+}
+
+/**
+ * Probe a local Ollama daemon. Used by the bridge so Run with AI lights up
+ * without forcing the founder to export a paid cloud key.
+ */
+export async function probeLocalOllama(
+  options?: {
+    fetch?: typeof globalThis.fetch;
+    baseUrl?: string;
+    timeoutMs?: number;
+  },
+): Promise<{ ok: boolean; models: string[]; baseUrl: string }> {
+  const fetchFn = options?.fetch ?? globalThis.fetch;
+  const base = (options?.baseUrl || DEFAULT_OLLAMA_BASE).replace(/\/v1\/?$/, "");
+  const tagsUrl = `${base}/api/tags`;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), options?.timeoutMs ?? 1200);
+  try {
+    const res = await fetchFn(tagsUrl, { signal: ctrl.signal });
+    if (!res.ok) {
+      return { ok: false, models: [], baseUrl: `${base}/v1` };
+    }
+    const json = (await res.json()) as {
+      models?: Array<{ name?: string }>;
+    };
+    const models = (json.models ?? [])
+      .map((m) => m.name)
+      .filter((n): n is string => Boolean(n));
+    return { ok: true, models, baseUrl: `${base}/v1` };
+  } catch {
+    return { ok: false, models: [], baseUrl: `${base}/v1` };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Prefer explicit env config; otherwise adopt a live local Ollama instance.
+ * Mutates a copy of env for the run — never writes secrets to disk.
+ */
+export async function resolveAiProviderAsync(
+  env: NodeJS.ProcessEnv = process.env,
+  deps: { fetch?: typeof globalThis.fetch } = {},
+): Promise<AiProviderConfig | null> {
+  const sync = resolveAiProvider(env);
+  if (sync) return sync;
+
+  const ollama = await probeLocalOllama({ fetch: deps.fetch });
+  if (!ollama.ok) return null;
+
+  const model =
+    env.OLLAMA_MODEL?.trim() ||
+    ollama.models[0]?.split(":")[0] ||
+    DEFAULT_OLLAMA_MODEL;
+
+  return {
+    id: "ollama",
+    model,
+    baseUrl: ollama.baseUrl,
+    apiKey: "ollama",
+  };
 }
 
 function truncate(s: string, max: number): string {
@@ -126,7 +262,13 @@ export async function runAiCompletion(
 ): Promise<AiCompletionResult> {
   const env = deps.env ?? process.env;
   const fetchFn = deps.fetch ?? globalThis.fetch;
-  const provider = resolveAiProvider(env);
+  const allowOllamaProbe =
+    deps.allowOllamaProbe ?? deps.env === undefined;
+  const provider =
+    resolveAiProvider(env) ??
+    (allowOllamaProbe
+      ? await resolveAiProviderAsync(env, { fetch: fetchFn })
+      : null);
 
   if (!provider) {
     return {
@@ -137,7 +279,7 @@ export async function runAiCompletion(
       result: "",
       error: "no_api_key",
       message:
-        "No API key configured. Set OPENAI_API_KEY (or ANTHROPIC_API_KEY) in the environment — TabHandoff did not call an external model.",
+        "No AI provider configured. Set OPENAI_API_KEY, ANTHROPIC_API_KEY, GROQ_API_KEY, or run Ollama locally (TABHANDOFF_AI_PROVIDER=ollama). TabHandoff did not call a model.",
     };
   }
 
@@ -157,16 +299,16 @@ export async function runAiCompletion(
   const maxTokens = input.maxTokens ?? 2048;
 
   try {
-    if (provider.id === "openai-compatible") {
-      return await callOpenAiCompatible(
-        provider,
-        system,
-        user,
-        maxTokens,
-        fetchFn,
-      );
+    if (provider.id === "anthropic") {
+      return await callAnthropic(provider, system, user, maxTokens, fetchFn);
     }
-    return await callAnthropic(provider, system, user, maxTokens, fetchFn);
+    return await callOpenAiCompatible(
+      provider,
+      system,
+      user,
+      maxTokens,
+      fetchFn,
+    );
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return {
@@ -214,7 +356,7 @@ async function callOpenAiCompatible(
       model: provider.model,
       result: "",
       error: `http_${res.status}`,
-      message: `OpenAI-compatible provider returned HTTP ${res.status}: ${body}`,
+      message: `${providerLabel(provider.id)} returned HTTP ${res.status}: ${body}`,
     };
   }
 
@@ -240,7 +382,8 @@ async function callOpenAiCompatible(
     provider: provider.id,
     model: provider.model,
     result: text,
-    message: "Model finished. Result below — review before trusting page-derived claims.",
+    message:
+      "Model finished. Result below — review before trusting page-derived claims.",
   };
 }
 
@@ -302,8 +445,16 @@ async function callAnthropic(
     provider: provider.id,
     model: provider.model,
     result: text,
-    message: "Model finished. Result below — review before trusting page-derived claims.",
+    message:
+      "Model finished. Result below — review before trusting page-derived claims.",
   };
+}
+
+function providerLabel(id: AiProviderId): string {
+  if (id === "ollama") return "Ollama";
+  if (id === "groq") return "Groq";
+  if (id === "anthropic") return "Anthropic";
+  return "OpenAI-compatible provider";
 }
 
 /** Strip anything that looks like a bearer/api key from error text before surfacing. */
@@ -311,6 +462,7 @@ export function sanitizeError(text: string): string {
   return text
     .replace(/Bearer\s+[A-Za-z0-9._\-]+/gi, "Bearer [redacted]")
     .replace(/sk-[A-Za-z0-9_\-]+/g, "[redacted-key]")
+    .replace(/gsk_[A-Za-z0-9_\-]+/g, "[redacted-key]")
     .replace(/x-api-key["']?\s*[:=]\s*["']?[^"'&\s]+/gi, "x-api-key=[redacted]")
     .slice(0, 800);
 }
