@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TabHandoff</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header class="top">
+      <img class="mark" src="icons/mark.svg" width="36" height="36" alt="" />
+      <div>
+        <h1>TabHandoff</h1>
+        <p class="tag">Hand off this tab — keep the proof local.</p>
+      </div>
+    </header>
+
+    <main id="app">
+      <section id="step-capture" class="panel">
+        <h2>What we’ll share</h2>
+        <dl class="meta">
+          <div>
+            <dt>Page</dt>
+            <dd id="page-title">Loading…</dd>
+          </div>
+          <div>
+            <dt>Link</dt>
+            <dd id="page-url" class="mono truncate">—</dd>
+          </div>
+          <div id="selection-block" class="hidden">
+            <dt>Selected text</dt>
+            <dd id="page-selection" class="selection"></dd>
+          </div>
+        </dl>
+        <div class="shot-wrap">
+          <img id="page-shot" class="shot hidden" alt="Page screenshot" />
+          <p id="shot-note" class="note">Screenshot pending…</p>
+        </div>
+
+        <label class="field">
+          <span>What should the next person or bot do?</span>
+          <textarea
+            id="instruction"
+            rows="4"
+            maxlength="8000"
+            placeholder="Example: Summarize this page and identify the next steps."
+          ></textarea>
+        </label>
+
+        <p class="trust">
+          Captured page text is untrusted data. TabHandoff will not pretend an agent ran
+          when only a package is created.
+        </p>
+
+        <div class="actions">
+          <button type="button" id="btn-review" class="primary" disabled>
+            Review handoff
+          </button>
+        </div>
+      </section>
+
+      <section id="step-review" class="panel hidden">
+        <h2>Review before sending</h2>
+        <ul class="review-list">
+          <li><strong>Instruction</strong><span id="rev-instruction"></span></li>
+          <li><strong>Page</strong><span id="rev-title"></span></li>
+          <li><strong>Link</strong><span id="rev-url" class="mono"></span></li>
+          <li id="rev-sel-row" class="hidden">
+            <strong>Selection</strong><span id="rev-selection"></span>
+          </li>
+          <li>
+            <strong>Screenshot</strong><span id="rev-shot">Included when available</span>
+          </li>
+          <li>
+            <strong>Agent run</strong
+            ><span>Not started — this step only creates a package</span>
+          </li>
+        </ul>
+        <div class="actions">
+          <button type="button" id="btn-back" class="ghost">Back</button>
+          <button type="button" id="btn-confirm" class="primary">
+            Create package
+          </button>
+        </div>
+      </section>
+
+      <section id="step-result" class="panel hidden">
+        <h2 id="result-title">Package created</h2>
+        <p id="result-body" class="result-body"></p>
+        <p id="result-path" class="mono path hidden"></p>
+        <div class="actions">
+          <button type="button" id="btn-copy" class="ghost">Copy summary</button>
+          <button type="button" id="btn-download" class="ghost">Download package</button>
+          <button type="button" id="btn-again" class="primary">Done</button>
+        </div>
+      </section>
+
+      <section id="step-settings" class="panel hidden">
+        <h2>Local bridge settings</h2>
+        <p class="note">
+          The bridge runs on this computer only and saves packages into your TabHandoff
+          evidence folder. Paste the token printed when you start the bridge.
+        </p>
+        <label class="field">
+          <span>Bridge address</span>
+          <input id="bridge-base" type="text" value="http://127.0.0.1:17432" />
+        </label>
+        <label class="field">
+          <span>Access token</span>
+          <input id="bridge-token" type="password" autocomplete="off" placeholder="Paste token" />
+        </label>
+        <p id="bridge-status" class="note">Checking bridge…</p>
+        <div class="actions">
+          <button type="button" id="btn-save-settings" class="primary">Save</button>
+          <button type="button" id="btn-settings-back" class="ghost">Back</button>
+        </div>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <button type="button" id="btn-settings" class="linkish">Settings</button>
+      <span id="bridge-pill" class="pill">Bridge: …</span>
+    </footer>
+
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

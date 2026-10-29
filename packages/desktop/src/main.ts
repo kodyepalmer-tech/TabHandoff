@@ -14,12 +14,19 @@ import {
   uniqueHostnames,
   type ActivityFilters,
 } from "@tabhandoff/evidence";
+import {
+  loadOrCreateBridgeConfig,
+  startBridgeServer,
+  type BridgeServer,
+} from "@tabhandoff/bridge";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 let mainWindow: BrowserWindow | null = null;
 let cachedHome = tabHandoffHome();
 const defaultHome = path.join(homedir(), ".tabhandoff");
+let bridge: BridgeServer | null = null;
+let bridgeStartError: string | null = null;
 
 function iconPath(): string {
   return path.join(__dirname, "resources", "icon.png");
@@ -121,10 +128,45 @@ function registerIpc(): void {
             : "image/png";
     return `data:${mime};base64,${buf.toString("base64")}`;
   });
+
+  ipcMain.handle("bridge:status", () => {
+    if (!bridge) {
+      return {
+        running: false,
+        error: bridgeStartError,
+        home: cachedHome,
+        agentExecution: false,
+      };
+    }
+    return {
+      running: true,
+      url: bridge.url,
+      host: bridge.config.host,
+      port: bridge.config.port,
+      token: bridge.config.token,
+      home: bridge.home,
+      agentExecution: false,
+      message:
+        "Bridge is receiving browser packages only. No agent is launched from this step.",
+    };
+  });
 }
 
-app.whenReady().then(() => {
+async function ensureBridge(): Promise<void> {
+  if (bridge) return;
+  try {
+    const config = await loadOrCreateBridgeConfig({ home: cachedHome });
+    bridge = await startBridgeServer({ config, home: cachedHome });
+    bridgeStartError = null;
+  } catch (err) {
+    bridgeStartError = err instanceof Error ? err.message : String(err);
+    bridge = null;
+  }
+}
+
+app.whenReady().then(async () => {
   registerIpc();
+  await ensureBridge();
   createWindow();
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
@@ -133,4 +175,9 @@ app.whenReady().then(() => {
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
+});
+
+app.on("before-quit", () => {
+  void bridge?.close();
+  bridge = null;
 });

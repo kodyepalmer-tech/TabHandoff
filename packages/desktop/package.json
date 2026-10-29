@@ -13,6 +13,7 @@
     "dev": "pnpm build && electron . --no-sandbox"
   },
   "dependencies": {
+    "@tabhandoff/bridge": "workspace:*",
     "@tabhandoff/evidence": "workspace:*"
   },
   "devDependencies": {

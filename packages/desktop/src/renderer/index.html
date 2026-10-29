@@ -69,8 +69,8 @@
           <div id="activity-empty" class="empty hidden">
             <h2>No activity yet</h2>
             <p>
-              Run a handoff from the CLI or MCP, then hit Refresh. Evidence lives in
-              <code>~/.tabhandoff/receipts/</code>.
+              Hand off a tab from the browser extension, or run the CLI / MCP, then hit
+              Refresh. Evidence lives in <code>~/.tabhandoff/receipts/</code>.
             </p>
           </div>
         </section>
@@ -159,6 +159,21 @@
             <p class="fine">
               Changing the folder only changes where this app looks. Existing evidence is never
               deleted or overwritten by the library.
+            </p>
+            <hr class="settings-rule" />
+            <h3>Browser extension bridge</h3>
+            <p class="fine" id="bridge-status-line">Checking local bridge…</p>
+            <label class="field">
+              <span>Access token (paste into the extension Settings)</span>
+              <input id="settings-bridge-token" type="text" spellcheck="false" readonly />
+            </label>
+            <div class="head-actions">
+              <button type="button" class="btn ghost" id="btn-copy-token">Copy token</button>
+              <button type="button" class="btn ghost" id="btn-refresh-bridge">Refresh bridge status</button>
+            </div>
+            <p class="fine">
+              The bridge listens on this computer only. Phase 2 saves packages — it does not
+              launch an agent.
             </p>
           </div>
         </section>

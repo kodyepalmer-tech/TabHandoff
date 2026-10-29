@@ -63,7 +63,7 @@ Privacy default: cookies/creds are **not** transferred; proof stays local unless
 
 | Step | What happens |
 |---|---|
-| **1. Capture** | Point TabHandoff at a page (CLI/MCP today; browser “Handoff” next) |
+| **1. Capture** | Browser extension (right-click / toolbar), or CLI/MCP |
 | **2. Package** | Portable Task Card: URL, context, instructions, permitted evidence |
 | **3. Continue** | Another agent resumes in an **isolated** browser and returns a receipt |
 
@@ -71,11 +71,21 @@ Privacy default: cookies/creds are **not** transferred; proof stays local unless
 
 ---
 
+## Browser extension (Phase 2)
+
+Hand off a live tab without opening Terminal for the capture step:
+
+1. `pnpm build && pnpm bridge` (or `pnpm desktop`)
+2. Load unpacked extension from `packages/extension` — see [docs/extension-setup.md](docs/extension-setup.md)
+3. Right-click → **Hand off with TabHandoff** → review → create package
+
+If the local bridge is off, you still get a downloadable package. TabHandoff never pretends an agent ran when only a package was created. Details: [docs/phase2-browser-extension.md](docs/phase2-browser-extension.md)
+
 ## Why star / contribute
 
 - **Protocol first** — open Task Cards + MCP tools other agents can implement
 - **Proof every run** — postable receipts (the shareable artifact)
-- **Small v0.1** — MCP + Playwright + CLI; no marketplace, no cookie vault
+- **Small v0.1** — MCP + Playwright + CLI + extension; no marketplace, no cookie vault
 
 ---
 

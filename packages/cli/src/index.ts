@@ -57,6 +57,7 @@ Your AI was here. Now the next one can pick up.
 Usage:
   tabhandoff init                 Prepare ~/.tabhandoff + print MCP client snippets
   tabhandoff doctor               Check Node, Playwright, store, optional LLM keys
+  tabhandoff bridge [--port N]    Local loopback receiver for the browser extension
   tabhandoff run --url <url> --instruction <text> [--wait] [--note <text>]
   tabhandoff capture --url <url> [--note <text>] [--instruction <text>]
   tabhandoff status <id>
@@ -300,6 +301,43 @@ async function cmdMcp(): Promise<void> {
   await import(pathToFileURL(entry).href);
 }
 
+async function cmdBridge(args: Args): Promise<void> {
+  const {
+    loadOrCreateBridgeConfig,
+    configFileHint,
+    startBridgeServer,
+    BRIDGE_DEFAULT_PORT,
+  } = await import("@tabhandoff/bridge");
+  const home = tabHandoffHome();
+  const portRaw = flag(args, "port");
+  const port = portRaw ? Number(portRaw) : BRIDGE_DEFAULT_PORT;
+  if (!Number.isFinite(port) || port <= 0 || port >= 65536) {
+    console.error("Usage: tabhandoff bridge [--port 17432]");
+    process.exitCode = 1;
+    return;
+  }
+  const config = await loadOrCreateBridgeConfig({ home, port });
+  console.log(`TabHandoff local bridge`);
+  console.log(`  Home:   ${home}`);
+  console.log(`  Listen: http://${config.host}:${config.port} (this computer only)`);
+  console.log(`  Config: ${configFileHint(home)}`);
+  console.log(``);
+  console.log(`Paste this token into the TabHandoff extension settings:`);
+  console.log(`  ${config.token}`);
+  console.log(``);
+  console.log(`Leave this running while you hand off tabs. Ctrl+C to stop.`);
+  console.log(`Agent execution is NOT started here — packages only (Phase 2).`);
+
+  const server = await startBridgeServer({ config, home });
+  await new Promise<void>((resolve) => {
+    const stop = () => {
+      void server.close().finally(() => resolve());
+    };
+    process.on("SIGINT", stop);
+    process.on("SIGTERM", stop);
+  });
+}
+
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
   const cmd = args._[0] ?? "help";
@@ -329,6 +367,9 @@ async function main(): Promise<void> {
       break;
     case "mcp":
       await cmdMcp();
+      break;
+    case "bridge":
+      await cmdBridge(args);
       break;
     default:
       console.error(`Unknown command: ${cmd}`);
