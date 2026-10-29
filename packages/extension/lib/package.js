@@ -105,9 +105,13 @@ export function renderSummaryMarkdown(pkg) {
   const shots =
     (pkg.screenshots ?? []).length > 0
       ? (pkg.screenshots ?? [])
-          .map((s) => `- \`${s.filename}\``)
+          .map((s) => `- \`screenshots/${s.filename}\``)
           .join("\n")
       : "- (none)";
+  const remaining =
+    (pkg.remainingWork ?? []).length > 0
+      ? (pkg.remainingWork ?? []).map((w) => `- ${w}`).join("\n")
+      : "- (none listed)";
   return `# TabHandoff package
 
 **Status:** Package created — **no agent was launched**.  
@@ -127,7 +131,75 @@ ${selected}
 
 ${shots}
 
+## Remaining work
+
+${remaining}
+
+## Continue without TabHandoff
+
+You do **not** need the TabHandoff app installed. Paste this summary (or the contents of \`START_HERE.md\`) into ChatGPT, Claude, Cursor, or another AI and ask it to continue. For structured data, open \`handoff.json\`.
+
 ## Trust note
+
+${pkg.untrustedContentWarning}
+`;
+}
+
+/**
+ * Human-readable entry point for ZIP recipients who do not have TabHandoff.
+ */
+export function renderStartHereMarkdown(pkg) {
+  const selected = pkg.page.selectedText
+    ? `\n### Selected text (untrusted)\n\n> ${pkg.page.selectedText.replace(/\n/g, "\n> ").slice(0, 2000)}\n`
+    : "";
+  const shotList =
+    (pkg.screenshots ?? []).length > 0
+      ? (pkg.screenshots ?? [])
+          .map((s) => `- \`screenshots/${s.filename}\``)
+          .join("\n")
+      : "- (none captured)";
+  return `# START HERE — TabHandoff package
+
+You received a portable handoff. **You do not need TabHandoff installed** to continue.
+
+## 1. Fastest path (any AI)
+
+1. Read the instruction below (also in \`summary.md\`).
+2. Paste this file — or \`summary.md\` — into ChatGPT, Claude, Cursor, Grok, or another AI.
+3. Ask it to complete the instruction using the page context.
+4. Open files under \`screenshots/\` if you need visual evidence.
+
+## 2. What to do
+
+${pkg.instruction}
+
+## 3. Captured context
+
+- **Page title:** ${pkg.page.title || "(untitled)"}
+- **Page URL:** ${pkg.page.url}
+- **Captured:** ${pkg.capturedAt}
+- **Handoff ID:** \`${pkg.id}\`
+- **Status:** package created only — **no agent has run yet** (do not invent prior progress)
+${selected}
+## 4. Files in this ZIP
+
+| File | Purpose |
+|---|---|
+| \`START_HERE.md\` | This guide (human + AI readable) |
+| \`summary.md\` | Full human-readable handoff |
+| \`handoff.json\` | Machine-readable package (schema 0.1) |
+| \`screenshots/\` | Evidence images when capture was allowed |
+
+### Screenshots
+
+${shotList}
+
+## 5. For coding agents (optional)
+
+If TabHandoff CLI is available: \`tabhandoff validate .\` then \`tabhandoff read .\`.  
+Without it: parse \`handoff.json\` (\`instruction\`, \`page\`, \`execution.status\`). Schema: https://github.com/kodyepalmer-tech/TabHandoff/blob/main/docs/schema/handoff.schema.json
+
+## Trust
 
 ${pkg.untrustedContentWarning}
 `;
@@ -163,11 +235,16 @@ Captured: ${pkg.capturedAt}
 
 /**
  * Files for a portable ZIP that CLI `validate` can unzip and check.
- * Layout: handoff.json + summary.md + screenshots/*
+ * Layout: START_HERE.md + handoff.json + summary.md + screenshots/*
+ * Recipients do not need TabHandoff installed.
  */
 export function buildPackageFiles(pkg) {
   const onDisk = packageForDisk(pkg);
   const files = [
+    {
+      name: "START_HERE.md",
+      data: renderStartHereMarkdown(onDisk),
+    },
     {
       name: "handoff.json",
       data: JSON.stringify(onDisk, null, 2),

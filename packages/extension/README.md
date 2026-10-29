@@ -7,7 +7,8 @@ Hand off the current tab as a **portable ZIP package** (`handoff.json` + summary
 1. Open `chrome://extensions` → Developer mode → **Load unpacked** → this folder.
 2. Open any `https://` page → right-click **Hand off with TabHandoff**.
 3. Write an instruction → **Save package**.
-4. ZIP downloads. Use **Copy brief for another AI** to paste into ChatGPT/Claude/Cursor.
+4. ZIP downloads (`START_HERE.md` + `handoff.json` + `summary.md` + screenshots). Recipients do **not** need TabHandoff installed.
+5. Use **Copy brief for another AI** to paste into ChatGPT/Claude/Cursor without a ZIP.
 
 No token required.
 

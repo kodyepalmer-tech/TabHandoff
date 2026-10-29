@@ -28,9 +28,9 @@ How it works:
 2. Open a normal webpage
 3. Right-click → “Hand off with TabHandoff” (or use the toolbar button)
 4. Write a short instruction
-5. Save a ZIP package (handoff.json + summary + screenshots when available)
+5. Save a ZIP package (START_HERE.md + handoff.json + summary + screenshots when available)
 
-You do **not** need the desktop app for the basic path. Packages download locally. Status is honest: **package created**, not “agent finished,” unless a local workflow actually ran.
+You do **not** need the desktop app for the basic path. Packages download locally. Recipients open START_HERE.md or paste “Copy brief for another AI” into ChatGPT/Claude — **no TabHandoff install required** on their side. Status is honest: **package created**, not “agent finished,” unless a local workflow actually ran.
 
 Optional: connect the local TabHandoff bridge later to save into My Activity on your computer (loopback only; token required).
 
