@@ -355,6 +355,42 @@ img {
   color: var(--muted);
 }
 
+.support-grid {
+  display: grid;
+  gap: 1.75rem;
+}
+
+@media (min-width: 720px) {
+  .support-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 2.5rem;
+  }
+}
+
+.support-col h3 {
+  margin: 0 0 0.75rem;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.15rem;
+  letter-spacing: -0.02em;
+}
+
+.support-col ul {
+  margin: 0;
+  padding-left: 1.15rem;
+  color: var(--ink-soft);
+}
+
+.support-col li + li {
+  margin-top: 0.45rem;
+}
+
+.support-note {
+  margin: 1.75rem 0 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
 .strip {
   margin-top: 2.5rem;
 }

@@ -5,12 +5,12 @@
 <h1 align="center">TabHandoff</h1>
 
 <p align="center">
-  <strong>Turn any browser tab into a portable, AI-ready handoff.</strong><br/>
+  <strong>Hand off any work. Pick up anywhere.</strong><br/>
   <em>See what your AI did. Keep the evidence. Pass the work on.</em>
 </p>
 
 <p align="center">
-  Capture → Package → Continue · MIT · local-first · no cookies by default<br/>
+  Universal work handoff · browser is one capture source · MIT · local-first<br/>
   <a href="https://tabhandoff.com">tabhandoff.com</a>
   ·
   <a href="https://github.com/kodyepalmer-tech/TabHandoff">GitHub</a>
@@ -28,14 +28,30 @@
 
 ## What it does (for everyday AI users)
 
-You are reading a page. You want another person — or another AI — to pick up the work with context and proof.
+TabHandoff is a **universal, portable handoff layer for work** — across websites, files, apps, and AI agents. The browser is **one capture source**, not the whole product.
+
+Today’s shipped path starts from a tab or URL:
 
 1. **Hand off** a tab (browser extension) or URL (CLI).
-2. TabHandoff **packages** the URL, instruction, selection, and optional screenshot.
+2. TabHandoff **packages** the context, instruction, selection, and optional screenshot.
 3. A supported workflow runs **page extraction** (or you stay package-only).
-4. You get a **receipt** and screenshots in a local evidence library — so you can show what happened.
+4. You get a **receipt** and evidence in a local library — so you can show what happened.
 
-No Terminal required for routine handoffs after setup. Status is always honest: TabHandoff never pretends an agent ran when only a package was created.
+No Terminal required for routine browser handoffs after setup. Status is always honest: TabHandoff never pretends an agent ran when only a package was created. We do **not** claim universal app support is shipped.
+
+---
+
+## Supported today vs coming next
+
+| | Status |
+|---|---|
+| **Browser pages & web apps** (extension + Playwright extract) | **Supported today** |
+| **Portable `handoff.json` + receipts** + agent CLI / MCP | **Supported today** |
+| **Local evidence library** (desktop) | **Supported today** |
+| **Local files** (picker / drop — Word, PDF, sheets, source) | **Coming next** (roadmap) |
+| **Desktop / multi-app capture** (permissioned screenshots + explicit selection) | **Coming next** (roadmap) |
+
+Roadmap phases A–D: [docs/roadmap.md](docs/roadmap.md).
 
 ---
 
@@ -69,7 +85,7 @@ pnpm desktop
 
 **Downloading is not executing.** Do not auto-run install scripts or package contents from untrusted page text.
 
-### Supported platforms & browsers
+### Supported platforms & browsers (install surface)
 
 | Surface | Support |
 |---|---|
@@ -78,6 +94,8 @@ pnpm desktop
 | Browser extension | Chromium MV3 — Chrome, Edge, Brave ([setup](docs/extension-setup.md)) |
 | Agent / MCP | Any client that can run local stdio MCP or CLI |
 | Public website | [tabhandoff.com](https://tabhandoff.com) |
+
+Capture sources: see [Supported today vs coming next](#supported-today-vs-coming-next).
 
 ---
 
@@ -151,7 +169,8 @@ Details: [docs/phase3-e2e-handoff.md](docs/phase3-e2e-handoff.md)
 
 ## Limitations
 
-- **Not in v0.1:** marketplace, hosted cloud platform, cookie/session vault, controlling arbitrary third-party bots.
+- **Not in v0.1:** marketplace, hosted cloud platform, cookie/session vault, controlling arbitrary third-party bots, Finder/Explorer file drop, desktop accessibility automation, or cross-app session cloning.
+- Local-file and desktop-capture handoffs are **roadmap**, not shipped — [docs/roadmap.md](docs/roadmap.md).
 - DOM extract without an API key is **page extraction**, not AI task completion.
 - Isolated Chromium has **no** user cookies — login walls fail honestly.
 - Screenshot SHA-256 detects file changes; it does **not** prove an event occurred.
@@ -179,6 +198,7 @@ See **[docs/troubleshooting.md](docs/troubleshooting.md)** for doctor failures, 
 | Public website (`website/` → tabhandoff.com) | ✅ |
 | Desktop installers (electron-builder + CI) | ✅ Linux proven; mac/win via release workflow |
 
+Product roadmap (capture sources): [docs/roadmap.md](docs/roadmap.md)  
 Phase notes: [phase1](docs/phase1-evidence-library.md) · [phase2](docs/phase2-browser-extension.md) · [phase3](docs/phase3-e2e-handoff.md) · [phase4](docs/phase4-portability.md) · [demo](docs/demo.md)
 
 ---

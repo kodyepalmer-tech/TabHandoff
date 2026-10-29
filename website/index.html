@@ -3,10 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>TabHandoff — Hand off any browser tab. Pick up anywhere.</title>
+    <title>TabHandoff — Hand off any work. Pick up anywhere.</title>
     <meta
       name="description"
-      content="TabHandoff turns any browser tab into a portable, AI-ready handoff. Local-first evidence. Open protocol for agents."
+      content="TabHandoff is a universal, portable handoff layer for work. Browser is one capture source. Local-first evidence. Open protocol for agents."
     />
     <link rel="canonical" href="https://tabhandoff.com/" />
     <meta property="og:url" content="https://tabhandoff.com/" />
@@ -15,7 +15,7 @@
     <meta property="og:title" content="TabHandoff" />
     <meta
       property="og:description"
-      content="Hand off any browser tab. Pick up anywhere."
+      content="Hand off any work. Pick up anywhere."
     />
     <meta property="og:image" content="https://tabhandoff.com/assets/tabhandoff-og.png" />
     <meta name="twitter:card" content="summary_large_image" />
@@ -31,6 +31,7 @@
         </a>
         <ul class="nav-links">
           <li><a href="#how">How it works</a></li>
+          <li><a href="#supported">Supported</a></li>
           <li><a href="#agents">Agents</a></li>
           <li><a href="#privacy">Privacy</a></li>
           <li><a href="./download.html">Download</a></li>
@@ -52,10 +53,11 @@
             />
             <span class="hero-brand-name">TabHandoff</span>
           </div>
-          <h1>Hand off any browser tab. Pick up anywhere.</h1>
+          <h1>Hand off any work. Pick up anywhere.</h1>
           <p class="hero-lede">
-            Capture a page, package the context, and let the next person — or
-            the next AI — continue with proof that stays on your machine.
+            A universal handoff layer for work and AI agents. Capture context,
+            package it, and let the next person — or the next AI — continue with
+            proof that stays on your machine. The browser is one capture source.
           </p>
           <div class="btn-row">
             <a class="btn btn-primary" href="./download.html">Download TabHandoff</a>
@@ -74,7 +76,7 @@
             alt="Real TabHandoff demo: capture, package, page extraction, local evidence"
           />
           <figcaption>
-            Real CLI + desktop capture · page extraction · proof stays local
+            Real browser capture demo · page extraction · proof stays local
           </figcaption>
         </figure>
       </header>
@@ -88,17 +90,18 @@
         <ol class="steps">
           <li class="step">
             <span class="step-num">01 · Capture</span>
-            <h3>Hand off a tab</h3>
+            <h3>Start from a source</h3>
             <p>
-              Right-click in Chrome, Edge, or Brave — or pass a URL to the CLI.
-              Add an instruction and optional selection.
+              Today: right-click a browser tab in Chrome, Edge, or Brave — or
+              pass a URL to the CLI. Add an instruction and optional selection.
+              Files and desktop capture are on the roadmap.
             </p>
           </li>
           <li class="step">
             <span class="step-num">02 · Package</span>
             <h3>Portable context</h3>
             <p>
-              TabHandoff builds a versioned handoff: URL, task, metadata, and
+              TabHandoff builds a versioned handoff: sources, task, metadata, and
               permitted evidence — ready for another agent or human.
             </p>
           </li>
@@ -122,11 +125,45 @@
         </figure>
       </section>
 
+      <section class="section" id="supported">
+        <h2>Supported today · Coming next</h2>
+        <p class="section-lede">
+          We ship what works. We do not claim universal app support until it is
+          built.
+        </p>
+        <div class="support-grid">
+          <div class="support-col">
+            <h3>Supported today</h3>
+            <ul>
+              <li>Browser pages &amp; web apps (extension + page extraction)</li>
+              <li>Portable <code>handoff.json</code> + Markdown receipts</li>
+              <li>Local evidence library (desktop)</li>
+              <li>Agent CLI / MCP create · validate · continue · export</li>
+            </ul>
+          </div>
+          <div class="support-col">
+            <h3>Coming next</h3>
+            <ul>
+              <li>Local files (picker / drop — Word, PDF, sheets, source)</li>
+              <li>Desktop capture (permissioned screenshots + explicit selection)</li>
+              <li>Deeper multi-app integrations (allowlisted only)</li>
+            </ul>
+          </div>
+        </div>
+        <p class="support-note">
+          Full phases A–D:
+          <a
+            href="https://github.com/kodyepalmer-tech/TabHandoff/blob/main/docs/roadmap.md"
+            >docs/roadmap.md</a
+          >.
+        </p>
+      </section>
+
       <section class="section" id="agents">
         <div class="agents-block">
           <h2>Built for compatible AI agents</h2>
           <p class="section-lede">
-            TabHandoff is an open handoff protocol. Agents can consume a
+            TabHandoff is an open handoff protocol for work. Agents can consume a
             package, continue the work, and return a result with an execution
             receipt.
           </p>
@@ -160,7 +197,7 @@
         <div class="privacy-block">
           <h2>Local-first. No mandatory cloud.</h2>
           <p class="section-lede">
-            Core functionality never requires uploading your page content.
+            Core functionality never requires uploading captured content.
           </p>
           <ul>
             <li>
@@ -172,9 +209,10 @@
             </li>
             <li>
               Cookies, credentials, and authenticated browser state are not
-              transferred by default.
+              transferred by default. File and screen capture will require
+              explicit permission when those sources ship.
             </li>
-            <li>No telemetry or background upload of page content.</li>
+            <li>No telemetry or background upload of captured content.</li>
           </ul>
         </div>
       </section>
@@ -191,7 +229,7 @@
       </div>
 
       <footer class="site-footer">
-        <span>TabHandoff · MIT · open handoff protocol</span>
+        <span>TabHandoff · MIT · open handoff layer for work</span>
         <span>
           <a href="https://github.com/kodyepalmer-tech/TabHandoff/releases"
             >Releases</a
