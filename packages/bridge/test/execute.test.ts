@@ -17,6 +17,7 @@ const tinyPngBase64 =
 const forcedExtraction = {
   pageExtraction: true,
   llmAgent: false,
+  aiCompletion: false,
   workflows: [
     {
       id: "page_extraction" as const,
@@ -272,6 +273,7 @@ describe("Phase 3 bridge execution", () => {
     setCapabilitiesOverride({
       pageExtraction: false,
       llmAgent: false,
+      aiCompletion: false,
       workflows: [],
       message: "Packages only — Playwright unavailable.",
     });

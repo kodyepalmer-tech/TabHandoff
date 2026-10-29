@@ -109,6 +109,8 @@ Store ZIP: `pnpm pack:extension` → [docs/chrome-web-store.md](docs/chrome-web-
 
 **Optional My Activity:** `pnpm bridge` or `pnpm desktop`, paste token in Settings, check “Also save to My Activity.”
 
+**Optional Run with AI:** set `OPENAI_API_KEY` (or `ANTHROPIC_API_KEY`) on the bridge/CLI process, then check **Run with AI** in the extension (loopback `/v1/ai/run` — no extra CWS host permissions). CLI: `tabhandoff run-ai --instruction "…" --context ./page.txt`. Details: [docs/ai-execution.md](docs/ai-execution.md).
+
 Details: [docs/phase3-e2e-handoff.md](docs/phase3-e2e-handoff.md)
 
 ---
