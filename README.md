@@ -121,6 +121,18 @@ Unsupported bots: copy the exported folder — [docs/manual-export.md](docs/manu
 
 ---
 
+## Run with AI (local bridge)
+
+Set `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` (or a free OpenAI-compatible endpoint via `OPENAI_BASE_URL`) on the bridge/CLI process — never in the extension. Then check **Run with AI** after Review, or use:
+
+```bash
+tabhandoff run-ai --instruction "Summarize this page" --url https://example.com --context ./page.txt
+```
+
+Details: [docs/ai-execution.md](docs/ai-execution.md) · end-to-end handoff: [docs/phase3-e2e-handoff.md](docs/phase3-e2e-handoff.md)
+
+---
+
 ## Privacy & local storage
 
 - Default store: `~/.tabhandoff/` (override with `TABHANDOFF_HOME`)

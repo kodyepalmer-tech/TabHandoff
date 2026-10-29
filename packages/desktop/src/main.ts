@@ -165,6 +165,7 @@ function registerIpc(): void {
         home: cachedHome,
         agentExecution: false,
         pageExtraction: false,
+        aiCompletion: false,
       };
     }
     const { probeBridgeCapabilities } = await import("@tabhandoff/bridge");
@@ -178,6 +179,7 @@ function registerIpc(): void {
       home: bridge.home,
       agentExecution: caps.llmAgent,
       pageExtraction: caps.pageExtraction,
+      aiCompletion: caps.aiCompletion,
       workflows: caps.workflows,
       message: caps.message,
     };

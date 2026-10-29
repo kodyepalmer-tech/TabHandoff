@@ -1,8 +1,8 @@
 import { access } from "node:fs/promises";
-import { detectLlmProvider } from "@tabhandoff/runner";
+import { detectLlmProvider, resolveAiProvider } from "@tabhandoff/runner";
 
 export type SupportedWorkflow = {
-  id: "page_extraction" | "llm_browser";
+  id: "page_extraction" | "llm_browser" | "ai_completion";
   label: string;
   description: string;
 };
@@ -12,6 +12,11 @@ export type BridgeCapabilities = {
   pageExtraction: boolean;
   /** Model-assisted isolated browser when OPENAI_/ANTHROPIC_ key is set */
   llmAgent: boolean;
+  /**
+   * Context→model completion via /v1/ai/run (no Playwright required).
+   * True only when an API key is present in the bridge process env.
+   */
+  aiCompletion: boolean;
   workflows: SupportedWorkflow[];
   /** Honest summary for /v1/status */
   message: string;
@@ -55,7 +60,9 @@ export async function probeBridgeCapabilities(options?: {
   }
 
   const pageExtraction = await chromiumReady();
+  const hasKey = resolveAiProvider() !== null;
   const llmAgent = pageExtraction && detectLlmProvider() !== null;
+  const aiCompletion = hasKey;
   const workflows: SupportedWorkflow[] = [];
 
   if (pageExtraction) {
@@ -74,22 +81,40 @@ export async function probeBridgeCapabilities(options?: {
         "Isolated browser with model-assisted steps (API key detected). Still no cookie/credential clone.",
     });
   }
+  if (aiCompletion) {
+    workflows.push({
+      id: "ai_completion",
+      label: "Run with AI",
+      description:
+        "Send captured page context + instruction to the configured model via loopback /v1/ai/run. Key stays in bridge env — never in the extension or ZIP.",
+    });
+  }
 
   let message: string;
   if (workflows.length === 0) {
     message =
-      "Bridge can store packages only. Playwright/Chromium is not available — no page extraction will run.";
+      "Bridge can store packages only. Playwright/Chromium is not available and no API key is set — no extraction or AI run.";
+  } else if (aiCompletion && llmAgent) {
+    message =
+      "Bridge can store packages, run page extraction / model-assisted browser steps, and Run with AI (/v1/ai/run).";
+  } else if (aiCompletion && pageExtraction) {
+    message =
+      "Bridge can store packages, run page extraction (DOM), and Run with AI on captured context. Isolated browser agent loop needs a key + Chromium (partially ready).";
+  } else if (aiCompletion) {
+    message =
+      "Bridge can store packages and Run with AI on captured context (/v1/ai/run). Playwright/Chromium not available for page extraction.";
   } else if (llmAgent) {
     message =
       "Bridge can store packages and run page extraction or model-assisted browser steps in an isolated Chromium.";
   } else {
     message =
-      "Bridge can store packages and run page extraction (deterministic DOM) in an isolated Chromium. No API key — not autonomous AI.";
+      "Bridge can store packages and run page extraction (deterministic DOM) in an isolated Chromium. No API key — Run with AI unavailable.";
   }
 
   const value: BridgeCapabilities = {
     pageExtraction,
     llmAgent,
+    aiCompletion,
     workflows,
     message,
   };

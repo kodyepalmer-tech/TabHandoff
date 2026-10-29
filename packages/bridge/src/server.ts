@@ -15,6 +15,8 @@ import {
   startSupportedWorkflow,
   workflowInflightCount,
 } from "./execute.js";
+import { executeAiRun, type AiRunRequest } from "./ai-run.js";
+import type { AiProviderDeps } from "@tabhandoff/runner";
 
 export type BridgeServer = {
   config: BridgeConfig;
@@ -121,6 +123,8 @@ export async function startBridgeServer(options: {
   onStored?: (stored: StoredHandoff) => void;
   /** Inject runner for tests via execute.startSupportedWorkflow */
   workflowRunner?: Parameters<typeof startSupportedWorkflow>[0]["runner"];
+  /** Inject AI provider deps (fetch/env) for /v1/ai/run tests */
+  aiDeps?: AiProviderDeps;
 }): Promise<BridgeServer> {
   const home = tabHandoffHome(options.home);
   const { config } = options;
@@ -170,9 +174,103 @@ export async function startBridgeServer(options: {
             ready: true,
             agentExecution: caps.llmAgent,
             pageExtraction: caps.pageExtraction,
+            aiCompletion: caps.aiCompletion,
             workflows: caps.workflows,
             inflight: workflowInflightCount(),
             message: caps.message,
+          },
+          origin,
+        );
+        return;
+      }
+
+      if (req.method === "POST" && url.pathname === "/v1/ai/run") {
+        if (!isExtensionOrLocalOrigin(origin)) {
+          sendJson(res, 403, { ok: false, error: "origin_not_allowed" }, origin);
+          return;
+        }
+        if (!requireAuth(req, res, config, origin)) return;
+
+        let raw: Buffer;
+        try {
+          raw = await readBody(req, BRIDGE_MAX_BODY_BYTES);
+        } catch (e) {
+          const code = (e as { code?: string }).code;
+          if (code === "body_too_large") {
+            sendJson(
+              res,
+              413,
+              {
+                ok: false,
+                error: "body_too_large",
+                message: `Body exceeds ${BRIDGE_MAX_BODY_BYTES} bytes.`,
+              },
+              origin,
+            );
+            return;
+          }
+          throw e;
+        }
+
+        let json: JsonBody;
+        try {
+          json = JSON.parse(raw.toString("utf8")) as JsonBody;
+        } catch {
+          sendJson(
+            res,
+            400,
+            { ok: false, error: "invalid_json", message: "Body must be JSON." },
+            origin,
+          );
+          return;
+        }
+
+        const request: AiRunRequest = {
+          instruction: String(json.instruction ?? ""),
+          url: typeof json.url === "string" ? json.url : undefined,
+          title: typeof json.title === "string" ? json.title : undefined,
+          selectedText:
+            typeof json.selectedText === "string" ? json.selectedText : undefined,
+          pageText: typeof json.pageText === "string" ? json.pageText : undefined,
+          handoffId:
+            typeof json.handoffId === "string" ? json.handoffId : undefined,
+        };
+
+        logLine(
+          `ai/run start handoffId=${request.handoffId ? "yes" : "no"} url=${request.url ? "yes" : "no"}`,
+        );
+
+        const result = await executeAiRun(request, {
+          home,
+          deps: options.aiDeps,
+        });
+
+        // Honest HTTP mapping — never 200-ok a fake success
+        const httpStatus =
+          result.status === "done"
+            ? 200
+            : result.status === "unavailable"
+              ? 503
+              : 502;
+
+        logLine(
+          `ai/run status=${result.status} provider=${result.provider ?? "none"} ok=${result.ok}`,
+        );
+
+        sendJson(
+          res,
+          httpStatus,
+          {
+            ok: result.ok,
+            status: result.status,
+            provider: result.provider,
+            model: result.model,
+            result: result.result,
+            error: result.error,
+            message: result.message,
+            handoffId: result.handoffId,
+            resultPath: result.resultPath,
+            apiKeyIncluded: false,
           },
           origin,
         );

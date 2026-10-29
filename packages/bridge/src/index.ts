@@ -53,6 +53,12 @@ export {
   type LiveHandoffStatus,
 } from "./execute.js";
 export {
+  executeAiRun,
+  aiCompletionAvailable,
+  type AiRunRequest,
+  type AiRunResponse,
+} from "./ai-run.js";
+export {
   PortableError,
   HASH_INTEGRITY_NOTE,
   resolveHandoffDir,

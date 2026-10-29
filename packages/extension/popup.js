@@ -13,15 +13,18 @@ import {
   getBridgeStatus,
   postHandoff,
   getHandoffStatus,
+  postAiRun,
 } from "./lib/bridge-client.js";
 
 const state = {
   tab: null,
   selectedText: "",
+  pageText: "",
   screenshotDataUrl: null,
   screenshotError: null,
   lastPackage: null,
   lastBridgeResult: null,
+  lastAiResult: null,
   bridgeCaps: null,
   pollTimer: null,
   zipDownloaded: false,
@@ -75,6 +78,22 @@ async function readPageSelection(tabId) {
     const [{ result }] = await chrome.scripting.executeScript({
       target: { tabId },
       func: () => window.getSelection()?.toString() ?? "",
+    });
+    return result || "";
+  } catch {
+    return "";
+  }
+}
+
+/** Visible text for AI context — truncated; never includes cookies/storage. */
+async function readPageText(tabId) {
+  try {
+    const [{ result }] = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () => {
+        const text = (document.body?.innerText || "").replace(/\s+\n/g, "\n").trim();
+        return text.slice(0, 20_000);
+      },
     });
     return result || "";
   } catch {
@@ -156,6 +175,7 @@ async function loadCapabilities() {
       ok: false,
       pageExtraction: false,
       agentExecution: false,
+      aiCompletion: false,
       reachable: probe.ok,
       hasToken: Boolean(settings.token),
     };
@@ -184,6 +204,7 @@ function fillReview() {
   const bridgeReady = Boolean(caps?.ok && caps.hasToken);
   const canExtract = Boolean(bridgeReady && caps.pageExtraction);
   const hasLlm = Boolean(bridgeReady && caps.agentExecution);
+  const canAi = Boolean(bridgeReady && caps.aiCompletion);
 
   $("save-activity-row").classList.remove("hidden");
   if (bridgeReady) {
@@ -213,18 +234,39 @@ function fillReview() {
     $("run-workflow-label").textContent = hasLlm
       ? "Also run model-assisted browser steps (isolated — no cookies copied)"
       : "Also run page extraction in an isolated browser (no cookies copied)";
-    $("rev-workflow-note").textContent = hasLlm
-      ? "Default path downloads a package. Model steps only run when checked and a key is present."
-      : "Default path downloads a package. Extraction is deterministic DOM reading — not autonomous AI.";
     $("btn-confirm").textContent = "Save package";
   } else {
     $("rev-workflow").textContent =
       "Download portable ZIP — package created (no agent executed)";
     $("run-workflow-row").classList.add("hidden");
     $("run-workflow").checked = false;
-    $("rev-workflow-note").textContent =
-      "Works without the desktop app. Optional My Activity save needs the local bridge.";
     $("btn-confirm").textContent = "Save package";
+  }
+
+  if (canAi) {
+    $("run-ai-row").classList.remove("hidden");
+    $("run-ai").checked = false;
+    $("run-ai").disabled = false;
+    $("run-ai-label").textContent =
+      "Run with AI on captured context (bridge loopback — key never leaves this computer)";
+    $("rev-workflow").textContent = canExtract
+      ? `${$("rev-workflow").textContent} · optional Run with AI`
+      : "Download ZIP + optional Run with AI via local bridge";
+    $("rev-workflow-note").textContent =
+      "ZIP always downloads. Run with AI calls the model through the local bridge (no extra Chrome host permissions). Status is honest if the key is missing.";
+  } else if (bridgeReady) {
+    $("run-ai-row").classList.add("hidden");
+    $("run-ai").checked = false;
+    $("rev-workflow-note").textContent = canExtract
+      ? hasLlm
+        ? "Default path downloads a package. Model browser steps only run when checked and a key is present."
+        : "Default path downloads a package. Extraction is deterministic DOM reading — not autonomous AI. Set OPENAI_API_KEY on the bridge for Run with AI."
+      : "Works without desktop for ZIP. Set OPENAI_API_KEY (or ANTHROPIC_API_KEY) on the bridge process to enable Run with AI.";
+  } else {
+    $("run-ai-row").classList.add("hidden");
+    $("run-ai").checked = false;
+    $("rev-workflow-note").textContent =
+      "Works without the desktop app. Optional My Activity / Run with AI need the local bridge + token (and an API key in the bridge env).";
   }
 }
 
@@ -377,9 +419,51 @@ function showPackageOnlyResult({ activitySaved, activityError }) {
   show("step-result");
 }
 
+function showAiResult(ai, { activitySaved, handoffId }) {
+  state.lastAiResult = ai;
+  if (ai.status === "done" && ai.ok) {
+    setStatusPill("AI done", "ok");
+    $("result-title").textContent = "Run with AI finished";
+  } else if (ai.status === "unavailable") {
+    setStatusPill("AI unavailable", "");
+    $("result-title").textContent = "Run with AI unavailable";
+  } else {
+    setStatusPill("AI failed", "bad");
+    $("result-title").textContent = "Run with AI failed";
+  }
+
+  const lines = [
+    ai.message || "",
+    ai.provider ? `Provider: ${ai.provider}${ai.model ? ` (${ai.model})` : ""}` : "",
+    "",
+  ];
+  if (ai.result) {
+    lines.push("Result:", ai.result.slice(0, 4000));
+  }
+  if (ai.error && ai.status !== "done") {
+    lines.push("", `Error: ${ai.error}`);
+  }
+  lines.push("", "ZIP package was still saved (API keys are never included).");
+  if (activitySaved) {
+    lines.push("Also saved to My Activity on this computer.");
+  }
+  if (handoffId) {
+    lines.push(`Handoff id: ${handoffId}`);
+  }
+  $("result-body").textContent = lines.filter((l, i, a) => !(l === "" && a[i - 1] === "")).join("\n");
+  if (ai.resultPath) {
+    $("result-path").classList.remove("hidden");
+    $("result-path").textContent = ai.resultPath;
+  } else {
+    $("result-path").classList.add("hidden");
+  }
+  show("step-result");
+}
+
 async function createPackage() {
   stopPoll();
   state.zipDownloaded = false;
+  state.lastAiResult = null;
   const instruction = $("instruction").value.trim();
   let pkg;
   try {
@@ -413,11 +497,30 @@ async function createPackage() {
   const wantRun =
     Boolean($("run-workflow")?.checked) &&
     Boolean(state.bridgeCaps?.ok && state.bridgeCaps.pageExtraction);
+  const wantAi =
+    Boolean($("run-ai")?.checked) &&
+    Boolean(state.bridgeCaps?.ok && state.bridgeCaps.aiCompletion);
 
-  const canTalkToBridge = Boolean(probe.ok && settings.token && wantActivity);
+  const needBridge = wantActivity || wantRun || wantAi;
+  const canTalkToBridge = Boolean(probe.ok && settings.token && needBridge);
 
   if (!canTalkToBridge) {
     state.lastBridgeResult = { ok: false, error: "bridge_skipped" };
+    if (wantAi) {
+      showAiResult(
+        {
+          ok: false,
+          status: "unavailable",
+          message: !probe.ok
+            ? "Bridge offline — ZIP saved, but Run with AI did not run."
+            : "Missing bridge token — ZIP saved, but Run with AI did not run.",
+          error: !probe.ok ? "bridge_offline" : "missing_token",
+          result: "",
+        },
+        { activitySaved: false, handoffId: null },
+      );
+      return;
+    }
     showPackageOnlyResult({
       activitySaved: false,
       activityError: wantActivity
@@ -429,53 +532,95 @@ async function createPackage() {
     return;
   }
 
-  $("result-title").textContent = wantRun
-    ? "Starting handoff…"
-    : "Saving to My Activity…";
-  setStatusPill(wantRun ? "Queued" : "Saving", "");
-  $("result-body").textContent = "Talking to the local TabHandoff bridge…";
+  $("result-title").textContent = wantAi
+    ? "Running with AI…"
+    : wantRun
+      ? "Starting handoff…"
+      : "Saving to My Activity…";
+  setStatusPill(wantAi ? "AI running" : wantRun ? "Queued" : "Saving", "");
+  $("result-body").textContent = wantAi
+    ? "Calling the configured model through the local bridge…"
+    : "Talking to the local TabHandoff bridge…";
   $("result-path").classList.add("hidden");
   show("step-result");
 
-  const result = await postHandoff(settings, {
-    url: pkg.page.url,
-    title: pkg.page.title,
-    selectedText: pkg.page.selectedText,
-    instruction: pkg.instruction,
-    screenshots: screenshotPayload(),
-    extensionId: chrome.runtime.id,
-    runWorkflow: wantRun,
-  });
-  state.lastBridgeResult = result;
+  let handoffId = null;
+  let activitySaved = false;
 
-  if (result.ok) {
-    if (result.workflowStarted) {
-      applyLiveStatus({
-        ...result,
-        executionStatus: result.executionStatus || "running",
-        desktopHint: result.desktopHint,
+  if (wantActivity || wantRun) {
+    const result = await postHandoff(settings, {
+      url: pkg.page.url,
+      title: pkg.page.title,
+      selectedText: pkg.page.selectedText,
+      instruction: pkg.instruction,
+      screenshots: screenshotPayload(),
+      extensionId: chrome.runtime.id,
+      runWorkflow: wantRun,
+    });
+    state.lastBridgeResult = result;
+
+    if (result.ok) {
+      handoffId = result.id;
+      activitySaved = true;
+      if (result.workflowStarted && !wantAi) {
+        applyLiveStatus({
+          ...result,
+          executionStatus: result.executionStatus || "running",
+          desktopHint: result.desktopHint,
+        });
+        await pollUntilDone(settings, result.id);
+        return;
+      }
+      if (result.workflowStarted && wantAi) {
+        // Start browser workflow in background; still run AI completion now.
+        void pollUntilDone(settings, result.id);
+      }
+    } else if (!wantAi) {
+      showPackageOnlyResult({
+        activitySaved: false,
+        activityError: result.message || "bridge could not save",
       });
-      await pollUntilDone(settings, result.id);
       return;
     }
+  }
 
+  if (wantAi) {
+    if (!state.pageText && state.tab?.id) {
+      state.pageText = await readPageText(state.tab.id);
+    }
+    const ai = await postAiRun(settings, {
+      url: pkg.page.url,
+      title: pkg.page.title,
+      selectedText: pkg.page.selectedText,
+      pageText: state.pageText || undefined,
+      instruction: pkg.instruction,
+      handoffId: handoffId || undefined,
+    });
+    showAiResult(ai, { activitySaved, handoffId });
+    return;
+  }
+
+  if (activitySaved) {
     setStatusPill("Package created", "ok");
     $("result-title").textContent = "Package created — not agent executed";
     $("result-body").textContent =
-      (result.message || "Saved on this computer. No agent was launched.") +
+      (state.lastBridgeResult?.message ||
+        "Saved on this computer. No agent was launched.") +
       "\n\nZIP also downloaded for sharing." +
       "\n\n" +
-      (result.desktopHint ||
+      (state.lastBridgeResult?.desktopHint ||
         "Open TabHandoff desktop → My Activity and refresh.");
     $("result-path").classList.remove("hidden");
     $("result-path").textContent =
-      result.receiptDir || result.handoffPath || "";
+      state.lastBridgeResult?.receiptDir ||
+      state.lastBridgeResult?.handoffPath ||
+      "";
     return;
   }
 
   showPackageOnlyResult({
     activitySaved: false,
-    activityError: result.message || "bridge could not save",
+    activityError: "bridge could not save",
   });
 }
 
@@ -575,6 +720,9 @@ async function init() {
   state.selectedText =
     (await readPendingSelection()) ||
     (state.tab?.id ? await readPageSelection(state.tab.id) : "");
+  if (state.tab?.id && state.tab.url?.startsWith("http")) {
+    state.pageText = await readPageText(state.tab.id);
+  }
 
   renderCapture();
   void refreshBridgePill().then(() => loadCapabilities());

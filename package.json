@@ -11,8 +11,9 @@
   "scripts": {
     "build": "pnpm -r run build",
     "typecheck": "pnpm -r run typecheck",
-    "test": "pnpm test:evidence && pnpm test:bridge",
+    "test": "pnpm test:evidence && pnpm test:runner && pnpm test:bridge",
     "test:evidence": "pnpm --filter @tabhandoff/evidence test",
+    "test:runner": "pnpm --filter @tabhandoff/runner test",
     "test:bridge": "pnpm --filter @tabhandoff/bridge test",
     "test:agent": "pnpm --filter @tabhandoff/bridge exec node --import tsx --test test/agent-integration.test.ts",
     "desktop": "pnpm --filter @tabhandoff/desktop start",

@@ -79,6 +79,10 @@ Job runner (isolated browser):
   tabhandoff status <id>
   tabhandoff receipt <id>
 
+AI on captured context (no Playwright; key from env only):
+  tabhandoff run-ai --instruction <text> [--url <url>] [--title <t>] [--selected <text>] [--context <file-or-text>] [--handoff <id>]
+  Bridge: POST /v1/ai/run (extension uses loopback — no CWS host-permission expansion)
+
 Portable packages (agents — §12):
   tabhandoff create --url <url> --instruction <text> [--title <t>] [--selected <text>]
   tabhandoff create --file <path> [--file <path>…] --instruction <text>   # file-only (no URL)
@@ -191,8 +195,8 @@ async function cmdDoctor(): Promise<void> {
     name: "llm-key",
     ok: true,
     detail: llm
-      ? `${llm} detected — agent loop enabled`
-      : "none — DOM extractor only (fine for v0.1 public extracts)",
+      ? `${llm} detected — agent loop + run-ai / /v1/ai/run enabled`
+      : "none — DOM extractor only; run-ai unavailable until OPENAI_API_KEY or ANTHROPIC_API_KEY is set",
   });
 
   checks.push({
@@ -330,6 +334,84 @@ async function cmdMcp(): Promise<void> {
   const { pathToFileURL } = await import("node:url");
   const entry = path.join(repoRoot, "packages/mcp/dist/stdio.js");
   await import(pathToFileURL(entry).href);
+}
+
+async function cmdRunAi(args: Args): Promise<void> {
+  const { executeAiRun } = await import("@tabhandoff/bridge");
+  const { resolveAiProvider } = await import("@tabhandoff/runner");
+  const instruction = flag(args, "instruction");
+  if (!instruction) {
+    console.error(
+      "Usage: tabhandoff run-ai --instruction <text> [--url <url>] [--title <t>] [--selected <text>] [--context <file-or-text>] [--handoff <id>]",
+    );
+    process.exitCode = 1;
+    return;
+  }
+
+  let pageText = flag(args, "context");
+  if (pageText) {
+    try {
+      // Prefer file contents when --context points at an existing path
+      pageText = await readFile(pageText, "utf8");
+    } catch {
+      /* treat flag value as literal context text */
+    }
+  }
+
+  const provider = resolveAiProvider();
+  if (!provider) {
+    console.log(
+      JSON.stringify(
+        {
+          ok: false,
+          status: "unavailable",
+          provider: null,
+          model: null,
+          result: "",
+          error: "no_api_key",
+          message:
+            "No API key configured. Set OPENAI_API_KEY (or ANTHROPIC_API_KEY) — TabHandoff did not call an external model.",
+          apiKeyIncluded: false,
+        },
+        null,
+        2,
+      ),
+    );
+    process.exitCode = 2;
+    return;
+  }
+
+  console.error(
+    `🕊️ run-ai via ${provider.id} (${provider.model}) — key from env only`,
+  );
+  const result = await executeAiRun({
+    instruction,
+    url: flag(args, "url"),
+    title: flag(args, "title"),
+    selectedText: flag(args, "selected"),
+    pageText,
+    handoffId: flag(args, "handoff"),
+  });
+
+  console.log(
+    JSON.stringify(
+      {
+        ok: result.ok,
+        status: result.status,
+        provider: result.provider,
+        model: result.model,
+        result: result.result,
+        error: result.error,
+        message: result.message,
+        handoffId: result.handoffId,
+        resultPath: result.resultPath,
+        apiKeyIncluded: false,
+      },
+      null,
+      2,
+    ),
+  );
+  if (!result.ok) process.exitCode = result.status === "unavailable" ? 2 : 1;
 }
 
 async function cmdBridge(args: Args): Promise<void> {
@@ -815,6 +897,9 @@ async function main(): Promise<void> {
       break;
     case "run":
       await cmdRun(args);
+      break;
+    case "run-ai":
+      await cmdRunAi(args);
       break;
     case "capture":
       await cmdCapture(args);

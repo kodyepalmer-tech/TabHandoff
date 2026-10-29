@@ -12,11 +12,12 @@ Hand off the current tab as a **portable ZIP package** (`handoff.json` + summary
 
 No token required.
 
-## Optional: My Activity / extraction
+## Optional: My Activity / extraction / Run with AI
 
 1. Run `pnpm bridge` or the desktop app; copy the access token.
 2. Popup → **Settings** → paste token.
 3. On Review, check **Also save to My Activity** (and optionally page extraction).
+4. **Run with AI** (when the bridge has an API key): sends captured context + instruction to `/v1/ai/run` on loopback. The extension never holds the model key and does not request OpenAI/Anthropic host permissions. See [docs/ai-execution.md](../../docs/ai-execution.md).
 
 ## Store ZIP
 
