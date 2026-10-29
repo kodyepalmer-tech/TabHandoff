@@ -29,3 +29,17 @@ export {
 } from "./package.js";
 export { writeHandoffToHome, type StoredHandoff } from "./store.js";
 export { startBridgeServer, type BridgeServer } from "./server.js";
+export {
+  probeBridgeCapabilities,
+  clearCapabilitiesCache,
+  setCapabilitiesOverride,
+  type BridgeCapabilities,
+  type SupportedWorkflow,
+} from "./capabilities.js";
+export {
+  getLiveHandoffStatus,
+  startSupportedWorkflow,
+  patchHandoffExecution,
+  workflowInflightCount,
+  type LiveHandoffStatus,
+} from "./execute.js";

@@ -72,20 +72,30 @@
             <strong>Screenshot</strong><span id="rev-shot">Included when available</span>
           </li>
           <li>
-            <strong>Agent run</strong
-            ><span>Not started — this step only creates a package</span>
+            <strong>What happens next</strong
+            ><span id="rev-workflow">Checking local bridge…</span>
           </li>
         </ul>
+        <label class="field check" id="run-workflow-row">
+          <input type="checkbox" id="run-workflow" checked />
+          <span id="run-workflow-label"
+            >Also run page extraction in an isolated browser (no cookies copied)</span
+          >
+        </label>
+        <p class="trust" id="rev-workflow-note">
+          Page extraction is deterministic DOM reading — not autonomous AI completion.
+        </p>
         <div class="actions">
           <button type="button" id="btn-back" class="ghost">Back</button>
           <button type="button" id="btn-confirm" class="primary">
-            Create package
+            Hand off
           </button>
         </div>
       </section>
 
       <section id="step-result" class="panel hidden">
-        <h2 id="result-title">Package created</h2>
+        <h2 id="result-title">Working…</h2>
+        <p id="result-status" class="pill status-pill">…</p>
         <p id="result-body" class="result-body"></p>
         <p id="result-path" class="mono path hidden"></p>
         <div class="actions">

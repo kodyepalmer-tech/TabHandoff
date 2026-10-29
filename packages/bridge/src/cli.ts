@@ -32,6 +32,8 @@ async function main(): Promise<void> {
   console.log(`Redacted config: ${JSON.stringify(redactedConfig(config))}`);
   console.log(``);
   console.log(`Leave this running while you hand off tabs from the browser.`);
+  console.log(`Supported workflows: page extraction (DOM) when Playwright is installed;`);
+  console.log(`model-assisted browser only if an API key is set. Status is always honest.`);
   console.log(`Press Ctrl+C to stop.`);
 
   const server = await startBridgeServer({ config, home });

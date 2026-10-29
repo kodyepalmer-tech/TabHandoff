@@ -129,15 +129,18 @@ function registerIpc(): void {
     return `data:${mime};base64,${buf.toString("base64")}`;
   });
 
-  ipcMain.handle("bridge:status", () => {
+  ipcMain.handle("bridge:status", async () => {
     if (!bridge) {
       return {
         running: false,
         error: bridgeStartError,
         home: cachedHome,
         agentExecution: false,
+        pageExtraction: false,
       };
     }
+    const { probeBridgeCapabilities } = await import("@tabhandoff/bridge");
+    const caps = await probeBridgeCapabilities();
     return {
       running: true,
       url: bridge.url,
@@ -145,9 +148,10 @@ function registerIpc(): void {
       port: bridge.config.port,
       token: bridge.config.token,
       home: bridge.home,
-      agentExecution: false,
-      message:
-        "Bridge is receiving browser packages only. No agent is launched from this step.",
+      agentExecution: caps.llmAgent,
+      pageExtraction: caps.pageExtraction,
+      workflows: caps.workflows,
+      message: caps.message,
     };
   });
 }

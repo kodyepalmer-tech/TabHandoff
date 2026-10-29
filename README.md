@@ -71,13 +71,16 @@ Privacy default: cookies/creds are **not** transferred; proof stays local unless
 
 ---
 
-## Browser extension (Phase 2)
+## Browser extension + end-to-end handoff (Phase 2–3)
 
-Hand off a live tab without opening Terminal for the capture step:
+Hand off a live tab without opening Terminal for the capture step. With the bridge running, confirm to run **page extraction** (isolated Chromium / DOM — not autonomous AI unless an API key is set):
 
 1. `pnpm build && pnpm bridge` (or `pnpm desktop`)
 2. Load unpacked extension from `packages/extension` — see [docs/extension-setup.md](docs/extension-setup.md)
-3. Right-click → **Hand off with TabHandoff** → review → create package
+3. Right-click → **Hand off with TabHandoff** → review → **Hand off**
+4. Watch status in the popup → open desktop **My Activity** for receipts and screenshots
+
+Details: [docs/phase3-e2e-handoff.md](docs/phase3-e2e-handoff.md)
 
 If the local bridge is off, you still get a downloadable package. TabHandoff never pretends an agent ran when only a package was created. Details: [docs/phase2-browser-extension.md](docs/phase2-browser-extension.md)
 

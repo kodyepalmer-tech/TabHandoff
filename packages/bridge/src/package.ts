@@ -202,6 +202,34 @@ export function packageForDisk(
   };
 }
 
+function statusHeadline(pkg: PortableHandoffPackage): string {
+  const st = pkg.execution.status;
+  const label = pkg.execution.workflowLabel;
+  if (st === "package_created") {
+    return "Package created — **no agent was launched**.";
+  }
+  if (st === "queued" || st === "running") {
+    return label
+      ? `In progress — ${label}.`
+      : "Supported workflow in progress.";
+  }
+  if (st === "succeeded") {
+    if (pkg.execution.mode === "dom") {
+      return "Page extraction finished (**deterministic DOM — not autonomous AI**).";
+    }
+    if (pkg.execution.mode === "llm") {
+      return "Model-assisted isolated browser finished.";
+    }
+    return label ? `Finished — ${label}.` : "Workflow finished.";
+  }
+  if (st === "failed") {
+    return label
+      ? `Failed — ${label}. Partial evidence kept.`
+      : "Workflow failed. Partial evidence kept.";
+  }
+  return `Status: ${st}.`;
+}
+
 export function renderSummaryMarkdown(pkg: PortableHandoffPackage): string {
   const selected = pkg.page.selectedText
     ? `\n## Selected text\n\n> ${pkg.page.selectedText.replace(/\n/g, "\n> ")}\n`
@@ -216,12 +244,22 @@ export function renderSummaryMarkdown(pkg: PortableHandoffPackage): string {
           .join("\n")
       : "- (none)";
 
+  const modeLine = pkg.execution.mode
+    ? `\n**Mode:** \`${pkg.execution.mode}\`${
+        pkg.execution.mode === "dom"
+          ? " (page extraction — not autonomous AI)"
+          : " (model-assisted; API key present)"
+      }`
+    : "";
+
   return `# TabHandoff package
 
-**Status:** Package created — **no agent was launched**.  
+**Status:** ${statusHeadline(pkg)}  
 **Handoff ID:** \`${pkg.id}\`  
 **Captured:** ${pkg.capturedAt}  
 **Schema:** ${pkg.schemaVersion}
+${modeLine}
+**Agent launched:** ${pkg.execution.agentLaunched ? "yes" : "no"}
 
 ## What to do
 
@@ -267,15 +305,25 @@ ${pkg.untrustedContentWarning}
 export function renderTaskCardYaml(pkg: PortableHandoffPackage): string {
   const escape = (s: string) =>
     JSON.stringify(s); /* safe scalar quoting */
+  const tags =
+    pkg.execution.mode === "dom"
+      ? ["browser-extension", "page-extraction"]
+      : pkg.execution.mode === "llm"
+        ? ["browser-extension", "llm-browser"]
+        : ["browser-extension", "package-only"];
+  const description =
+    pkg.execution.status === "package_created"
+      ? "Created from the TabHandoff browser extension (package only)."
+      : pkg.execution.workflowLabel ||
+        "Created from the TabHandoff browser extension.";
   return `schemaVersion: "0.1"
 name: ${escape(pkg.page.title || "Browser handoff")}
-description: ${escape("Created from the TabHandoff browser extension (package only).")}
+description: ${escape(description)}
 startUrl: ${escape(pkg.page.url)}
 instruction: ${escape(pkg.instruction)}
 successHints: []
 tags:
-  - browser-extension
-  - package-only
+${tags.map((t) => `  - ${t}`).join("\n")}
 sourceHandoffId: ${escape(pkg.id)}
 createdAt: ${escape(pkg.capturedAt)}
 `;

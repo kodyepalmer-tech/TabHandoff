@@ -27,6 +27,53 @@ export async function probeBridge(settings) {
   }
 }
 
+/** Authenticated capability probe — what workflows the bridge can run. */
+export async function getBridgeStatus(settings) {
+  const base = settings.base || DEFAULT_BASE;
+  const token = settings.token || "";
+  if (!token) {
+    return {
+      ok: false,
+      error: "missing_token",
+      pageExtraction: false,
+      workflows: [],
+      message: "Add your local bridge token in Settings.",
+    };
+  }
+  try {
+    const res = await fetch(`${base}/v1/status`, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return {
+        ok: false,
+        error: body.error || `http_${res.status}`,
+        pageExtraction: false,
+        workflows: [],
+        message: body.message || "Bridge status unavailable.",
+      };
+    }
+    return {
+      ok: true,
+      pageExtraction: Boolean(body.pageExtraction),
+      agentExecution: Boolean(body.agentExecution),
+      workflows: Array.isArray(body.workflows) ? body.workflows : [],
+      message: body.message || "",
+      home: body.home,
+    };
+  } catch {
+    return {
+      ok: false,
+      error: "bridge_unreachable",
+      pageExtraction: false,
+      workflows: [],
+      message: "Could not reach the local TabHandoff bridge.",
+    };
+  }
+}
+
 export async function postHandoff(settings, payload) {
   const base = settings.base || DEFAULT_BASE;
   const token = settings.token || "";
@@ -78,5 +125,34 @@ export async function postHandoff(settings, payload) {
     };
   }
 
-  return { ok: true, ...body };
+  return { ok: true, httpStatus: res.status, ...body };
+}
+
+export async function getHandoffStatus(settings, id) {
+  const base = settings.base || DEFAULT_BASE;
+  const token = settings.token || "";
+  if (!token || !id) {
+    return { ok: false, error: "missing_token_or_id" };
+  }
+  try {
+    const res = await fetch(`${base}/v1/handoffs/${encodeURIComponent(id)}`, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return {
+        ok: false,
+        error: body.error || `http_${res.status}`,
+        message: body.message,
+      };
+    }
+    return body;
+  } catch {
+    return {
+      ok: false,
+      error: "bridge_unreachable",
+      message: "Lost connection to the local bridge while checking progress.",
+    };
+  }
 }

@@ -358,7 +358,17 @@ async function refreshBridgeStatus() {
   }
   const st = await api.bridgeStatus();
   if (st.running) {
-    $("#bridge-status-line").textContent = `Listening at ${st.url} (this computer only). Packages only — no agent launch.`;
+    const bits = [`Listening at ${st.url} (this computer only).`];
+    if (st.pageExtraction) {
+      bits.push(
+        st.agentExecution
+          ? "Can run page extraction or model-assisted browser steps."
+          : "Can run page extraction (DOM — not autonomous AI).",
+      );
+    } else {
+      bits.push("Packages only — Playwright unavailable for extraction.");
+    }
+    $("#bridge-status-line").textContent = bits.join(" ");
     $("#settings-bridge-token").value = st.token || "";
   } else {
     $("#bridge-status-line").textContent = st.error
@@ -385,6 +395,12 @@ async function boot() {
   showView("activity");
   await refresh();
   await refreshBridgeStatus();
+  // Auto-refresh My Activity so bridge workflow results appear without a manual click
+  setInterval(() => {
+    if (state.view === "activity" || state.view === "evidence") {
+      void refresh();
+    }
+  }, 4000);
 }
 
 boot().catch((err) => {
