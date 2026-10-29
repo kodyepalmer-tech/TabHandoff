@@ -1,0 +1,12 @@
+schemaVersion: "0.1"
+name: "notes.txt"
+description: "Created from TabHandoff file handoff (package only — files attached, not analyzed unless noted)."
+sourceTypes:
+  - file
+instruction: "Summarize this notes file in two sentences."
+successHints: []
+tags:
+  - file-handoff
+  - package-only
+sourceHandoffId: "sample-file-001"
+createdAt: "2026-10-29T02:00:00.000Z"

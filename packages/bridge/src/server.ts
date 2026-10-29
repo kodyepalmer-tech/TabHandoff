@@ -291,6 +291,28 @@ export async function startBridgeServer(options: {
           return;
         }
 
+        if (!pkg.page?.url) {
+          sendJson(
+            res,
+            201,
+            {
+              ok: true,
+              id: stored.id,
+              executionStatus: "package_created",
+              agentLaunched: false,
+              workflowStarted: false,
+              message:
+                "Package created. Browser workflows require a page URL — file packages stay package-only.",
+              receiptDir: stored.receiptDir,
+              handoffPath: stored.handoffPath,
+              summaryPath: stored.summaryPath,
+              desktopHint: stored.desktopHint,
+            },
+            origin,
+          );
+          return;
+        }
+
         const started = await startSupportedWorkflow({
           home,
           id: stored.id,

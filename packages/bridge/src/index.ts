@@ -6,6 +6,10 @@ export {
   BRIDGE_MAX_SCREENSHOT_BYTES,
   BRIDGE_MAX_SELECTED_TEXT_CHARS,
   BRIDGE_MAX_TITLE_CHARS,
+  BRIDGE_MAX_FILE_SOURCES,
+  BRIDGE_MAX_FILE_BYTES,
+  BRIDGE_MAX_FILES_TOTAL_BYTES,
+  BRIDGE_MAX_TEXT_EXCERPT_CHARS,
 } from "./limits.js";
 export {
   tabHandoffHome,
@@ -21,11 +25,16 @@ export {
 } from "./config.js";
 export {
   buildPortablePackage,
+  buildFilePortablePackage,
+  fileContentPolicy,
+  guessMediaType,
   packageForDisk,
   renderSummaryMarkdown,
   renderTaskCardYaml,
   PackageValidationError,
   type CaptureInput,
+  type FileCaptureInput,
+  type BuiltFilePackage,
 } from "./package.js";
 export { writeHandoffToHome, type StoredHandoff } from "./store.js";
 export { startBridgeServer, type BridgeServer } from "./server.js";
@@ -50,6 +59,8 @@ export {
   readHandoffPackage,
   validateHandoffTarget,
   createPortableHandoff,
+  createFilePortableHandoff,
+  verifyFileArtifactIntegrity,
   appendProgress,
   attachEvidence,
   markExecutionStatus,
@@ -62,4 +73,5 @@ export {
   type ContinueHandoffInput,
   type ExportHandoffInput,
   type ExportHandoffResult,
+  type FileIntegrityResult,
 } from "./portable.js";

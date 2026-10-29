@@ -602,6 +602,49 @@ select:focus {
   margin-bottom: 14px;
 }
 
+.field textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 96px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--ink);
+  padding: 10px 12px;
+  font: inherit;
+  line-height: 1.45;
+}
+
+.handoff-drop {
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+  padding: 28px 22px;
+  margin-bottom: 16px;
+  background: rgba(255, 255, 255, 0.02);
+  transition: border-color 160ms ease, background 160ms ease;
+}
+
+.handoff-drop.is-dragover {
+  border-color: #fff;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.handoff-drop-title {
+  margin: 0 0 6px;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+}
+
+.handoff-file-list {
+  margin-top: 14px;
+}
+
+.file-meta {
+  margin-bottom: 6px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
 .settings-rule {
   border: none;
   border-top: 1px solid var(--line);

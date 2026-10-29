@@ -26,14 +26,16 @@ export function filterActivities(
     if (q) {
       const hay = [
         r.id,
-        r.url,
+        r.url ?? "",
         r.hostname,
+        r.displayLabel ?? "",
         r.pageTitle ?? "",
         r.instruction,
         r.note ?? "",
         r.resultSummary ?? "",
         r.tags.join(" "),
         r.status,
+        ...(r.fileSources ?? []).map((f) => f.filename),
       ]
         .join("\n")
         .toLowerCase();

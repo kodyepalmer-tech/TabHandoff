@@ -28,7 +28,11 @@ export type StoredHandoffStatus = StoredHandoff["executionStatus"];
 
 export async function writeHandoffToHome(
   pkg: PortableHandoffPackage,
-  options?: { home?: string },
+  options?: {
+    home?: string;
+    /** Optional artifact bytes to write under artifacts/ */
+    artifacts?: Array<{ artifactFilename: string; bytes: Buffer }>;
+  },
 ): Promise<StoredHandoff> {
   const home = tabHandoffHome(options?.home);
   const receiptDir = path.join(receiptsDir(home), pkg.id);
@@ -42,6 +46,15 @@ export async function writeHandoffToHome(
     const dest = path.join(shotsDir, shot.filename);
     await writeFile(dest, Buffer.from(shot.dataBase64, "base64"));
     screenshotPaths.push(dest);
+  }
+
+  if (options?.artifacts?.length) {
+    const artifactsDir = path.join(receiptDir, "artifacts");
+    await mkdir(artifactsDir, { recursive: true });
+    for (const art of options.artifacts) {
+      const safe = path.basename(art.artifactFilename);
+      await writeFile(path.join(artifactsDir, safe), art.bytes);
+    }
   }
 
   const onDisk = packageForDisk(pkg);
@@ -58,20 +71,24 @@ export async function writeHandoffToHome(
   await writeFile(receiptPath, summary, "utf8");
   await writeFile(cardPath, renderTaskCardYaml(onDisk), "utf8");
 
+  const fileSources = (pkg.sources ?? []).filter((s) => s.type === "file");
   const now = new Date().toISOString();
+  const note = pkg.page?.selectedText
+    ? `Selected text captured (${pkg.page.selectedText.length} chars). Package only — no agent launched.`
+    : fileSources.length > 0
+      ? `File handoff (${fileSources.length} file(s)). Package only — no agent launched. Attachments not analyzed unless noted.`
+      : "Package only — no agent launched.";
   const job: HandoffJob = {
     id: pkg.id,
-    url: pkg.page.url,
+    ...(pkg.page?.url ? { url: pkg.page.url } : {}),
     instruction: pkg.instruction,
-    note: pkg.page.selectedText
-      ? `Selected text captured (${pkg.page.selectedText.length} chars). Package only — no agent launched.`
-      : "Package only — no agent launched.",
+    note,
     status: "package_created",
     createdAt: pkg.capturedAt,
     updatedAt: now,
     actions: pkg.execution.events.map((e) => ({
       at: e.at,
-      tool: e.tool ?? "extension.package",
+      tool: e.tool ?? (pkg.page ? "extension.package" : "desktop.file_package"),
       detail: e.detail,
       ok: e.ok ?? true,
     })),

@@ -18,7 +18,7 @@ const repoRoot = path.resolve(__dirname, "../../..");
 
 type Args = {
   _: string[];
-  flags: Record<string, string | boolean>;
+  flags: Record<string, string | boolean | string[]>;
 };
 
 function parseArgs(argv: string[]): Args {
@@ -31,7 +31,14 @@ function parseArgs(argv: string[]): Args {
       if (!next || next.startsWith("--")) {
         out.flags[key] = true;
       } else {
-        out.flags[key] = next;
+        const existing = out.flags[key];
+        if (typeof existing === "string") {
+          out.flags[key] = [existing, next];
+        } else if (Array.isArray(existing)) {
+          existing.push(next);
+        } else {
+          out.flags[key] = next;
+        }
         i++;
       }
     } else {
@@ -44,6 +51,13 @@ function parseArgs(argv: string[]): Args {
 function flag(args: Args, name: string): string | undefined {
   const v = args.flags[name];
   return typeof v === "string" ? v : undefined;
+}
+
+function flagList(args: Args, name: string): string[] {
+  const v = args.flags[name];
+  if (typeof v === "string") return [v];
+  if (Array.isArray(v)) return v;
+  return [];
 }
 
 function bool(args: Args, name: string): boolean {
@@ -67,6 +81,7 @@ Job runner (isolated browser):
 
 Portable packages (agents — §12):
   tabhandoff create --url <url> --instruction <text> [--title <t>] [--selected <text>]
+  tabhandoff create --file <path> [--file <path>…] --instruction <text>   # file-only (no URL)
   tabhandoff validate <id-or-path>
   tabhandoff read <id-or-path>
   tabhandoff export <id-or-path> --out <dir> [--archive]
@@ -74,6 +89,7 @@ Portable packages (agents — §12):
   tabhandoff progress <id-or-path> --detail <text> [--kind agent_reported|verified_event|suggestion] [--result <line>]
   tabhandoff attach <id-or-path> --file <path> [--filename <name>] [--overwrite]
   tabhandoff mark <id-or-path> --status <succeeded|failed|blocked|awaiting_input|cancelled> --reason <text>
+  tabhandoff verify-files <id-or-path>   # SHA-256 integrity of artifacts/
 
   tabhandoff mcp                  Start MCP server on stdio (for Cursor/Claude)
 
@@ -354,21 +370,86 @@ async function cmdBridge(args: Args): Promise<void> {
 }
 
 async function cmdCreate(args: Args): Promise<void> {
-  const { createPortableHandoff, PortableError } = await import(
-    "@tabhandoff/bridge"
-  );
+  const {
+    createPortableHandoff,
+    createFilePortableHandoff,
+    PackageValidationError,
+    PortableError,
+  } = await import("@tabhandoff/bridge");
   const url = flag(args, "url");
+  const files = flagList(args, "file");
   const instruction = flag(args, "instruction");
-  if (!url || !instruction) {
+  if (!instruction || (!url && files.length === 0)) {
     console.error(
-      "Usage: tabhandoff create --url <url> --instruction <text> [--title <t>] [--selected <text>] [--outcome <text>]",
+      "Usage:\n  tabhandoff create --url <url> --instruction <text> [--title <t>] [--selected <text>] [--outcome <text>]\n  tabhandoff create --file <path> [--file <path>…] --instruction <text> [--outcome <text>]",
+    );
+    process.exitCode = 1;
+    return;
+  }
+  if (url && files.length > 0) {
+    console.error(
+      "Pass either --url (browser) or --file (file handoff), not both in MVP.",
     );
     process.exitCode = 1;
     return;
   }
   try {
+    if (files.length > 0) {
+      const { readFile, stat } = await import("node:fs/promises");
+      const fileInputs = [];
+      for (const p of files) {
+        const absolutePath = path.resolve(p);
+        const st = await stat(absolutePath);
+        if (!st.isFile()) {
+          throw new Error(`Not a file: ${absolutePath}`);
+        }
+        const bytes = await readFile(absolutePath);
+        fileInputs.push({
+          absolutePath,
+          bytes,
+          displayPath: absolutePath,
+        });
+      }
+      const stored = await createFilePortableHandoff({
+        files: fileInputs,
+        instruction,
+        intendedOutcome: flag(args, "outcome"),
+        source: { kind: "cli" },
+      });
+      const fileSources = (stored.package.sources ?? []).filter(
+        (s) => s.type === "file",
+      );
+      console.log(
+        JSON.stringify(
+          {
+            id: stored.id,
+            status: stored.executionStatus,
+            agentLaunched: stored.agentLaunched,
+            receiptDir: stored.receiptDir,
+            handoffPath: stored.handoffPath,
+            files: fileSources.map((s) =>
+              s.type === "file"
+                ? {
+                    filename: s.filename,
+                    byteSize: s.byteSize,
+                    sha256: s.sha256,
+                    contentStatus: s.contentStatus,
+                  }
+                : null,
+            ),
+            hint:
+              "File package created only — no agent was launched. Office/PDF attachments are attached, not analyzed. Validate with: tabhandoff validate " +
+              stored.id,
+          },
+          null,
+          2,
+        ),
+      );
+      return;
+    }
+
     const stored = await createPortableHandoff({
-      url,
+      url: url!,
       instruction,
       title: flag(args, "title"),
       selectedText: flag(args, "selected"),
@@ -392,8 +473,33 @@ async function cmdCreate(args: Args): Promise<void> {
     );
   } catch (err) {
     console.error(err instanceof Error ? err.message : String(err));
+    if (
+      err instanceof PortableError ||
+      err instanceof PackageValidationError
+    ) {
+      process.exitCode = 1;
+    } else process.exitCode = 1;
+  }
+}
+
+async function cmdVerifyFiles(args: Args): Promise<void> {
+  const { verifyFileArtifactIntegrity, PortableError } = await import(
+    "@tabhandoff/bridge"
+  );
+  const target = args._[1];
+  if (!target) {
+    console.error("Usage: tabhandoff verify-files <id-or-path>");
+    process.exitCode = 1;
+    return;
+  }
+  try {
+    const result = await verifyFileArtifactIntegrity(target);
+    console.log(JSON.stringify(result, null, 2));
+    if (!result.ok) process.exitCode = 1;
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : String(err));
+    process.exitCode = 1;
     if (err instanceof PortableError) process.exitCode = 1;
-    else process.exitCode = 1;
   }
 }
 
@@ -742,6 +848,9 @@ async function main(): Promise<void> {
       break;
     case "mark":
       await cmdMark(args);
+      break;
+    case "verify-files":
+      await cmdVerifyFiles(args);
       break;
     case "mcp":
       await cmdMcp();

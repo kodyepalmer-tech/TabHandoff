@@ -22,6 +22,7 @@
         </div>
         <nav class="nav">
           <button class="nav-item is-active" data-view="activity" type="button">My Activity</button>
+          <button class="nav-item" data-view="handoff" type="button">Hand off</button>
           <button class="nav-item" data-view="evidence" type="button">Evidence</button>
           <button class="nav-item" data-view="settings" type="button">Settings</button>
         </nav>
@@ -70,8 +71,61 @@
           <div id="activity-empty" class="empty hidden">
             <h2>No activity yet</h2>
             <p>
-              Hand off a tab from the browser extension, or run the CLI / MCP, then hit
-              Refresh. Evidence lives in <code>~/.tabhandoff/receipts/</code>.
+              Hand off a tab from the browser extension, use <strong>Hand off</strong> for local
+              files, or run the CLI / MCP, then hit Refresh. Evidence lives in
+              <code>~/.tabhandoff/receipts/</code>.
+            </p>
+          </div>
+        </section>
+
+        <section id="view-handoff" class="view">
+          <header class="stage-head">
+            <div>
+              <h1>Hand off</h1>
+              <p class="lede">
+                Select local files, write what you want done, and create a portable package. No
+                fake URLs — Office and PDF files are attached, not analyzed.
+              </p>
+            </div>
+          </header>
+
+          <div
+            id="handoff-drop"
+            class="handoff-drop"
+            tabindex="0"
+            role="region"
+            aria-label="Drop files to hand off"
+          >
+            <p class="handoff-drop-title">Drop files here</p>
+            <p class="fine">or choose them explicitly — TabHandoff only reads paths you pick.</p>
+            <div class="head-actions">
+              <button type="button" class="btn primary" id="btn-pick-files">Choose files…</button>
+              <button type="button" class="btn ghost" id="btn-clear-files">Clear</button>
+            </div>
+            <ul id="handoff-file-list" class="plain-list handoff-file-list"></ul>
+          </div>
+
+          <div class="panel">
+            <label class="field">
+              <span>Instruction</span>
+              <textarea
+                id="handoff-instruction"
+                rows="4"
+                placeholder="What should the next person or agent do with these files?"
+              ></textarea>
+            </label>
+            <label class="field">
+              <span>Intended outcome (optional)</span>
+              <input id="handoff-outcome" type="text" placeholder="What done looks like" />
+            </label>
+            <div class="head-actions">
+              <button type="button" class="btn primary" id="btn-create-file-handoff">
+                Create package
+              </button>
+            </div>
+            <p class="fine" id="handoff-status-line">
+              Package only — no agent is launched. Excerpts for text files; Word/PDF/sheets stay
+              attached, not analyzed.
             </p>
           </div>
         </section>
