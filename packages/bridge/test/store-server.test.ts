@@ -42,7 +42,7 @@ describe("writeHandoffToHome + bridge HTTP", () => {
     assert.equal(handoff.screenshots[0].dataBase64, undefined);
 
     const job = JSON.parse(await readFile(stored.jobPath, "utf8"));
-    assert.equal(job.status, "queued");
+    assert.equal(job.status, "package_created");
     assert.match(job.note, /no agent launched/i);
     assert.ok(job.actions.some((a: { tool: string }) => a.tool === "extension.package"));
 

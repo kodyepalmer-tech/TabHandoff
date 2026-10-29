@@ -65,6 +65,16 @@ function formatWhen(iso) {
   }
 }
 
+function formatStatus(status) {
+  if (status === "package_created") return "Package only";
+  if (status === "succeeded") return "Succeeded";
+  if (status === "failed") return "Failed";
+  if (status === "running") return "Running";
+  if (status === "queued") return "Queued";
+  if (status === "cancelled") return "Cancelled";
+  return status || "—";
+}
+
 async function imageUrl(filePath) {
   if (!filePath) return null;
   if (state.imageCache.has(filePath)) return state.imageCache.get(filePath);
@@ -140,7 +150,7 @@ async function renderGrid() {
     body.innerHTML = `
       <div class="item-top">
         <span class="host">${escapeHtml(r.hostname)}</span>
-        <span class="status ${escapeHtml(r.status)}">${escapeHtml(r.status)}</span>
+        <span class="status ${escapeHtml(r.status)}">${escapeHtml(formatStatus(r.status))}</span>
       </div>
       <div class="item-title">${escapeHtml(r.pageTitle || r.hostname)}</div>
       <div class="item-instruction">${escapeHtml(r.instruction)}</div>
@@ -177,7 +187,7 @@ async function openDetail(id) {
   showView("detail");
 
   $("#detail-title").textContent = record.pageTitle || record.hostname || "Activity";
-  $("#detail-sub").textContent = `${record.status} · ${formatWhen(record.createdAt)} · ${record.url}`;
+  $("#detail-sub").textContent = `${formatStatus(record.status)} · ${formatWhen(record.createdAt)} · ${record.url}`;
 
   $("#detail-kv").innerHTML = `
     <dt>Website</dt><dd>${escapeHtml(record.hostname)}</dd>
@@ -407,3 +417,7 @@ boot().catch((err) => {
   console.error(err);
   toast("Failed to load activity library");
 });
+
+// Used by TABHANDOFF_DEMO_CAPTURE in main process (Phase 5 real UI frames).
+window.__tabhandoffReady = boot;
+window.refresh = refresh;

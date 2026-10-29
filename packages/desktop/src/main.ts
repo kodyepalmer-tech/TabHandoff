@@ -168,10 +168,42 @@ async function ensureBridge(): Promise<void> {
   }
 }
 
+async function maybeDemoCapture(win: BrowserWindow): Promise<void> {
+  const out = process.env.TABHANDOFF_DEMO_CAPTURE?.trim();
+  if (!out) return;
+  // Real Electron UI capture for Phase 5 demos — never fakes activity data.
+  await new Promise((r) => setTimeout(r, 1800));
+  try {
+    await win.webContents.executeJavaScript(`
+      (async () => {
+        if (typeof refresh === 'function') await refresh();
+        await new Promise((r) => setTimeout(r, 400));
+      })()
+    `);
+  } catch {
+    /* renderer may not expose refresh globally — UI still loads receipts via boot */
+  }
+  await new Promise((r) => setTimeout(r, 600));
+  const image = await win.capturePage();
+  const { writeFile, mkdir } = await import("node:fs/promises");
+  await mkdir(path.dirname(out), { recursive: true });
+  await writeFile(out, image.toPNG());
+  console.log(`[tabhandoff-desktop] demo capture written: ${out}`);
+  app.quit();
+}
+
 app.whenReady().then(async () => {
   registerIpc();
-  await ensureBridge();
+  // Skip bridge when capturing a static evidence-library frame (faster, quieter).
+  if (!process.env.TABHANDOFF_DEMO_CAPTURE?.trim()) {
+    await ensureBridge();
+  }
   createWindow();
+  if (mainWindow && process.env.TABHANDOFF_DEMO_CAPTURE?.trim()) {
+    void mainWindow.webContents.once("did-finish-load", () => {
+      void maybeDemoCapture(mainWindow!);
+    });
+  }
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });

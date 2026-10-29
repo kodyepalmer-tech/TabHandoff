@@ -1,0 +1,9 @@
+file '/workspace/docs/assets/demo-frames/01-capture.png'
+duration 1.4
+file '/workspace/docs/assets/demo-frames/02-package.png'
+duration 1.4
+file '/workspace/docs/assets/demo-frames/03-extract.png'
+duration 1.4
+file '/workspace/docs/assets/demo-frames/04-evidence.png'
+duration 1.4
+file '/workspace/docs/assets/demo-frames/04-evidence.png'

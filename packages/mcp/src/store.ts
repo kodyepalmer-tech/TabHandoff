@@ -49,20 +49,37 @@ export async function readJob(id: string): Promise<HandoffJob | null> {
   }
 }
 
+/** Serialize per-id writes so concurrent action + final status updates cannot race. */
+const updateChains = new Map<string, Promise<unknown>>();
+
 export async function updateJob(
   id: string,
   patch: Partial<HandoffJob>,
 ): Promise<HandoffJob> {
-  const current = await readJob(id);
-  if (!current) throw new Error(`Unknown handoff id: ${id}`);
-  const next: HandoffJob = {
-    ...current,
-    ...patch,
-    id: current.id,
-    updatedAt: new Date().toISOString(),
-  };
-  await writeFile(jobPath(id), JSON.stringify(next, null, 2), "utf8");
-  return next;
+  const prev = updateChains.get(id) ?? Promise.resolve();
+  let release!: () => void;
+  const gate = new Promise<void>((r) => {
+    release = r;
+  });
+  const chained = prev.then(() => gate);
+  updateChains.set(id, chained);
+
+  try {
+    await prev.catch(() => undefined);
+    const current = await readJob(id);
+    if (!current) throw new Error(`Unknown handoff id: ${id}`);
+    const next: HandoffJob = {
+      ...current,
+      ...patch,
+      id: current.id,
+      updatedAt: new Date().toISOString(),
+    };
+    await writeFile(jobPath(id), JSON.stringify(next, null, 2), "utf8");
+    return next;
+  } finally {
+    release();
+    if (updateChains.get(id) === chained) updateChains.delete(id);
+  }
 }
 
 export async function listJobs(limit = 20): Promise<HandoffJob[]> {

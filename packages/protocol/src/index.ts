@@ -1,12 +1,13 @@
 import { z } from "zod";
 
-/** Job lifecycle */
+/** Job lifecycle (includes package-only — never pretend a run started). */
 export const HandoffStatusSchema = z.enum([
   "queued",
   "running",
   "succeeded",
   "failed",
   "cancelled",
+  "package_created",
 ]);
 export type HandoffStatus = z.infer<typeof HandoffStatusSchema>;
 

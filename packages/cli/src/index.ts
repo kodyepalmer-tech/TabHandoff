@@ -145,7 +145,7 @@ async function cmdDoctor(): Promise<void> {
     checks.push({
       name: "playwright-chromium",
       ok: false,
-      detail: `fail: ${err instanceof Error ? err.message : String(err)} — run: pnpm exec playwright install chromium`,
+      detail: `fail: ${err instanceof Error ? err.message : String(err)} — run: pnpm --filter @tabhandoff/cli exec playwright install chromium`,
     });
   }
 

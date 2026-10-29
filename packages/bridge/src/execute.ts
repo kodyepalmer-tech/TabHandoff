@@ -185,7 +185,7 @@ export async function patchHandoffExecution(
 
   const jobStatus: HandoffJob["status"] =
     patch.status === "package_created"
-      ? "queued"
+      ? "package_created"
       : patch.status === "awaiting_input"
         ? "queued"
         : (patch.status as HandoffJob["status"]);
@@ -229,19 +229,25 @@ export async function getLiveHandoffStatus(
 
   const executionStatus =
     pkg?.execution.status ??
-    (job?.status === "queued" ? "package_created" : job?.status) ??
+    (job?.status === "queued" || job?.status === "package_created"
+      ? "package_created"
+      : job?.status) ??
     "package_created";
   const mode = pkg?.execution.mode;
   const workflowStarted =
     Boolean(pkg?.execution.workflow && pkg.execution.workflow !== "none") ||
-    Boolean(job && job.status !== "queued") ||
+    Boolean(
+      job &&
+        job.status !== "queued" &&
+        job.status !== "package_created",
+    ) ||
     inflight.has(id);
 
   return {
     id,
     ok: true,
     executionStatus,
-    jobStatus: job?.status ?? "queued",
+    jobStatus: job?.status ?? "package_created",
     agentLaunched: pkg?.execution.agentLaunched ?? false,
     workflowStarted,
     mode,
