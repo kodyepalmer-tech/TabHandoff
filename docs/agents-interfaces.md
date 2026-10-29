@@ -6,11 +6,12 @@ TabHandoff does **not** invent proprietary Cursor / Claude / ChatGPT “remote c
 
 | Interface | How | Status |
 |---|---|---|
-| **CLI** | `tabhandoff create` / `continue` / `validate` / `read` / `export` / `run-ai` | ✅ |
+| **CLI** | `create` / `create-verified` / `continue` / `validate` / `read` / `inspect` / `export` / `verify-continuation` / `run-ai` | ✅ |
 | **MCP (stdio)** | `handoff_create` / `handoff_status` / `handoff_receipt` (+ validate/read) | ✅ |
-| **Portable package** | `handoff.json` schema 0.1 + ZIP / folder | ✅ |
+| **Portable package** | `handoff.json` schema **0.1** or **0.2** + folder / tar.gz (+ `INSPECT.html`) | ✅ |
 | **Local bridge HTTP** | Loopback `127.0.0.1` + Bearer token — extension / desktop | ✅ |
 
+Verified agent-to-agent transfer: [verified-handoff.md](./verified-handoff.md).  
 Details: [agents.md](./agents.md), [schema.md](./schema.md), [ai-execution.md](./ai-execution.md).
 
 ## Local model runtimes (for Run with AI)
