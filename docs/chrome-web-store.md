@@ -1,7 +1,8 @@
 # Chrome Web Store — TabHandoff listing draft
 
 **Status:** Engineering package ready; **founder** owns developer account, payment, and submit.  
-**Do not** create release tags or change DNS as part of this checklist.
+**Do not** create release tags or change DNS as part of this checklist.  
+**No live CWS listing URL yet** — docs must not invent one. Until submit+approve, install via Load unpacked / packed ZIP ([extension-setup.md](./extension-setup.md)).
 
 ## Package
 

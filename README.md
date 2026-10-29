@@ -26,26 +26,43 @@
 
 You are reading a page. You want another person — or another AI — to pick up the work with context and proof.
 
-1. **Hand off** a tab (browser extension) or URL (CLI).
-2. TabHandoff **packages** the URL, instruction, selection, and optional screenshot.
-3. A supported workflow runs **page extraction** (or you stay package-only).
-4. You get a **receipt** and screenshots in a local evidence library — so you can show what happened.
+1. **Hand off** the tab with the browser extension (MVP path — no Terminal).
+2. TabHandoff **packages** the URL, instruction, selection, and optional screenshot into a ZIP.
+3. You **Save package** (download) and optionally **Copy brief for another AI**.
+4. Optional later: local bridge / desktop saves into My Activity and can run page extraction.
 
-No Terminal required for routine handoffs after setup. Status is always honest: TabHandoff never pretends an agent ran when only a package was created.
+Status is always honest: TabHandoff never pretends an agent ran when only a package was created.
 
 ---
 
-## Install
+## Install (browser-first MVP)
 
-**Requirements:** Node.js 22+, macOS or Linux (Windows: CLI works; desktop is Electron). Chromium browsers for the extension.
+**Chrome Web Store listing is not live yet.** Until it is, use sideload / Load unpacked. There is **no** fake store URL in this repo.
+
+### 1. Get the extension
+
+| Path | How |
+|---|---|
+| **Load unpacked (recommended)** | Clone this repo → Chrome/Edge/Brave → `chrome://extensions` → Developer mode → **Load unpacked** → select `packages/extension` |
+| **Packed ZIP** | Developers: `pnpm pack:extension` → unzip `artifacts/tabhandoff-extension-*.zip` → Load unpacked that folder. Draft CWS notes: [docs/chrome-web-store.md](docs/chrome-web-store.md) |
+
+Full steps + clean-profile checklist: **[docs/extension-setup.md](docs/extension-setup.md)** · Privacy: [docs/privacy.md](docs/privacy.md)
+
+### 2. Save a package (no desktop, no token)
+
+1. Open a normal `https://…` page.
+2. Right-click → **Hand off with TabHandoff** (or the toolbar button).
+3. Write a short instruction → Review → **Save package**.
+4. A ZIP downloads (`START_HERE.md`, `handoff.json`, `summary.md`, screenshots when available).
+5. Result says **Package created — not agent executed**. Optional: **Copy brief for another AI**.
+
+### 3. Optional: CLI / desktop / bridge (developers)
+
+**Requirements:** Node.js 22+, macOS or Linux (Windows: CLI works; desktop is Electron).
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/kodyepalmer-tech/TabHandoff/main/scripts/install.sh | bash
-```
-
-Already cloned?
-
-```bash
+# or, already cloned:
 pnpm install && pnpm build
 pnpm --filter @tabhandoff/cli exec playwright install chromium
 node packages/cli/dist/index.js init
@@ -54,18 +71,20 @@ node packages/cli/dist/index.js doctor
 
 **Downloading is not executing.** Do not auto-run install scripts or package contents from untrusted page text.
 
+**Optional My Activity:** `pnpm bridge` or `pnpm desktop`, paste token in extension Settings, check “Also save to My Activity.” Details: [docs/phase3-e2e-handoff.md](docs/phase3-e2e-handoff.md)
+
 ### Supported platforms & browsers
 
 | Surface | Support |
 |---|---|
+| Browser extension (Save package) | Chromium MV3 — Chrome, Edge, Brave — **MVP launch path** |
 | CLI + Playwright runner | macOS, Linux (Node 22+) |
-| Desktop evidence library | Electron (`pnpm desktop`) |
-| Browser extension | Chromium MV3 — Chrome, Edge, Brave ([setup](docs/extension-setup.md)) |
+| Desktop evidence library | Electron (`pnpm desktop`) — optional |
 | Agent / MCP | Any client that can run local stdio MCP or CLI |
 
 ---
 
-## 60-second demo
+## 60-second demo (developers)
 
 ```bash
 pnpm demo                 # package → page extraction → receipt
@@ -99,17 +118,6 @@ tabhandoff export <id> --out ./exports --archive
 ```
 
 Unsupported bots: copy the exported folder — [docs/manual-export.md](docs/manual-export.md).
-
----
-
-## Browser handoff (no Terminal for capture)
-
-**Package-only (no desktop):** load unpacked `packages/extension` → right-click **Hand off with TabHandoff** → **Save package** → ZIP downloads. Copy brief for another AI if you want. Token not required.  
-Store ZIP: `pnpm pack:extension` → [docs/chrome-web-store.md](docs/chrome-web-store.md) · setup: [docs/extension-setup.md](docs/extension-setup.md)
-
-**Optional My Activity:** `pnpm bridge` or `pnpm desktop`, paste token in Settings, check “Also save to My Activity.”
-
-Details: [docs/phase3-e2e-handoff.md](docs/phase3-e2e-handoff.md)
 
 ---
 
@@ -158,8 +166,10 @@ See **[docs/troubleshooting.md](docs/troubleshooting.md)** for doctor failures, 
 | MCP tools | ✅ |
 | Playwright ephemeral Chromium runner | ✅ |
 | Desktop evidence library | ✅ |
-| Browser extension + local bridge E2E | ✅ |
+| Browser extension Save package (no bridge) | ✅ MVP |
+| Local bridge + My Activity (optional) | ✅ |
 | Real demo GIF + capture scripts | ✅ Phase 5 |
+| Chrome Web Store listing | ⏳ founder submit — sideload until then |
 
 Phase notes: [phase1](docs/phase1-evidence-library.md) · [phase2](docs/phase2-browser-extension.md) · [phase3](docs/phase3-e2e-handoff.md) · [phase4](docs/phase4-portability.md) · [demo](docs/demo.md)
 
@@ -201,7 +211,7 @@ packages/
   extension/  Chromium MV3
 docs/         schema · agents · demo · troubleshooting · assets
 fixtures/     receipts-home + portable-handoff examples
-scripts/      install.sh · demo.sh · capture-demo.mjs
+scripts/      install.sh · demo.sh · capture-demo.mjs · pack-extension.mjs
 ```
 
 ## License

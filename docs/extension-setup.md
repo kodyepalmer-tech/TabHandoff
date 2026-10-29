@@ -4,7 +4,9 @@
 
 You can create and download a handoff **without** the desktop app or any token.
 
-### Load unpacked (dev / pre-CWS)
+### Load unpacked (MVP — store not live yet)
+
+There is **no** Chrome Web Store URL for TabHandoff yet. Do not follow any third-party “install from store” link claiming to be TabHandoff until the founder publishes one.
 
 1. Open Chrome, Edge, or Brave → `chrome://extensions` (or `edge://extensions`).
 2. Turn **Developer mode** on.
