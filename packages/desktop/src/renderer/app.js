@@ -65,6 +65,16 @@ function formatWhen(iso) {
   }
 }
 
+function formatStatus(status) {
+  if (status === "package_created") return "Package only";
+  if (status === "succeeded") return "Succeeded";
+  if (status === "failed") return "Failed";
+  if (status === "running") return "Running";
+  if (status === "queued") return "Queued";
+  if (status === "cancelled") return "Cancelled";
+  return status || "—";
+}
+
 async function imageUrl(filePath) {
   if (!filePath) return null;
   if (state.imageCache.has(filePath)) return state.imageCache.get(filePath);
@@ -140,7 +150,7 @@ async function renderGrid() {
     body.innerHTML = `
       <div class="item-top">
         <span class="host">${escapeHtml(r.hostname)}</span>
-        <span class="status ${escapeHtml(r.status)}">${escapeHtml(r.status)}</span>
+        <span class="status ${escapeHtml(r.status)}">${escapeHtml(formatStatus(r.status))}</span>
       </div>
       <div class="item-title">${escapeHtml(r.pageTitle || r.hostname)}</div>
       <div class="item-instruction">${escapeHtml(r.instruction)}</div>
@@ -177,7 +187,7 @@ async function openDetail(id) {
   showView("detail");
 
   $("#detail-title").textContent = record.pageTitle || record.hostname || "Activity";
-  $("#detail-sub").textContent = `${record.status} · ${formatWhen(record.createdAt)} · ${record.url}`;
+  $("#detail-sub").textContent = `${formatStatus(record.status)} · ${formatWhen(record.createdAt)} · ${record.url}`;
 
   $("#detail-kv").innerHTML = `
     <dt>Website</dt><dd>${escapeHtml(record.hostname)}</dd>
@@ -333,6 +343,49 @@ function wire() {
     toast("Using default evidence folder");
     await refresh();
   });
+
+  $("#btn-refresh-bridge").addEventListener("click", () => {
+    void refreshBridgeStatus();
+  });
+
+  $("#btn-copy-token").addEventListener("click", async () => {
+    const token = $("#settings-bridge-token").value;
+    if (!token) return toast("No token yet — is the bridge running?");
+    try {
+      await navigator.clipboard.writeText(token);
+      toast("Token copied — paste into the browser extension Settings");
+    } catch {
+      toast("Could not copy — select the token field manually");
+    }
+  });
+}
+
+async function refreshBridgeStatus() {
+  if (typeof api.bridgeStatus !== "function") {
+    $("#bridge-status-line").textContent =
+      "Bridge status unavailable in this build.";
+    return;
+  }
+  const st = await api.bridgeStatus();
+  if (st.running) {
+    const bits = [`Listening at ${st.url} (this computer only).`];
+    if (st.pageExtraction) {
+      bits.push(
+        st.agentExecution
+          ? "Can run page extraction or model-assisted browser steps."
+          : "Can run page extraction (DOM — not autonomous AI).",
+      );
+    } else {
+      bits.push("Packages only — Playwright unavailable for extraction.");
+    }
+    $("#bridge-status-line").textContent = bits.join(" ");
+    $("#settings-bridge-token").value = st.token || "";
+  } else {
+    $("#bridge-status-line").textContent = st.error
+      ? `Bridge not running: ${st.error}`
+      : "Bridge not running. Start desktop again or run: pnpm bridge";
+    $("#settings-bridge-token").value = "";
+  }
 }
 
 function debounce(fn, ms) {
@@ -351,9 +404,20 @@ async function boot() {
   $("#home-pill").textContent = info.home;
   showView("activity");
   await refresh();
+  await refreshBridgeStatus();
+  // Auto-refresh My Activity so bridge workflow results appear without a manual click
+  setInterval(() => {
+    if (state.view === "activity" || state.view === "evidence") {
+      void refresh();
+    }
+  }, 4000);
 }
 
 boot().catch((err) => {
   console.error(err);
   toast("Failed to load activity library");
 });
+
+// Used by TABHANDOFF_DEMO_CAPTURE in main process (Phase 5 real UI frames).
+window.__tabhandoffReady = boot;
+window.refresh = refresh;

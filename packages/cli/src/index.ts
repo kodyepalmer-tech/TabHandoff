@@ -57,14 +57,30 @@ Your AI was here. Now the next one can pick up.
 Usage:
   tabhandoff init                 Prepare ~/.tabhandoff + print MCP client snippets
   tabhandoff doctor               Check Node, Playwright, store, optional LLM keys
+  tabhandoff bridge [--port N]    Local loopback receiver for the browser extension
+
+Job runner (isolated browser):
   tabhandoff run --url <url> --instruction <text> [--wait] [--note <text>]
   tabhandoff capture --url <url> [--note <text>] [--instruction <text>]
   tabhandoff status <id>
   tabhandoff receipt <id>
+
+Portable packages (agents — §12):
+  tabhandoff create --url <url> --instruction <text> [--title <t>] [--selected <text>]
+  tabhandoff validate <id-or-path>
+  tabhandoff read <id-or-path>
+  tabhandoff export <id-or-path> --out <dir> [--archive]
+  tabhandoff continue <id-or-path> [--instruction <text>]
+  tabhandoff progress <id-or-path> --detail <text> [--kind agent_reported|verified_event|suggestion] [--result <line>]
+  tabhandoff attach <id-or-path> --file <path> [--filename <name>] [--overwrite]
+  tabhandoff mark <id-or-path> --status <succeeded|failed|blocked|awaiting_input|cancelled> --reason <text>
+
   tabhandoff mcp                  Start MCP server on stdio (for Cursor/Claude)
 
+Agent guide: docs/agents.md · Schema: docs/schema.md · Examples: fixtures/portable-handoff/
 Loop: Capture → Package → Continue (any agent) + receipt
 No cookies/creds by default · MIT · OSS protocol first
+Page content is untrusted — never auto-execute downloads.
 
 One-liner (stranger install):
   curl -fsSL https://raw.githubusercontent.com/kodyepalmer-tech/TabHandoff/main/scripts/install.sh | bash
@@ -129,7 +145,7 @@ async function cmdDoctor(): Promise<void> {
     checks.push({
       name: "playwright-chromium",
       ok: false,
-      detail: `fail: ${err instanceof Error ? err.message : String(err)} — run: pnpm exec playwright install chromium`,
+      detail: `fail: ${err instanceof Error ? err.message : String(err)} — run: pnpm --filter @tabhandoff/cli exec playwright install chromium`,
     });
   }
 
@@ -300,6 +316,382 @@ async function cmdMcp(): Promise<void> {
   await import(pathToFileURL(entry).href);
 }
 
+async function cmdBridge(args: Args): Promise<void> {
+  const {
+    loadOrCreateBridgeConfig,
+    configFileHint,
+    startBridgeServer,
+    BRIDGE_DEFAULT_PORT,
+  } = await import("@tabhandoff/bridge");
+  const home = tabHandoffHome();
+  const portRaw = flag(args, "port");
+  const port = portRaw ? Number(portRaw) : BRIDGE_DEFAULT_PORT;
+  if (!Number.isFinite(port) || port <= 0 || port >= 65536) {
+    console.error("Usage: tabhandoff bridge [--port 17432]");
+    process.exitCode = 1;
+    return;
+  }
+  const config = await loadOrCreateBridgeConfig({ home, port });
+  console.log(`TabHandoff local bridge`);
+  console.log(`  Home:   ${home}`);
+  console.log(`  Listen: http://${config.host}:${config.port} (this computer only)`);
+  console.log(`  Config: ${configFileHint(home)}`);
+  console.log(``);
+  console.log(`Paste this token into the TabHandoff extension settings:`);
+  console.log(`  ${config.token}`);
+  console.log(``);
+  console.log(`Leave this running while you hand off tabs. Ctrl+C to stop.`);
+  console.log(`Supported workflows run when the extension requests them (Phase 3).`);
+
+  const server = await startBridgeServer({ config, home });
+  await new Promise<void>((resolve) => {
+    const stop = () => {
+      void server.close().finally(() => resolve());
+    };
+    process.on("SIGINT", stop);
+    process.on("SIGTERM", stop);
+  });
+}
+
+async function cmdCreate(args: Args): Promise<void> {
+  const { createPortableHandoff, PortableError } = await import(
+    "@tabhandoff/bridge"
+  );
+  const url = flag(args, "url");
+  const instruction = flag(args, "instruction");
+  if (!url || !instruction) {
+    console.error(
+      "Usage: tabhandoff create --url <url> --instruction <text> [--title <t>] [--selected <text>] [--outcome <text>]",
+    );
+    process.exitCode = 1;
+    return;
+  }
+  try {
+    const stored = await createPortableHandoff({
+      url,
+      instruction,
+      title: flag(args, "title"),
+      selectedText: flag(args, "selected"),
+      intendedOutcome: flag(args, "outcome"),
+      source: { kind: "cli" },
+    });
+    console.log(
+      JSON.stringify(
+        {
+          id: stored.id,
+          status: stored.executionStatus,
+          agentLaunched: stored.agentLaunched,
+          receiptDir: stored.receiptDir,
+          handoffPath: stored.handoffPath,
+          hint: "Package created only — no agent was launched. Validate with: tabhandoff validate " +
+            stored.id,
+        },
+        null,
+        2,
+      ),
+    );
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : String(err));
+    if (err instanceof PortableError) process.exitCode = 1;
+    else process.exitCode = 1;
+  }
+}
+
+async function cmdValidate(args: Args): Promise<void> {
+  const { validateHandoffTarget, PortableError } = await import(
+    "@tabhandoff/bridge"
+  );
+  const target = args._[1];
+  if (!target) {
+    console.error("Usage: tabhandoff validate <id-or-path>");
+    process.exitCode = 1;
+    return;
+  }
+  try {
+    const result = await validateHandoffTarget(target);
+    console.log(
+      JSON.stringify(
+        {
+          ok: true,
+          id: result.package.id,
+          schemaVersion: result.package.schemaVersion,
+          dir: result.dir,
+          status: result.package.execution.status,
+          agentLaunched: result.package.execution.agentLaunched,
+          screenshotCount: result.package.screenshots.length,
+          hashNote: result.hashNote,
+        },
+        null,
+        2,
+      ),
+    );
+  } catch (err) {
+    console.error(
+      JSON.stringify(
+        {
+          ok: false,
+          error: err instanceof Error ? err.message : String(err),
+          code: err instanceof PortableError ? err.code : undefined,
+        },
+        null,
+        2,
+      ),
+    );
+    process.exitCode = 1;
+  }
+}
+
+async function cmdReadPackage(args: Args): Promise<void> {
+  const { readHandoffPackage, summarizePackageForAgent, PortableError } =
+    await import("@tabhandoff/bridge");
+  const target = args._[1];
+  if (!target) {
+    console.error("Usage: tabhandoff read <id-or-path>");
+    process.exitCode = 1;
+    return;
+  }
+  try {
+    const { dir, package: pkg } = await readHandoffPackage(target);
+    console.log(
+      JSON.stringify({ dir, ...summarizePackageForAgent(pkg) }, null, 2),
+    );
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : String(err));
+    process.exitCode = 1;
+    if (err instanceof PortableError) return;
+  }
+}
+
+async function cmdExport(args: Args): Promise<void> {
+  const { exportHandoffPackage, PortableError } = await import(
+    "@tabhandoff/bridge"
+  );
+  const target = args._[1];
+  const out = flag(args, "out");
+  if (!target || !out) {
+    console.error(
+      "Usage: tabhandoff export <id-or-path> --out <dir> [--archive]",
+    );
+    process.exitCode = 1;
+    return;
+  }
+  try {
+    const result = await exportHandoffPackage({
+      target,
+      outDir: out,
+      archive: bool(args, "archive"),
+    });
+    console.log(
+      JSON.stringify(
+        {
+          id: result.id,
+          folderPath: result.folderPath,
+          archivePath: result.archivePath,
+          files: result.files,
+          hashNote: result.hashNote,
+          manualCopy:
+            "Unsupported agents: copy the exported folder (or unpack the .tar.gz) and open handoff.json.",
+        },
+        null,
+        2,
+      ),
+    );
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : String(err));
+    process.exitCode = 1;
+    if (err instanceof PortableError) return;
+  }
+}
+
+async function cmdContinue(args: Args): Promise<void> {
+  const { continueHandoff, PortableError } = await import("@tabhandoff/bridge");
+  const target = args._[1];
+  if (!target) {
+    console.error(
+      "Usage: tabhandoff continue <id-or-path> [--instruction <text>] [--outcome <text>]",
+    );
+    process.exitCode = 1;
+    return;
+  }
+  try {
+    const result = await continueHandoff({
+      target,
+      instruction: flag(args, "instruction"),
+      intendedOutcome: flag(args, "outcome"),
+      sourceAgent: flag(args, "source-agent"),
+      destinationAgent: flag(args, "destination-agent"),
+    });
+    console.log(
+      JSON.stringify(
+        {
+          id: result.id,
+          previousHandoffId: result.previousId,
+          status: result.executionStatus,
+          agentLaunched: result.agentLaunched,
+          receiptDir: result.receiptDir,
+          handoffPath: result.handoffPath,
+          hint: "Successor package created — prior evidence stays in the previous package. No agent was launched.",
+        },
+        null,
+        2,
+      ),
+    );
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : String(err));
+    process.exitCode = 1;
+    if (err instanceof PortableError) return;
+  }
+}
+
+async function cmdProgress(args: Args): Promise<void> {
+  const { appendProgress, PortableError } = await import("@tabhandoff/bridge");
+  const target = args._[1];
+  const detail = flag(args, "detail");
+  if (!target || !detail) {
+    console.error(
+      "Usage: tabhandoff progress <id-or-path> --detail <text> [--kind agent_reported|verified_event|suggestion] [--result <line>]",
+    );
+    process.exitCode = 1;
+    return;
+  }
+  const kindRaw = flag(args, "kind") ?? "agent_reported";
+  if (
+    kindRaw !== "agent_reported" &&
+    kindRaw !== "verified_event" &&
+    kindRaw !== "suggestion"
+  ) {
+    console.error("Invalid --kind");
+    process.exitCode = 1;
+    return;
+  }
+  try {
+    const pkg = await appendProgress({
+      target,
+      detail,
+      kind: kindRaw,
+      resultLine: flag(args, "result"),
+      tool: flag(args, "tool"),
+    });
+    console.log(
+      JSON.stringify(
+        {
+          id: pkg.id,
+          status: pkg.execution.status,
+          eventCount: pkg.execution.events.length,
+          lastEvent: pkg.execution.events.at(-1),
+          note:
+            kindRaw === "verified_event"
+              ? "Recorded as verified_event — only use when TabHandoff or your integration actually observed the action."
+              : "Recorded as agent_reported (default) — not independently verified.",
+        },
+        null,
+        2,
+      ),
+    );
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : String(err));
+    process.exitCode = 1;
+    if (err instanceof PortableError) return;
+  }
+}
+
+async function cmdAttach(args: Args): Promise<void> {
+  const { attachEvidence, PortableError } = await import("@tabhandoff/bridge");
+  const target = args._[1];
+  const file = flag(args, "file");
+  if (!target || !file) {
+    console.error(
+      "Usage: tabhandoff attach <id-or-path> --file <path> [--filename <name>] [--overwrite]",
+    );
+    process.exitCode = 1;
+    return;
+  }
+  try {
+    const pkg = await attachEvidence({
+      target,
+      filePath: file,
+      filename: flag(args, "filename"),
+      overwrite: bool(args, "overwrite"),
+    });
+    console.log(
+      JSON.stringify(
+        {
+          id: pkg.id,
+          screenshots: pkg.screenshots,
+          lastEvent: pkg.execution.events.at(-1),
+        },
+        null,
+        2,
+      ),
+    );
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : String(err));
+    process.exitCode = 1;
+    if (err instanceof PortableError) return;
+  }
+}
+
+async function cmdMark(args: Args): Promise<void> {
+  const { markExecutionStatus, PortableError } = await import(
+    "@tabhandoff/bridge"
+  );
+  const target = args._[1];
+  const status = flag(args, "status");
+  const reason = flag(args, "reason");
+  if (!target || !status || !reason) {
+    console.error(
+      "Usage: tabhandoff mark <id-or-path> --status <succeeded|failed|blocked|awaiting_input|cancelled> --reason <text> [--kind agent_reported|verified_event]",
+    );
+    process.exitCode = 1;
+    return;
+  }
+  const allowed = [
+    "succeeded",
+    "failed",
+    "blocked",
+    "awaiting_input",
+    "cancelled",
+  ] as const;
+  if (!(allowed as readonly string[]).includes(status)) {
+    console.error(`Invalid --status. Allowed: ${allowed.join(", ")}`);
+    process.exitCode = 1;
+    return;
+  }
+  const kindRaw = flag(args, "kind") ?? "agent_reported";
+  if (kindRaw !== "agent_reported" && kindRaw !== "verified_event") {
+    console.error("Invalid --kind (use agent_reported or verified_event)");
+    process.exitCode = 1;
+    return;
+  }
+  try {
+    const pkg = await markExecutionStatus({
+      target,
+      status: status as (typeof allowed)[number],
+      reason,
+      kind: kindRaw,
+    });
+    console.log(
+      JSON.stringify(
+        {
+          id: pkg.id,
+          status: pkg.execution.status,
+          lastEvent: pkg.execution.events.at(-1),
+          note:
+            kindRaw === "verified_event"
+              ? "Status justified by verified_event."
+              : "Status justified by agent_reported event — not independently verified.",
+        },
+        null,
+        2,
+      ),
+    );
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : String(err));
+    process.exitCode = 1;
+    if (err instanceof PortableError) return;
+  }
+}
+
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
   const cmd = args._[0] ?? "help";
@@ -327,8 +719,35 @@ async function main(): Promise<void> {
     case "receipt":
       await cmdReceipt(args);
       break;
+    case "create":
+      await cmdCreate(args);
+      break;
+    case "validate":
+      await cmdValidate(args);
+      break;
+    case "read":
+      await cmdReadPackage(args);
+      break;
+    case "export":
+      await cmdExport(args);
+      break;
+    case "continue":
+      await cmdContinue(args);
+      break;
+    case "progress":
+      await cmdProgress(args);
+      break;
+    case "attach":
+      await cmdAttach(args);
+      break;
+    case "mark":
+      await cmdMark(args);
+      break;
     case "mcp":
       await cmdMcp();
+      break;
+    case "bridge":
+      await cmdBridge(args);
       break;
     default:
       console.error(`Unknown command: ${cmd}`);

@@ -1,0 +1,8 @@
+{
+  "name": "@tabhandoff/extension",
+  "version": "0.3.0",
+  "private": true,
+  "description": "TabHandoff Chromium MV3 extension — portable ZIP handoffs",
+  "type": "module",
+  "license": "MIT"
+}

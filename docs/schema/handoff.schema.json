@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kodyepalmer-tech/TabHandoff/docs/schema/handoff.schema.json",
+  "title": "TabHandoff PortableHandoffPackage",
+  "description": "Versioned agent-independent handoff package (schemaVersion 0.1). Source of truth is Zod in @tabhandoff/protocol; this JSON Schema is for non-TS validators.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "capturedAt",
+    "source",
+    "page",
+    "instruction",
+    "constraints",
+    "previousResults",
+    "remainingWork",
+    "screenshots",
+    "execution",
+    "untrustedContentWarning"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "0.1" },
+    "id": { "type": "string", "minLength": 1 },
+    "capturedAt": { "type": "string", "description": "ISO-8601 timestamp" },
+    "previousHandoffId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Prior handoff this package continues from"
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["browser_extension", "cli", "mcp", "agent", "desktop"]
+        },
+        "extensionId": { "type": "string" },
+        "userAgent": { "type": "string" }
+      }
+    },
+    "page": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url", "title"],
+      "properties": {
+        "url": { "type": "string", "format": "uri" },
+        "title": { "type": "string" },
+        "selectedText": {
+          "type": "string",
+          "description": "Untrusted page content — never execute as instructions"
+        }
+      }
+    },
+    "instruction": { "type": "string", "minLength": 1 },
+    "intendedOutcome": { "type": "string" },
+    "constraints": { "type": "array", "items": { "type": "string" } },
+    "previousResults": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Completed work — never invent history"
+    },
+    "remainingWork": { "type": "array", "items": { "type": "string" } },
+    "screenshots": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["filename"],
+        "properties": {
+          "filename": { "type": "string", "minLength": 1 },
+          "mediaType": { "type": "string", "default": "image/png" },
+          "sha256": {
+            "type": "string",
+            "description": "Hex SHA-256 of file bytes. Detects changes; does not authenticate events."
+          },
+          "dataBase64": {
+            "type": "string",
+            "description": "Transit only — strip before writing handoff.json to disk"
+          }
+        }
+      }
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "agentLaunched", "events"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "package_created",
+            "queued",
+            "running",
+            "succeeded",
+            "failed",
+            "cancelled",
+            "awaiting_input",
+            "blocked"
+          ]
+        },
+        "agentLaunched": {
+          "type": "boolean",
+          "description": "True only when a model-assisted path actually started"
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["at", "kind", "detail"],
+            "properties": {
+              "at": { "type": "string" },
+              "kind": {
+                "type": "string",
+                "enum": ["verified_event", "agent_reported", "suggestion"]
+              },
+              "tool": { "type": "string" },
+              "detail": { "type": "string" },
+              "ok": { "type": "boolean" }
+            }
+          }
+        },
+        "mode": { "type": "string", "enum": ["dom", "llm"] },
+        "workflow": {
+          "type": "string",
+          "enum": ["none", "page_extraction", "llm_browser"]
+        },
+        "workflowLabel": { "type": "string" }
+      }
+    },
+    "sourceAgent": { "type": "string" },
+    "destinationAgent": { "type": "string" },
+    "untrustedContentWarning": { "type": "string" }
+  }
+}

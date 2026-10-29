@@ -1,0 +1,11 @@
+schemaVersion: "0.1"
+name: "Example Domain"
+description: "Sample portable handoff for agent integration tests (package only)."
+startUrl: "https://example.com/"
+instruction: "Summarize this page and list the next steps a reader should take."
+successHints: []
+tags:
+  - sample
+  - package-only
+sourceHandoffId: "sample-research-001"
+createdAt: "2026-10-28T18:00:00.000Z"

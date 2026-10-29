@@ -16,6 +16,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@tabhandoff/bridge": "workspace:*",
     "@tabhandoff/mcp": "workspace:*",
     "@tabhandoff/protocol": "workspace:*",
     "@tabhandoff/runner": "workspace:*",

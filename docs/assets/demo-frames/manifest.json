@@ -1,0 +1,19 @@
+{
+  "capturedAt": "2026-10-29T00:59:01.531Z",
+  "handoffId": "ee425435-08f8-4049-a510-dc0ad3ce9004",
+  "home": "/tmp/tabhandoff-p5.GxYEW3",
+  "url": "https://example.com",
+  "instruction": "Extract the main heading and first paragraph as markdown",
+  "mode": "dom",
+  "agentLaunched": false,
+  "label": "Page extraction (deterministic DOM — not autonomous AI). Real CLI + desktop capture.",
+  "frames": [
+    "/workspace/docs/assets/demo-frames/01-capture.png",
+    "/workspace/docs/assets/demo-frames/02-package.png",
+    "/workspace/docs/assets/demo-frames/03-extract.png",
+    "/workspace/docs/assets/demo-frames/04-evidence.png",
+    "/workspace/docs/assets/demo-frames/04-desktop-my-activity.png"
+  ],
+  "strip": "/workspace/docs/assets/tabhandoff-demo-strip.png",
+  "animation": "/workspace/docs/assets/tabhandoff-demo.gif"
+}

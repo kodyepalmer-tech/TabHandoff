@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TabHandoff</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header class="top">
+      <img class="mark" src="icons/mark.svg" width="36" height="36" alt="" />
+      <div>
+        <h1>TabHandoff</h1>
+        <p class="tag">Hand off this tab — keep the proof local.</p>
+      </div>
+    </header>
+
+    <main id="app">
+      <section id="step-onboarding" class="panel hidden">
+        <h2>Welcome</h2>
+        <p class="lede">
+          Turn any webpage into a portable handoff another person or AI can pick up.
+        </p>
+        <ol class="steps">
+          <li>Right-click a page → <strong>Hand off with TabHandoff</strong></li>
+          <li>Write what should happen next</li>
+          <li>
+            <strong>Save package</strong> downloads a ZIP (works offline — no desktop needed)
+          </li>
+        </ol>
+        <p class="note">
+          Optional later: connect the local desktop bridge to also save into
+          <em>My Activity</em>. A token is only needed for that path.
+        </p>
+        <div class="actions">
+          <button type="button" id="btn-onboard-continue" class="primary">
+            Got it — hand off a tab
+          </button>
+        </div>
+      </section>
+
+      <section id="step-capture" class="panel">
+        <h2>What we’ll share</h2>
+        <dl class="meta">
+          <div>
+            <dt>Page</dt>
+            <dd id="page-title">Loading…</dd>
+          </div>
+          <div>
+            <dt>Link</dt>
+            <dd id="page-url" class="mono truncate">—</dd>
+          </div>
+          <div id="selection-block" class="hidden">
+            <dt>Selected text</dt>
+            <dd id="page-selection" class="selection"></dd>
+          </div>
+        </dl>
+        <div class="shot-wrap">
+          <img id="page-shot" class="shot hidden" alt="Page screenshot" />
+          <p id="shot-note" class="note">Screenshot pending…</p>
+        </div>
+
+        <label class="field">
+          <span>What should the next person or bot do?</span>
+          <textarea
+            id="instruction"
+            rows="4"
+            maxlength="8000"
+            placeholder="Example: Summarize this page and identify the next steps."
+          ></textarea>
+        </label>
+
+        <p class="trust">
+          Captured page text is untrusted data. TabHandoff will not pretend an agent ran
+          when only a package is created.
+        </p>
+
+        <div class="actions">
+          <button type="button" id="btn-review" class="primary" disabled>
+            Review handoff
+          </button>
+        </div>
+      </section>
+
+      <section id="step-review" class="panel hidden">
+        <h2>Review before sending</h2>
+        <ul class="review-list">
+          <li><strong>Instruction</strong><span id="rev-instruction"></span></li>
+          <li><strong>Page</strong><span id="rev-title"></span></li>
+          <li><strong>Link</strong><span id="rev-url" class="mono"></span></li>
+          <li id="rev-sel-row" class="hidden">
+            <strong>Selection</strong><span id="rev-selection"></span>
+          </li>
+          <li>
+            <strong>Screenshot</strong><span id="rev-shot">Included when available</span>
+          </li>
+          <li>
+            <strong>What happens next</strong
+            ><span id="rev-workflow">Checking local bridge…</span>
+          </li>
+        </ul>
+        <label class="field check" id="save-activity-row">
+          <input type="checkbox" id="save-activity" />
+          <span id="save-activity-label"
+            >Also save to My Activity (requires local bridge + token)</span
+          >
+        </label>
+        <label class="field check hidden" id="run-workflow-row">
+          <input type="checkbox" id="run-workflow" />
+          <span id="run-workflow-label"
+            >Also run page extraction in an isolated browser (no cookies copied)</span
+          >
+        </label>
+        <p class="trust" id="rev-workflow-note">
+          Default: download a portable ZIP. Status will say package created — not agent
+          executed.
+        </p>
+        <div class="actions">
+          <button type="button" id="btn-back" class="ghost">Back</button>
+          <button type="button" id="btn-confirm" class="primary">
+            Save package
+          </button>
+        </div>
+      </section>
+
+      <section id="step-result" class="panel hidden">
+        <h2 id="result-title">Working…</h2>
+        <p id="result-status" class="pill status-pill">…</p>
+        <p id="result-body" class="result-body"></p>
+        <p id="result-path" class="mono path hidden"></p>
+        <div class="actions">
+          <button type="button" id="btn-copy-brief" class="primary">
+            Copy brief for another AI
+          </button>
+          <button type="button" id="btn-download" class="ghost">Download ZIP</button>
+          <button type="button" id="btn-copy" class="ghost">Copy summary</button>
+          <button type="button" id="btn-again" class="ghost">Done</button>
+        </div>
+      </section>
+
+      <section id="step-settings" class="panel hidden">
+        <h2>Local bridge (optional)</h2>
+        <p class="note">
+          You can save packages without this. Connect the bridge only if you want
+          <em>My Activity</em> or page extraction on this computer. Paste the token printed
+          when you start the desktop app or <code>pnpm bridge</code>.
+        </p>
+        <label class="field">
+          <span>Bridge address</span>
+          <input id="bridge-base" type="text" value="http://127.0.0.1:17432" />
+        </label>
+        <label class="field">
+          <span>Access token (bridge path only)</span>
+          <input id="bridge-token" type="password" autocomplete="off" placeholder="Paste token" />
+        </label>
+        <p id="bridge-status" class="note">Checking bridge…</p>
+        <div class="actions">
+          <button type="button" id="btn-save-settings" class="primary">Save</button>
+          <button type="button" id="btn-settings-back" class="ghost">Back</button>
+        </div>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <button type="button" id="btn-settings" class="linkish">Settings</button>
+      <span id="bridge-pill" class="pill">Bridge: …</span>
+    </footer>
+
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

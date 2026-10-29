@@ -7,6 +7,7 @@ const STATUS_SET = new Set<HandoffStatus>([
   "succeeded",
   "failed",
   "cancelled",
+  "package_created",
 ]);
 
 export function hostnameOf(url: string): string {

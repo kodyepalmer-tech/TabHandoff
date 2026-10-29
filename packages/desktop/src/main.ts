@@ -14,12 +14,19 @@ import {
   uniqueHostnames,
   type ActivityFilters,
 } from "@tabhandoff/evidence";
+import {
+  loadOrCreateBridgeConfig,
+  startBridgeServer,
+  type BridgeServer,
+} from "@tabhandoff/bridge";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 let mainWindow: BrowserWindow | null = null;
 let cachedHome = tabHandoffHome();
 const defaultHome = path.join(homedir(), ".tabhandoff");
+let bridge: BridgeServer | null = null;
+let bridgeStartError: string | null = null;
 
 function iconPath(): string {
   return path.join(__dirname, "resources", "icon.png");
@@ -121,11 +128,82 @@ function registerIpc(): void {
             : "image/png";
     return `data:${mime};base64,${buf.toString("base64")}`;
   });
+
+  ipcMain.handle("bridge:status", async () => {
+    if (!bridge) {
+      return {
+        running: false,
+        error: bridgeStartError,
+        home: cachedHome,
+        agentExecution: false,
+        pageExtraction: false,
+      };
+    }
+    const { probeBridgeCapabilities } = await import("@tabhandoff/bridge");
+    const caps = await probeBridgeCapabilities();
+    return {
+      running: true,
+      url: bridge.url,
+      host: bridge.config.host,
+      port: bridge.config.port,
+      token: bridge.config.token,
+      home: bridge.home,
+      agentExecution: caps.llmAgent,
+      pageExtraction: caps.pageExtraction,
+      workflows: caps.workflows,
+      message: caps.message,
+    };
+  });
 }
 
-app.whenReady().then(() => {
+async function ensureBridge(): Promise<void> {
+  if (bridge) return;
+  try {
+    const config = await loadOrCreateBridgeConfig({ home: cachedHome });
+    bridge = await startBridgeServer({ config, home: cachedHome });
+    bridgeStartError = null;
+  } catch (err) {
+    bridgeStartError = err instanceof Error ? err.message : String(err);
+    bridge = null;
+  }
+}
+
+async function maybeDemoCapture(win: BrowserWindow): Promise<void> {
+  const out = process.env.TABHANDOFF_DEMO_CAPTURE?.trim();
+  if (!out) return;
+  // Real Electron UI capture for Phase 5 demos — never fakes activity data.
+  await new Promise((r) => setTimeout(r, 1800));
+  try {
+    await win.webContents.executeJavaScript(`
+      (async () => {
+        if (typeof refresh === 'function') await refresh();
+        await new Promise((r) => setTimeout(r, 400));
+      })()
+    `);
+  } catch {
+    /* renderer may not expose refresh globally — UI still loads receipts via boot */
+  }
+  await new Promise((r) => setTimeout(r, 600));
+  const image = await win.capturePage();
+  const { writeFile, mkdir } = await import("node:fs/promises");
+  await mkdir(path.dirname(out), { recursive: true });
+  await writeFile(out, image.toPNG());
+  console.log(`[tabhandoff-desktop] demo capture written: ${out}`);
+  app.quit();
+}
+
+app.whenReady().then(async () => {
   registerIpc();
+  // Skip bridge when capturing a static evidence-library frame (faster, quieter).
+  if (!process.env.TABHANDOFF_DEMO_CAPTURE?.trim()) {
+    await ensureBridge();
+  }
   createWindow();
+  if (mainWindow && process.env.TABHANDOFF_DEMO_CAPTURE?.trim()) {
+    void mainWindow.webContents.once("did-finish-load", () => {
+      void maybeDemoCapture(mainWindow!);
+    });
+  }
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
@@ -133,4 +211,9 @@ app.whenReady().then(() => {
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
+});
+
+app.on("before-quit", () => {
+  void bridge?.close();
+  bridge = null;
 });
