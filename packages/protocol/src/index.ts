@@ -170,8 +170,16 @@ export const PortableHandoffPackageSchema = z.object({
   screenshots: z.array(PortableScreenshotRefSchema).default([]),
   execution: z.object({
     status: PortableExecutionStatusSchema,
+    /** True only when a model-assisted / autonomous agent path actually started */
     agentLaunched: z.boolean(),
     events: z.array(PortableEventSchema).default([]),
+    /** Present after a supported workflow runs (Phase 3+) */
+    mode: z.enum(["dom", "llm"]).optional(),
+    workflow: z
+      .enum(["none", "page_extraction", "llm_browser"])
+      .optional(),
+    /** Plain-language label for UI — never claim AI completion for DOM extract */
+    workflowLabel: z.string().optional(),
   }),
   sourceAgent: z.string().optional(),
   destinationAgent: z.string().optional(),

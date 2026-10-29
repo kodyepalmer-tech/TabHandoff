@@ -1,6 +1,6 @@
-# TabHandoff browser extension (Phase 2)
+# TabHandoff browser extension
 
-Hand off the current tab as a **portable package**. Status is always honest: if no agent runs, the UI says **package created** — never a fake success.
+Hand off the current tab as a **portable package**, optionally run **page extraction** through the local bridge. Status is always honest: if nothing runs, the UI says **package created** — never a fake agent success. DOM extract without an API key is labeled **page extraction**, not autonomous AI.
 
 ## Load in Chrome / Edge / Brave (unpacked)
 
@@ -21,11 +21,12 @@ Hand off the current tab as a **portable package**. Status is always honest: if 
 2. Optionally select text.
 3. Right-click → **Hand off with TabHandoff**, or click the toolbar button.
 4. Write a plain-language instruction.
-5. Review what will be shared → **Create package**.
+5. Review what will be shared. Leave **page extraction** checked to run the supported workflow in an isolated browser (no cookies copied).
+6. Confirm → **Hand off**. Watch real progress in the popup.
 
 ### If the bridge is running
 
-The package is saved under `~/.tabhandoff/receipts/<id>/` (JSON + summary + screenshots). Open **TabHandoff desktop → My Activity → Refresh**.
+The package is saved under `~/.tabhandoff/receipts/<id>/`. When extraction runs, screenshots and a receipt are added. Open **TabHandoff desktop → My Activity** (auto-refreshes).
 
 ### If the bridge is off
 
@@ -47,4 +48,5 @@ Nothing is uploaded to a cloud by default.
 - Bridge binds to **127.0.0.1** only.
 - Requests need your **access token**.
 - Captured page text is treated as **untrusted** (prompt-injection aware).
-- Phase 2 does **not** launch Playwright/agent execution (that is Phase 3+).
+- Confirmation is required before starting page extraction.
+- See [docs/phase3-e2e-handoff.md](../../docs/phase3-e2e-handoff.md) for the end-to-end path.

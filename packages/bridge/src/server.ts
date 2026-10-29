@@ -9,6 +9,12 @@ import {
 } from "./package.js";
 import { writeHandoffToHome, type StoredHandoff } from "./store.js";
 import { tabHandoffHome } from "./home.js";
+import { probeBridgeCapabilities } from "./capabilities.js";
+import {
+  getLiveHandoffStatus,
+  startSupportedWorkflow,
+  workflowInflightCount,
+} from "./execute.js";
 
 export type BridgeServer = {
   config: BridgeConfig;
@@ -94,11 +100,27 @@ function logLine(msg: string): void {
   console.log(`[tabhandoff-bridge ${ts}] ${msg}`);
 }
 
+function requireAuth(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  config: BridgeConfig,
+  origin?: string,
+): boolean {
+  const token = readBearer(req);
+  if (!token || !safeEqualToken(token, config.token)) {
+    sendJson(res, 401, { ok: false, error: "unauthorized" }, origin);
+    return false;
+  }
+  return true;
+}
+
 export async function startBridgeServer(options: {
   config: BridgeConfig;
   home?: string;
   /** Inject for tests */
   onStored?: (stored: StoredHandoff) => void;
+  /** Inject runner for tests via execute.startSupportedWorkflow */
+  workflowRunner?: Parameters<typeof startSupportedWorkflow>[0]["runner"];
 }): Promise<BridgeServer> {
   const home = tabHandoffHome(options.home);
   const { config } = options;
@@ -137,11 +159,8 @@ export async function startBridgeServer(options: {
       }
 
       if (req.method === "GET" && url.pathname === "/v1/status") {
-        const token = readBearer(req);
-        if (!token || !safeEqualToken(token, config.token)) {
-          sendJson(res, 401, { ok: false, error: "unauthorized" }, origin);
-          return;
-        }
+        if (!requireAuth(req, res, config, origin)) return;
+        const caps = await probeBridgeCapabilities();
         sendJson(
           res,
           200,
@@ -149,12 +168,30 @@ export async function startBridgeServer(options: {
             ok: true,
             home,
             ready: true,
-            agentExecution: false,
-            message:
-              "Bridge is ready to store packages. Agent execution is not started from this endpoint (Phase 2).",
+            agentExecution: caps.llmAgent,
+            pageExtraction: caps.pageExtraction,
+            workflows: caps.workflows,
+            inflight: workflowInflightCount(),
+            message: caps.message,
           },
           origin,
         );
+        return;
+      }
+
+      if (req.method === "GET" && url.pathname.startsWith("/v1/handoffs/")) {
+        if (!requireAuth(req, res, config, origin)) return;
+        const id = decodeURIComponent(url.pathname.slice("/v1/handoffs/".length));
+        if (!id || id.includes("/") || id.includes("..")) {
+          sendJson(res, 400, { ok: false, error: "invalid_id" }, origin);
+          return;
+        }
+        const status = await getLiveHandoffStatus(home, id);
+        if (!status) {
+          sendJson(res, 404, { ok: false, error: "not_found" }, origin);
+          return;
+        }
+        sendJson(res, 200, status, origin);
         return;
       }
 
@@ -163,11 +200,7 @@ export async function startBridgeServer(options: {
           sendJson(res, 403, { ok: false, error: "origin_not_allowed" }, origin);
           return;
         }
-        const token = readBearer(req);
-        if (!token || !safeEqualToken(token, config.token)) {
-          sendJson(res, 401, { ok: false, error: "unauthorized" }, origin);
-          return;
-        }
+        if (!requireAuth(req, res, config, origin)) return;
 
         let raw: Buffer;
         try {
@@ -203,6 +236,9 @@ export async function startBridgeServer(options: {
           return;
         }
 
+        const runWorkflow = json.runWorkflow === true;
+        const wait = json.wait === true;
+
         const input: CaptureInput = {
           url: String(json.url ?? ""),
           title: typeof json.title === "string" ? json.title : undefined,
@@ -229,23 +265,128 @@ export async function startBridgeServer(options: {
 
         logLine(`stored package id=${stored.id} screenshots=${stored.screenshotPaths.length}`);
 
+        if (!runWorkflow) {
+          sendJson(
+            res,
+            201,
+            {
+              ok: true,
+              id: stored.id,
+              executionStatus: stored.executionStatus,
+              agentLaunched: false,
+              workflowStarted: false,
+              message:
+                "Package created and saved locally. No agent was launched.",
+              receiptDir: stored.receiptDir,
+              handoffPath: stored.handoffPath,
+              summaryPath: stored.summaryPath,
+              desktopHint: stored.desktopHint,
+              openInDesktop: {
+                available: true,
+                how: stored.desktopHint,
+              },
+            },
+            origin,
+          );
+          return;
+        }
+
+        const started = await startSupportedWorkflow({
+          home,
+          id: stored.id,
+          url: pkg.page.url,
+          instruction: pkg.instruction,
+          note: pkg.page.selectedText
+            ? `Selected text captured (${pkg.page.selectedText.length} chars).`
+            : undefined,
+          runner: options.workflowRunner,
+        });
+
+        if (!started.started) {
+          sendJson(
+            res,
+            201,
+            {
+              ok: true,
+              id: stored.id,
+              executionStatus: "package_created",
+              agentLaunched: false,
+              workflowStarted: false,
+              message:
+                started.reason === "playwright_unavailable"
+                  ? "Package created. No supported agent/workflow could run (Playwright unavailable) — nothing was invented."
+                  : started.status.message,
+              receiptDir: stored.receiptDir,
+              handoffPath: stored.handoffPath,
+              summaryPath: stored.summaryPath,
+              desktopHint: stored.desktopHint,
+              openInDesktop: {
+                available: true,
+                how: stored.desktopHint,
+              },
+            },
+            origin,
+          );
+          return;
+        }
+
+        if (wait) {
+          // Wait for inflight completion (tests / CLI-style callers)
+          const deadline = Date.now() + 120_000;
+          while (workflowInflightCount() > 0 && Date.now() < deadline) {
+            await new Promise((r) => setTimeout(r, 200));
+          }
+          const finalStatus = await getLiveHandoffStatus(home, stored.id);
+          sendJson(
+            res,
+            201,
+            {
+              ok: true,
+              id: stored.id,
+              executionStatus: finalStatus?.executionStatus ?? "running",
+              agentLaunched: finalStatus?.agentLaunched ?? false,
+              workflowStarted: true,
+              mode: finalStatus?.mode,
+              workflowLabel: finalStatus?.workflowLabel,
+              message: finalStatus?.message,
+              resultSummary: finalStatus?.resultSummary,
+              error: finalStatus?.error,
+              receiptDir: stored.receiptDir,
+              handoffPath: stored.handoffPath,
+              summaryPath: stored.summaryPath,
+              desktopHint:
+                "Open TabHandoff desktop → My Activity and refresh to see this handoff.",
+              openInDesktop: {
+                available: true,
+                how: "Open TabHandoff desktop → My Activity and refresh.",
+              },
+            },
+            origin,
+          );
+          return;
+        }
+
         sendJson(
           res,
-          201,
+          202,
           {
             ok: true,
             id: stored.id,
-            executionStatus: stored.executionStatus,
-            agentLaunched: false,
-            message:
-              "Package created and saved locally. No agent was launched.",
+            executionStatus: started.status.executionStatus,
+            agentLaunched: started.status.agentLaunched,
+            workflowStarted: true,
+            mode: started.status.mode,
+            workflowLabel: started.status.workflowLabel,
+            message: started.status.message,
             receiptDir: stored.receiptDir,
             handoffPath: stored.handoffPath,
             summaryPath: stored.summaryPath,
-            desktopHint: stored.desktopHint,
+            statusUrl: `/v1/handoffs/${stored.id}`,
+            desktopHint:
+              "Open TabHandoff desktop → My Activity — it refreshes as results arrive.",
             openInDesktop: {
               available: true,
-              how: stored.desktopHint,
+              how: "Open TabHandoff desktop → My Activity.",
             },
           },
           origin,

@@ -36,11 +36,12 @@ Copy the **access token** it shows (a long random string).
 2. Right-click the page (or selected text) → **Hand off with TabHandoff**.  
    Or click the toolbar button.
 3. Type what you want done in plain language.
-4. Review → **Create package**.
+4. Review — leave **page extraction** checked if you want the isolated browser to extract the page (not autonomous AI).
+5. Confirm → **Hand off**. Watch the real status in the popup.
 
-If the helper is running, open TabHandoff desktop → **My Activity** → **Refresh** to see it.
+If the helper is running, open TabHandoff desktop → **My Activity** (it refreshes automatically) to see receipts and screenshots.
 
-If the helper is not running, use **Download package** or **Copy summary**. The app will **not** claim an AI finished the job when it only saved a package.
+If the helper is not running, use **Download package** or **Copy summary**. The app will **not** claim an AI finished the job when it only saved a package. DOM extraction without an API key is always labeled as **page extraction**, not AI completion.
 
 ## Troubleshooting
 

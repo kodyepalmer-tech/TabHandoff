@@ -37,6 +37,8 @@ export type DesktopApi = {
     home?: string;
     error?: string | null;
     agentExecution?: boolean;
+    pageExtraction?: boolean;
+    workflows?: Array<{ id: string; label: string; description: string }>;
     message?: string;
   }>;
 };

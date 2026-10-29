@@ -18,11 +18,13 @@ export type StoredHandoff = {
   receiptPath: string;
   jobPath: string;
   screenshotPaths: string[];
-  /** Honest status — package only; agent not launched */
+  /** Honest status at write time — package only until a workflow starts */
   executionStatus: "package_created";
   agentLaunched: false;
   desktopHint: string;
 };
+
+export type StoredHandoffStatus = StoredHandoff["executionStatus"];
 
 export async function writeHandoffToHome(
   pkg: PortableHandoffPackage,

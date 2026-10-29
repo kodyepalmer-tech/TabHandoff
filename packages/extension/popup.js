@@ -3,7 +3,9 @@ import {
   loadBridgeSettings,
   saveBridgeSettings,
   probeBridge,
+  getBridgeStatus,
   postHandoff,
+  getHandoffStatus,
 } from "./lib/bridge-client.js";
 
 const state = {
@@ -13,6 +15,8 @@ const state = {
   screenshotError: null,
   lastPackage: null,
   lastBridgeResult: null,
+  bridgeCaps: null,
+  pollTimer: null,
 };
 
 const $ = (id) => document.getElementById(id);
@@ -26,6 +30,12 @@ function show(step) {
   ]) {
     $(id).classList.toggle("hidden", id !== step);
   }
+}
+
+function setStatusPill(text, kind) {
+  const el = $("result-status");
+  el.textContent = text;
+  el.className = "pill status-pill" + (kind ? ` ${kind}` : "");
 }
 
 async function getActiveTab() {
@@ -129,6 +139,13 @@ async function refreshBridgePill() {
   return { settings, probe };
 }
 
+async function loadCapabilities() {
+  const settings = await loadBridgeSettings();
+  const caps = await getBridgeStatus(settings);
+  state.bridgeCaps = caps;
+  return caps;
+}
+
 function fillReview() {
   $("rev-instruction").textContent = $("instruction").value.trim();
   $("rev-title").textContent = state.tab?.title || "(untitled)";
@@ -142,6 +159,42 @@ function fillReview() {
   $("rev-shot").textContent = state.screenshotDataUrl
     ? "Yes — visible tab capture"
     : "No — not available on this page";
+
+  const caps = state.bridgeCaps;
+  const canExtract = Boolean(caps?.ok && caps.pageExtraction);
+  const hasLlm = Boolean(caps?.ok && caps.agentExecution);
+
+  if (canExtract) {
+    $("rev-workflow").textContent = hasLlm
+      ? "Package + model-assisted isolated browser (API key detected)"
+      : "Package + page extraction in an isolated browser";
+    $("run-workflow-row").classList.remove("hidden");
+    $("run-workflow").checked = true;
+    $("run-workflow").disabled = false;
+    $("run-workflow-label").textContent = hasLlm
+      ? "Also run model-assisted browser steps (isolated — no cookies copied)"
+      : "Also run page extraction in an isolated browser (no cookies copied)";
+    $("rev-workflow-note").textContent = hasLlm
+      ? "Results are recorded honestly. Model steps only run when a key is present."
+      : "Page extraction is deterministic DOM reading — not autonomous AI completion.";
+    $("btn-confirm").textContent = "Hand off";
+  } else if (caps?.ok) {
+    $("rev-workflow").textContent =
+      "Package only — page extraction is not available on this computer";
+    $("run-workflow-row").classList.add("hidden");
+    $("run-workflow").checked = false;
+    $("rev-workflow-note").textContent =
+      "The package will be saved. No agent run will be invented.";
+    $("btn-confirm").textContent = "Create package";
+  } else {
+    $("rev-workflow").textContent =
+      "Bridge offline — package download/copy only (no fake history)";
+    $("run-workflow-row").classList.add("hidden");
+    $("run-workflow").checked = false;
+    $("rev-workflow-note").textContent =
+      "Start the desktop app or `pnpm bridge`, then try again to save and extract.";
+    $("btn-confirm").textContent = "Create package";
+  }
 }
 
 function screenshotPayload() {
@@ -155,7 +208,91 @@ function screenshotPayload() {
   ];
 }
 
+function stopPoll() {
+  if (state.pollTimer) {
+    clearInterval(state.pollTimer);
+    state.pollTimer = null;
+  }
+}
+
+function applyLiveStatus(st) {
+  const status = st.executionStatus || st.jobStatus || "…";
+  if (status === "running" || status === "queued") {
+    setStatusPill(st.workflowLabel || "Working…", "");
+    $("result-title").textContent = "Hand off in progress";
+  } else if (status === "succeeded") {
+    setStatusPill(
+      st.mode === "dom" ? "Page extraction done" : "Finished",
+      "ok",
+    );
+    $("result-title").textContent =
+      st.mode === "dom" ? "Page extraction finished" : "Handoff finished";
+  } else if (status === "failed") {
+    setStatusPill("Failed", "bad");
+    $("result-title").textContent = "Workflow failed";
+  } else if (status === "package_created") {
+    setStatusPill("Package only", "ok");
+    $("result-title").textContent = "Package created";
+  } else {
+    setStatusPill(String(status), "");
+  }
+
+  const bits = [st.message || ""];
+  if (st.mode === "dom") {
+    bits.push("Labeled as page extraction — not autonomous AI completion.");
+  }
+  if (st.resultSummary) {
+    bits.push("", "Result preview:", st.resultSummary.slice(0, 400));
+  }
+  if (st.error) {
+    bits.push("", "Error:", st.error);
+  }
+  bits.push(
+    "",
+    st.desktopHint ||
+      "Open TabHandoff desktop → My Activity to see evidence and screenshots.",
+  );
+  $("result-body").textContent = bits.filter(Boolean).join("\n");
+  if (st.receiptDir) {
+    $("result-path").classList.remove("hidden");
+    $("result-path").textContent = st.receiptDir;
+  }
+}
+
+async function pollUntilDone(settings, id) {
+  stopPoll();
+  let tries = 0;
+  return new Promise((resolve) => {
+    const tick = async () => {
+      tries += 1;
+      const st = await getHandoffStatus(settings, id);
+      if (st && st.ok !== false && st.executionStatus) {
+        applyLiveStatus(st);
+        if (
+          st.executionStatus === "succeeded" ||
+          st.executionStatus === "failed" ||
+          st.executionStatus === "cancelled"
+        ) {
+          stopPoll();
+          resolve(st);
+          return;
+        }
+      }
+      if (tries > 90) {
+        stopPoll();
+        setStatusPill("Still running…", "");
+        $("result-body").textContent =
+          "Still working on this computer. Open TabHandoff → My Activity and refresh — status updates there when finished.";
+        resolve(st);
+      }
+    };
+    void tick();
+    state.pollTimer = setInterval(() => void tick(), 1000);
+  });
+}
+
 async function createPackage() {
+  stopPoll();
   const instruction = $("instruction").value.trim();
   const pkg = buildPortablePackage({
     url: state.tab.url,
@@ -172,10 +309,17 @@ async function createPackage() {
 
   const settings = await loadBridgeSettings();
   const probe = await probeBridge(settings);
+  const wantRun =
+    Boolean($("run-workflow")?.checked) &&
+    Boolean(state.bridgeCaps?.ok && state.bridgeCaps.pageExtraction);
 
   if (probe.ok && settings.token) {
-    $("result-title").textContent = "Saving package…";
+    $("result-title").textContent = wantRun
+      ? "Starting handoff…"
+      : "Saving package…";
+    setStatusPill(wantRun ? "Queued" : "Saving", "");
     $("result-body").textContent = "Talking to the local TabHandoff bridge…";
+    $("result-path").classList.add("hidden");
     show("step-result");
 
     const result = await postHandoff(settings, {
@@ -185,14 +329,26 @@ async function createPackage() {
       instruction: pkg.instruction,
       screenshots: screenshotPayload(),
       extensionId: chrome.runtime.id,
+      runWorkflow: wantRun,
     });
     state.lastBridgeResult = result;
 
     if (result.ok) {
+      if (result.workflowStarted) {
+        applyLiveStatus({
+          ...result,
+          executionStatus: result.executionStatus || "running",
+          desktopHint: result.desktopHint,
+        });
+        await pollUntilDone(settings, result.id);
+        // Refresh package summary from last known state for copy/download
+        return;
+      }
+
+      setStatusPill("Package only", "ok");
       $("result-title").textContent = "Package created";
       $("result-body").textContent =
-        "Saved on this computer. No agent was launched.\n\n" +
-        (result.message || "") +
+        (result.message || "Saved on this computer. No agent was launched.") +
         "\n\n" +
         (result.desktopHint ||
           "Open TabHandoff desktop → My Activity and refresh.");
@@ -201,7 +357,7 @@ async function createPackage() {
       return;
     }
 
-    // Honest failure — still offer download
+    setStatusPill("Not saved", "bad");
     $("result-title").textContent = "Package ready (not saved to bridge)";
     $("result-body").textContent =
       (result.message || "Bridge could not save the package.") +
@@ -210,8 +366,8 @@ async function createPackage() {
     return;
   }
 
-  // Bridge offline — package-only path
   state.lastBridgeResult = { ok: false, error: "bridge_offline" };
+  setStatusPill("Package only", "ok");
   $("result-title").textContent = "Package created";
   $("result-body").textContent =
     "The local bridge is not running (or has no token yet), so the package was not saved into your evidence folder automatically.\n\n" +
@@ -258,8 +414,9 @@ async function openSettings() {
   $("bridge-base").value = settings.base;
   $("bridge-token").value = settings.token;
   const probe = await probeBridge(settings);
+  const caps = probe.ok ? await getBridgeStatus(settings) : null;
   $("bridge-status").textContent = probe.ok
-    ? "Bridge is reachable on this computer."
+    ? caps?.message || "Bridge is reachable on this computer."
     : "Bridge is not reachable. Run: pnpm bridge (or open the desktop app).";
   show("step-settings");
 }
@@ -273,11 +430,16 @@ function wire() {
 
   $("btn-review").addEventListener("click", () => {
     if (!$("instruction").value.trim()) return;
-    fillReview();
-    show("step-review");
+    void loadCapabilities().then(() => {
+      fillReview();
+      show("step-review");
+    });
   });
 
-  $("btn-back").addEventListener("click", () => show("step-capture"));
+  $("btn-back").addEventListener("click", () => {
+    stopPoll();
+    show("step-capture");
+  });
   $("btn-confirm").addEventListener("click", () => {
     void createPackage().then(() => {
       if ($("step-result").classList.contains("hidden")) show("step-result");
@@ -285,7 +447,10 @@ function wire() {
   });
   $("btn-download").addEventListener("click", downloadPackage);
   $("btn-copy").addEventListener("click", () => void copySummary());
-  $("btn-again").addEventListener("click", () => window.close());
+  $("btn-again").addEventListener("click", () => {
+    stopPoll();
+    window.close();
+  });
   $("btn-settings").addEventListener("click", () => void openSettings());
   $("btn-settings-back").addEventListener("click", () => show("step-capture"));
   $("btn-save-settings").addEventListener("click", async () => {
@@ -294,6 +459,7 @@ function wire() {
       token: $("bridge-token").value.trim(),
     });
     await refreshBridgePill();
+    await loadCapabilities();
     $("bridge-status").textContent = "Saved.";
   });
 }
@@ -306,7 +472,7 @@ async function init() {
     (state.tab?.id ? await readPageSelection(state.tab.id) : "");
 
   renderCapture();
-  void refreshBridgePill();
+  void refreshBridgePill().then(() => loadCapabilities());
 
   if (state.tab?.id && state.tab.url?.startsWith("http")) {
     await captureShot(state.tab);
@@ -315,7 +481,6 @@ async function init() {
     renderCapture();
   }
 
-  // Enable review only once instruction present
   $("btn-review").disabled =
     !$("instruction").value.trim() || !state.tab?.url?.startsWith("http");
 }
