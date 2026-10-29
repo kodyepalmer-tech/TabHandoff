@@ -16,6 +16,29 @@
     </header>
 
     <main id="app">
+      <section id="step-onboarding" class="panel hidden">
+        <h2>Welcome</h2>
+        <p class="lede">
+          Turn any webpage into a portable handoff another person or AI can pick up.
+        </p>
+        <ol class="steps">
+          <li>Right-click a page → <strong>Hand off with TabHandoff</strong></li>
+          <li>Write what should happen next</li>
+          <li>
+            <strong>Save package</strong> downloads a ZIP (works offline — no desktop needed)
+          </li>
+        </ol>
+        <p class="note">
+          Optional later: connect the local desktop bridge to also save into
+          <em>My Activity</em>. A token is only needed for that path.
+        </p>
+        <div class="actions">
+          <button type="button" id="btn-onboard-continue" class="primary">
+            Got it — hand off a tab
+          </button>
+        </div>
+      </section>
+
       <section id="step-capture" class="panel">
         <h2>What we’ll share</h2>
         <dl class="meta">
@@ -76,19 +99,26 @@
             ><span id="rev-workflow">Checking local bridge…</span>
           </li>
         </ul>
-        <label class="field check" id="run-workflow-row">
-          <input type="checkbox" id="run-workflow" checked />
+        <label class="field check" id="save-activity-row">
+          <input type="checkbox" id="save-activity" />
+          <span id="save-activity-label"
+            >Also save to My Activity (requires local bridge + token)</span
+          >
+        </label>
+        <label class="field check hidden" id="run-workflow-row">
+          <input type="checkbox" id="run-workflow" />
           <span id="run-workflow-label"
             >Also run page extraction in an isolated browser (no cookies copied)</span
           >
         </label>
         <p class="trust" id="rev-workflow-note">
-          Page extraction is deterministic DOM reading — not autonomous AI completion.
+          Default: download a portable ZIP. Status will say package created — not agent
+          executed.
         </p>
         <div class="actions">
           <button type="button" id="btn-back" class="ghost">Back</button>
           <button type="button" id="btn-confirm" class="primary">
-            Hand off
+            Save package
           </button>
         </div>
       </section>
@@ -99,24 +129,28 @@
         <p id="result-body" class="result-body"></p>
         <p id="result-path" class="mono path hidden"></p>
         <div class="actions">
+          <button type="button" id="btn-copy-brief" class="primary">
+            Copy brief for another AI
+          </button>
+          <button type="button" id="btn-download" class="ghost">Download ZIP</button>
           <button type="button" id="btn-copy" class="ghost">Copy summary</button>
-          <button type="button" id="btn-download" class="ghost">Download package</button>
-          <button type="button" id="btn-again" class="primary">Done</button>
+          <button type="button" id="btn-again" class="ghost">Done</button>
         </div>
       </section>
 
       <section id="step-settings" class="panel hidden">
-        <h2>Local bridge settings</h2>
+        <h2>Local bridge (optional)</h2>
         <p class="note">
-          The bridge runs on this computer only and saves packages into your TabHandoff
-          evidence folder. Paste the token printed when you start the bridge.
+          You can save packages without this. Connect the bridge only if you want
+          <em>My Activity</em> or page extraction on this computer. Paste the token printed
+          when you start the desktop app or <code>pnpm bridge</code>.
         </p>
         <label class="field">
           <span>Bridge address</span>
           <input id="bridge-base" type="text" value="http://127.0.0.1:17432" />
         </label>
         <label class="field">
-          <span>Access token</span>
+          <span>Access token (bridge path only)</span>
           <input id="bridge-token" type="password" autocomplete="off" placeholder="Paste token" />
         </label>
         <p id="bridge-status" class="note">Checking bridge…</p>

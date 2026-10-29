@@ -1,53 +1,69 @@
 # Set up TabHandoff in your browser (nontechnical)
 
-You need the TabHandoff project on your computer (already installed if you used the one-command installer).
+## Package-only path (recommended for launch)
 
-## 1. Start the local helper
+You can create and download a handoff **without** the desktop app or any token.
 
-Open a terminal in the TabHandoff folder and run:
+### Load unpacked (dev / pre-CWS)
 
-```bash
-pnpm bridge
-```
+1. Open Chrome, Edge, or Brave → `chrome://extensions` (or `edge://extensions`).
+2. Turn **Developer mode** on.
+3. Click **Load unpacked** → choose `packages/extension` in this repo  
+   (or unzip `artifacts/tabhandoff-extension-*.zip` from `pnpm pack:extension` into a folder and load that).
+4. Pin TabHandoff to the toolbar.
+5. First open shows a short welcome — continue.
 
-**Or** open the TabHandoff desktop app (`pnpm desktop`). Either one starts a small helper that only listens on this computer.
-
-Copy the **access token** it shows (a long random string).
-
-## 2. Load the extension
-
-1. Open Chrome, Edge, or Brave.
-2. Go to `chrome://extensions` (or `edge://extensions`).
-3. Turn **Developer mode** on (top right).
-4. Click **Load unpacked**.
-5. Choose the folder named `extension` inside `packages` in your TabHandoff project.
-6. Pin TabHandoff to the toolbar.
-
-## 3. Connect the extension
-
-1. Click the TabHandoff icon.
-2. Click **Settings**.
-3. Paste the access token → **Save**.
-4. The footer should say **Bridge: on**.
-
-## 4. Hand off a page
+### Hand off a page (no bridge)
 
 1. Open any normal website (`https://…`).
-2. Right-click the page (or selected text) → **Hand off with TabHandoff**.  
-   Or click the toolbar button.
-3. Type what you want done in plain language.
-4. Review — leave **page extraction** checked if you want the isolated browser to extract the page (not autonomous AI).
-5. Confirm → **Hand off**. Watch the real status in the popup.
+2. Right-click → **Hand off with TabHandoff**, or click the toolbar button.
+3. Type what you want done.
+4. Review → **Save package**.
+5. A ZIP downloads (`handoff.json` + `summary.md` + screenshots when available).
+6. Status says **Package created — not agent executed**.
+7. Optional: **Copy brief for another AI** and paste into ChatGPT / Claude / Cursor.
 
-If the helper is running, open TabHandoff desktop → **My Activity** (it refreshes automatically) to see receipts and screenshots.
+Validate a downloaded package (developers):
 
-If the helper is not running, use **Download package** or **Copy summary**. The app will **not** claim an AI finished the job when it only saved a package. DOM extraction without an API key is always labeled as **page extraction**, not AI completion.
+```bash
+unzip tabhandoff-<id>.zip -d /tmp/th-pack
+pnpm build   # once
+node packages/cli/dist/index.js validate /tmp/th-pack
+```
+
+### Clean-install manual checklist
+
+Use a fresh Chrome profile (or guest) with **no** prior TabHandoff data:
+
+- [ ] Load unpacked / install from store ZIP
+- [ ] Welcome onboarding appears once
+- [ ] Open https://example.com → right-click Hand off
+- [ ] Enter instruction → Save package → ZIP downloads
+- [ ] Result does **not** claim an agent ran
+- [ ] Copy brief for another AI pastes readable text
+- [ ] Bridge footer may say off — still succeeds
+- [ ] chrome://extensions itself cannot be handed off (honest message)
+
+Automated coverage: `pnpm test:extension-package` (builds the same ZIP layout and validates via CLI — no browser required).
+
+---
+
+## Optional: local bridge / My Activity
+
+Only needed if you want packages saved into `~/.tabhandoff` or page extraction on this computer.
+
+1. From the TabHandoff folder: `pnpm bridge` **or** open the desktop app.
+2. Copy the access token it shows.
+3. Extension → **Settings** → paste token → **Save**.
+4. On Review, leave **Also save to My Activity** checked.
+
+Token is **not** required for Save package / ZIP download.
 
 ## Troubleshooting
 
 | Problem | Fix |
 |---|---|
-| Bridge: off | Run `pnpm bridge` or open the desktop app; paste the token again |
+| Bridge: off | Fine for ZIP download. Start bridge + token only for My Activity |
 | Can’t hand off chrome:// pages | Open a regular website instead |
-| No screenshot | Some pages block capture — the link and text still hand off |
-| Token rejected | Copy the token from desktop **Settings** or the bridge terminal output |
+| No screenshot | Some pages block capture — link and text still hand off |
+| Token rejected | Copy token from desktop Settings or bridge terminal |

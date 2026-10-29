@@ -104,10 +104,10 @@ Unsupported bots: copy the exported folder — [docs/manual-export.md](docs/manu
 
 ## Browser handoff (no Terminal for capture)
 
-1. `pnpm build && pnpm bridge` (or `pnpm desktop`)
-2. Load unpacked extension from `packages/extension` — [docs/extension-setup.md](docs/extension-setup.md)
-3. Right-click a page → **Hand off with TabHandoff** → review → confirm
-4. Watch real status in the popup → open **My Activity** for receipts
+**Package-only (no desktop):** load unpacked `packages/extension` → right-click **Hand off with TabHandoff** → **Save package** → ZIP downloads. Copy brief for another AI if you want. Token not required.  
+Store ZIP: `pnpm pack:extension` → [docs/chrome-web-store.md](docs/chrome-web-store.md) · setup: [docs/extension-setup.md](docs/extension-setup.md)
+
+**Optional My Activity:** `pnpm bridge` or `pnpm desktop`, paste token in Settings, check “Also save to My Activity.”
 
 Details: [docs/phase3-e2e-handoff.md](docs/phase3-e2e-handoff.md)
 
