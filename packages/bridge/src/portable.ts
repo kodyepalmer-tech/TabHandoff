@@ -26,11 +26,13 @@ import {
 } from "@tabhandoff/protocol";
 import { jobsDir, receiptsDir, tabHandoffHome } from "./home.js";
 import {
+  buildFilePortablePackage,
   buildPortablePackage,
   packageForDisk,
   renderSummaryMarkdown,
   renderTaskCardYaml,
   type CaptureInput,
+  type FileCaptureInput,
 } from "./package.js";
 import { writeHandoffToHome, type StoredHandoff } from "./store.js";
 
@@ -199,6 +201,73 @@ export async function createPortableHandoff(
   const pkg = buildPortablePackage({ ...input, source });
   const stored = await writeHandoffToHome(pkg, options);
   return { ...stored, package: packageForDisk(pkg) };
+}
+
+/**
+ * Create a file-primary portable package (no page URL).
+ * Copies selected file bytes into artifacts/ and records SHA-256.
+ */
+export async function createFilePortableHandoff(
+  input: FileCaptureInput,
+  options?: { home?: string },
+): Promise<StoredHandoff & { package: PortableHandoffPackage }> {
+  const source = input.source ?? { kind: "desktop" as const };
+  const built = buildFilePortablePackage({ ...input, source });
+  const stored = await writeHandoffToHome(built.package, {
+    ...options,
+    artifacts: built.artifacts,
+  });
+  return { ...stored, package: packageForDisk(built.package) };
+}
+
+export type FileIntegrityResult = {
+  ok: boolean;
+  checked: number;
+  mismatches: Array<{
+    filename: string;
+    artifactFilename: string;
+    expectedSha256?: string;
+    actualSha256?: string;
+    reason: string;
+  }>;
+};
+
+/**
+ * Verify SHA-256 of artifacts/ files against sources[].sha256.
+ * Mutating an artifact after package creation fails this check.
+ */
+export async function verifyFileArtifactIntegrity(
+  target: string,
+  options?: { home?: string },
+): Promise<FileIntegrityResult> {
+  const { dir, package: pkg } = await readHandoffPackage(target, options);
+  const mismatches: FileIntegrityResult["mismatches"] = [];
+  let checked = 0;
+  for (const src of pkg.sources ?? []) {
+    if (src.type !== "file" || !src.artifactFilename || !src.sha256) continue;
+    checked += 1;
+    const artPath = path.join(dir, "artifacts", path.basename(src.artifactFilename));
+    try {
+      const actual = await sha256File(artPath);
+      if (actual !== src.sha256) {
+        mismatches.push({
+          filename: src.filename,
+          artifactFilename: src.artifactFilename,
+          expectedSha256: src.sha256,
+          actualSha256: actual,
+          reason: "SHA-256 mismatch — artifact bytes changed after packaging.",
+        });
+      }
+    } catch {
+      mismatches.push({
+        filename: src.filename,
+        artifactFilename: src.artifactFilename,
+        expectedSha256: src.sha256,
+        reason: "Artifact file missing.",
+      });
+    }
+  }
+  return { ok: mismatches.length === 0, checked, mismatches };
 }
 
 export type AppendProgressInput = {
@@ -453,13 +522,23 @@ export async function continueHandoff(
   const now = new Date().toISOString();
   const id = randomUUID();
 
-  const successor: PortableHandoffPackage = {
-    schemaVersion: "0.1",
+  const successor = {
+    schemaVersion: "0.1" as const,
     id,
     capturedAt: now,
     previousHandoffId: prev.id,
-    source: { kind: "agent" },
-    page: { ...prev.page },
+    source: { kind: "agent" as const },
+    ...(prev.page ? { page: { ...prev.page } } : {}),
+    // Carry source metadata forward; binary artifacts stay in the previous package.
+    sources: (prev.sources ?? []).map((s) =>
+      s.type === "file"
+        ? {
+            ...s,
+            artifactFilename: undefined,
+            textExcerpt: s.textExcerpt,
+          }
+        : { ...s },
+    ),
     instruction,
     intendedOutcome:
       input.intendedOutcome?.trim() || prev.intendedOutcome,
@@ -471,17 +550,19 @@ export async function continueHandoff(
     remainingWork:
       prev.remainingWork.length > 0
         ? [...prev.remainingWork]
-        : ["Complete the user's instruction using the captured page context."],
+        : prev.page
+          ? ["Complete the user's instruction using the captured page context."]
+          : ["Complete the user's instruction using the attached file context."],
     // References only — do not silently copy binary evidence into a new folder
     // without an attach; successor starts empty and agents attach as needed.
     screenshots: [],
     execution: {
-      status: "package_created",
+      status: "package_created" as const,
       agentLaunched: false,
       events: [
         {
           at: now,
-          kind: "verified_event",
+          kind: "verified_event" as const,
           tool: "agent.continue",
           detail: `Successor package created from ${prev.id}. Prior evidence remains in the previous package; not copied. No agent was launched.`,
           ok: true,
@@ -642,6 +723,7 @@ export function summarizePackageForAgent(pkg: PortableHandoffPackage): Record<
     instruction: pkg.instruction,
     intendedOutcome: pkg.intendedOutcome,
     page: pkg.page,
+    sources: pkg.sources,
     constraints: pkg.constraints,
     previousResults: pkg.previousResults,
     remainingWork: pkg.remainingWork,

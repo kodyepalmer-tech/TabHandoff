@@ -36,6 +36,11 @@ async function executeJob(id: string, timeoutMs?: number): Promise<HandoffJob> {
   const job = await readJob(id);
   if (!job) throw new Error(`Unknown handoff id: ${id}`);
   if (!job.receiptDir) throw new Error("Job missing receiptDir");
+  if (!job.url) {
+    throw new Error(
+      "Job missing URL — isolated browser runner cannot execute file-only packages.",
+    );
+  }
 
   await updateJob(id, {
     status: "running",

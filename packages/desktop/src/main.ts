@@ -1,7 +1,7 @@
-import { app, BrowserWindow, ipcMain, shell } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { readFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import {
   exportActivityReport,
@@ -15,7 +15,10 @@ import {
   type ActivityFilters,
 } from "@tabhandoff/evidence";
 import {
+  BRIDGE_MAX_FILE_SOURCES,
+  createFilePortableHandoff,
   loadOrCreateBridgeConfig,
+  PackageValidationError,
   startBridgeServer,
   type BridgeServer,
 } from "@tabhandoff/bridge";
@@ -27,6 +30,31 @@ let cachedHome = tabHandoffHome();
 const defaultHome = path.join(homedir(), ".tabhandoff");
 let bridge: BridgeServer | null = null;
 let bridgeStartError: string | null = null;
+
+/** Paths explicitly chosen via picker or drop this session — fail closed otherwise. */
+const allowedFilePaths = new Set<string>();
+
+function allowPaths(paths: string[]): string[] {
+  const out: string[] = [];
+  for (const p of paths) {
+    const resolved = path.resolve(p);
+    allowedFilePaths.add(resolved);
+    out.push(resolved);
+  }
+  return out;
+}
+
+function assertAllowedPaths(paths: string[]): string[] {
+  const resolved = paths.map((p) => path.resolve(p));
+  for (const p of resolved) {
+    if (!allowedFilePaths.has(p)) {
+      throw new Error(
+        "That file was not selected with Choose files or drag-and-drop. TabHandoff will not read arbitrary paths.",
+      );
+    }
+  }
+  return resolved;
+}
 
 function iconPath(): string {
   return path.join(__dirname, "resources", "icon.png");
@@ -154,6 +182,133 @@ function registerIpc(): void {
       message: caps.message,
     };
   });
+
+  ipcMain.handle("handoff:pickFiles", async () => {
+    const win = BrowserWindow.getFocusedWindow() ?? mainWindow;
+    const result = await dialog.showOpenDialog(win ?? undefined!, {
+      title: "Hand off files",
+      properties: ["openFile", "multiSelections"],
+      buttonLabel: "Add to handoff",
+    });
+    if (result.canceled || !result.filePaths.length) {
+      return { canceled: true, paths: [] as string[] };
+    }
+    if (result.filePaths.length > BRIDGE_MAX_FILE_SOURCES) {
+      throw new Error(
+        `Too many files (max ${BRIDGE_MAX_FILE_SOURCES}). Select fewer files.`,
+      );
+    }
+    const paths = allowPaths(result.filePaths);
+    return {
+      canceled: false,
+      paths,
+      files: await Promise.all(
+        paths.map(async (p) => {
+          const st = await stat(p);
+          return {
+            path: p,
+            name: path.basename(p),
+            byteSize: st.size,
+          };
+        }),
+      ),
+    };
+  });
+
+  /** Register drop paths from the renderer (paths come from Electron drop event). */
+  ipcMain.handle("handoff:registerDroppedPaths", async (_e, paths: string[]) => {
+    const list = Array.isArray(paths) ? paths.slice(0, BRIDGE_MAX_FILE_SOURCES) : [];
+    if (!list.length) return { paths: [] as string[], files: [] };
+    const allowed = allowPaths(list);
+    return {
+      paths: allowed,
+      files: await Promise.all(
+        allowed.map(async (p) => {
+          const st = await stat(p);
+          if (!st.isFile()) {
+            throw new Error(`Not a file: ${path.basename(p)}`);
+          }
+          return {
+            path: p,
+            name: path.basename(p),
+            byteSize: st.size,
+          };
+        }),
+      ),
+    };
+  });
+
+  ipcMain.handle(
+    "handoff:createFromFiles",
+    async (
+      _e,
+      payload: { paths: string[]; instruction: string; intendedOutcome?: string },
+    ) => {
+      const instruction = (payload?.instruction ?? "").trim();
+      if (!instruction) {
+        throw new Error("Write a short instruction for the next person or bot.");
+      }
+      const paths = assertAllowedPaths(payload?.paths ?? []);
+      if (!paths.length) {
+        throw new Error("Select at least one file to hand off.");
+      }
+      if (paths.length > BRIDGE_MAX_FILE_SOURCES) {
+        throw new Error(`Too many files (max ${BRIDGE_MAX_FILE_SOURCES}).`);
+      }
+
+      const files = [];
+      for (const absolutePath of paths) {
+        const st = await stat(absolutePath);
+        if (!st.isFile()) {
+          throw new Error(`Not a file: ${path.basename(absolutePath)}`);
+        }
+        const bytes = await readFile(absolutePath);
+        files.push({
+          absolutePath,
+          bytes,
+          displayPath: absolutePath,
+        });
+      }
+
+      try {
+        const stored = await createFilePortableHandoff(
+          {
+            files,
+            instruction,
+            intendedOutcome: payload.intendedOutcome?.trim() || undefined,
+            source: { kind: "desktop" },
+          },
+          { home: cachedHome },
+        );
+        return {
+          id: stored.id,
+          status: stored.executionStatus,
+          agentLaunched: stored.agentLaunched,
+          receiptDir: stored.receiptDir,
+          handoffPath: stored.handoffPath,
+          files: (stored.package.sources ?? [])
+            .filter((s) => s.type === "file")
+            .map((s) =>
+              s.type === "file"
+                ? {
+                    filename: s.filename,
+                    byteSize: s.byteSize,
+                    sha256: s.sha256,
+                    contentStatus: s.contentStatus,
+                  }
+                : null,
+            )
+            .filter(Boolean),
+          hint: "Package created only — no agent was launched. Office/PDF attachments are attached, not analyzed.",
+        };
+      } catch (err) {
+        if (err instanceof PackageValidationError) {
+          throw new Error(err.message);
+        }
+        throw err;
+      }
+    },
+  );
 }
 
 async function ensureBridge(): Promise<void> {

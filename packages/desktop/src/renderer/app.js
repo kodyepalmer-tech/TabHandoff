@@ -12,6 +12,7 @@ const state = {
   selected: null,
   home: "",
   imageCache: new Map(),
+  handoffFiles: [],
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -30,6 +31,7 @@ function showView(name) {
   $$(".view").forEach((v) => v.classList.remove("is-visible"));
   const map = {
     activity: "#view-activity",
+    handoff: "#view-handoff",
     detail: "#view-detail",
     evidence: "#view-evidence",
     settings: "#view-settings",
@@ -147,16 +149,29 @@ async function renderGrid() {
 
     const body = document.createElement("div");
     body.className = "item-body";
+    const label = r.displayLabel || r.pageTitle || r.hostname;
+    const hostLabel =
+      r.primarySourceType === "file"
+        ? "files"
+        : r.hostname || "local";
+    const footExtra =
+      r.primarySourceType === "file"
+        ? `${(r.fileSources || []).length} file${(r.fileSources || []).length === 1 ? "" : "s"}`
+        : `${r.screenshotCount} screenshot${r.screenshotCount === 1 ? "" : "s"}`;
+    if (r.primarySourceType === "file" && !r.thumbnailPath) {
+      const fb = thumbWrap.querySelector(".thumb-fallback");
+      if (fb) fb.textContent = "Files";
+    }
     body.innerHTML = `
       <div class="item-top">
-        <span class="host">${escapeHtml(r.hostname)}</span>
+        <span class="host">${escapeHtml(hostLabel)}</span>
         <span class="status ${escapeHtml(r.status)}">${escapeHtml(formatStatus(r.status))}</span>
       </div>
-      <div class="item-title">${escapeHtml(r.pageTitle || r.hostname)}</div>
+      <div class="item-title">${escapeHtml(label)}</div>
       <div class="item-instruction">${escapeHtml(r.instruction)}</div>
       <div class="item-foot">
         <span>${escapeHtml(formatWhen(r.createdAt))}</span>
-        <span>${r.screenshotCount} screenshot${r.screenshotCount === 1 ? "" : "s"}</span>
+        <span>${escapeHtml(footExtra)}</span>
       </div>
     `;
 
@@ -186,20 +201,48 @@ async function openDetail(id) {
   state.selected = record;
   showView("detail");
 
-  $("#detail-title").textContent = record.pageTitle || record.hostname || "Activity";
-  $("#detail-sub").textContent = `${formatStatus(record.status)} · ${formatWhen(record.createdAt)} · ${record.url}`;
+  const title =
+    record.displayLabel || record.pageTitle || record.hostname || "Activity";
+  $("#detail-title").textContent = title;
+  const subBits = [
+    formatStatus(record.status),
+    formatWhen(record.createdAt),
+    record.url ||
+      (record.fileSources || []).map((f) => f.filename).join(", ") ||
+      record.displayLabel,
+  ];
+  $("#detail-sub").textContent = subBits.join(" · ");
+
+  const fileRows = (record.fileSources || [])
+    .map((f) => {
+      const status =
+        f.contentStatus === "attached_not_analyzed"
+          ? "attached, not analyzed"
+          : f.contentStatus === "excerpted"
+            ? "text excerpt (untrusted)"
+            : "attached";
+      return `<div class="file-meta"><code>${escapeHtml(f.filename)}</code> · ${escapeHtml(String(f.byteSize ?? "?"))} bytes · ${escapeHtml(status)}${f.sha256 ? ` · sha256:${escapeHtml(f.sha256.slice(0, 12))}…` : ""}</div>`;
+    })
+    .join("");
+
+  const sourceRows = record.url
+    ? `
+    <dt>Website</dt><dd>${escapeHtml(record.hostname)}</dd>
+    <dt>URL</dt><dd><a href="#" data-url="${escapeAttr(record.url)}">${escapeHtml(record.url)}</a></dd>`
+    : `
+    <dt>Source</dt><dd>Local files</dd>
+    <dt>Files</dt><dd>${fileRows || "—"}</dd>`;
 
   $("#detail-kv").innerHTML = `
-    <dt>Website</dt><dd>${escapeHtml(record.hostname)}</dd>
-    <dt>URL</dt><dd><a href="#" data-url="${escapeAttr(record.url)}">${escapeHtml(record.url)}</a></dd>
+    ${sourceRows}
     <dt>Instruction</dt><dd>${escapeHtml(record.instruction)}</dd>
     <dt>Note</dt><dd>${escapeHtml(record.note || "—")}</dd>
     <dt>Mode</dt><dd>${escapeHtml(record.mode || "—")}</dd>
     <dt>ID</dt><dd><code>${escapeHtml(record.id)}</code></dd>
   `;
-  $("#detail-kv").querySelector("a")?.addEventListener("click", (e) => {
+  $("#detail-kv").querySelector("a[data-url]")?.addEventListener("click", (e) => {
     e.preventDefault();
-    void api.openExternal(record.url);
+    if (record.url) void api.openExternal(record.url);
   });
 
   $("#detail-untrusted").textContent = record.untrustedContent?.warning || "";
@@ -356,6 +399,106 @@ function wire() {
       toast("Token copied — paste into the browser extension Settings");
     } catch {
       toast("Could not copy — select the token field manually");
+    }
+  });
+
+  wireHandoff();
+}
+
+function renderHandoffFiles() {
+  const list = $("#handoff-file-list");
+  if (!list) return;
+  if (!state.handoffFiles.length) {
+    list.innerHTML = `<li class="fine">No files selected yet.</li>`;
+    return;
+  }
+  list.innerHTML = state.handoffFiles
+    .map(
+      (f) =>
+        `<li><code>${escapeHtml(f.name)}</code> · ${escapeHtml(String(f.byteSize))} bytes</li>`,
+    )
+    .join("");
+}
+
+function wireHandoff() {
+  const drop = $("#handoff-drop");
+  if (!drop || typeof api.pickFiles !== "function") return;
+
+  renderHandoffFiles();
+
+  $("#btn-pick-files")?.addEventListener("click", async () => {
+    try {
+      const result = await api.pickFiles();
+      if (result.canceled) return;
+      state.handoffFiles = result.files || [];
+      renderHandoffFiles();
+      toast(`${state.handoffFiles.length} file(s) ready`);
+    } catch (err) {
+      toast(err instanceof Error ? err.message : String(err));
+    }
+  });
+
+  $("#btn-clear-files")?.addEventListener("click", () => {
+    state.handoffFiles = [];
+    renderHandoffFiles();
+  });
+
+  drop.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    drop.classList.add("is-dragover");
+  });
+  drop.addEventListener("dragleave", () => drop.classList.remove("is-dragover"));
+  drop.addEventListener("drop", async (e) => {
+    e.preventDefault();
+    drop.classList.remove("is-dragover");
+    const files = [...(e.dataTransfer?.files || [])];
+    const paths = files
+      .map((f) => api.pathForFile(f))
+      .filter((p) => typeof p === "string" && p.length > 0);
+    if (!paths.length) {
+      toast("Could not resolve dropped file paths.");
+      return;
+    }
+    try {
+      const registered = await api.registerDroppedPaths(paths);
+      state.handoffFiles = registered.files || [];
+      renderHandoffFiles();
+      toast(`${state.handoffFiles.length} file(s) ready`);
+    } catch (err) {
+      toast(err instanceof Error ? err.message : String(err));
+    }
+  });
+
+  $("#btn-create-file-handoff")?.addEventListener("click", async () => {
+    const instruction = ($("#handoff-instruction")?.value || "").trim();
+    const intendedOutcome = ($("#handoff-outcome")?.value || "").trim();
+    if (!state.handoffFiles.length) {
+      toast("Choose or drop at least one file first.");
+      return;
+    }
+    if (!instruction) {
+      toast("Write a short instruction.");
+      return;
+    }
+    $("#handoff-status-line").textContent = "Creating package…";
+    try {
+      const result = await api.createFromFiles({
+        paths: state.handoffFiles.map((f) => f.path),
+        instruction,
+        intendedOutcome: intendedOutcome || undefined,
+      });
+      $("#handoff-status-line").textContent = result.hint;
+      toast(`Package created · ${result.id.slice(0, 8)}…`);
+      state.handoffFiles = [];
+      renderHandoffFiles();
+      $("#handoff-instruction").value = "";
+      $("#handoff-outcome").value = "";
+      await refresh();
+      await openDetail(result.id);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      $("#handoff-status-line").textContent = msg;
+      toast(msg);
     }
   });
 }

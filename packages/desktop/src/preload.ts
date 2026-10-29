@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from "electron";
+import { contextBridge, ipcRenderer, webUtils } from "electron";
 
 export type DesktopApi = {
   home: () => Promise<{
@@ -41,6 +41,35 @@ export type DesktopApi = {
     workflows?: Array<{ id: string; label: string; description: string }>;
     message?: string;
   }>;
+  pickFiles: () => Promise<{
+    canceled: boolean;
+    paths: string[];
+    files?: Array<{ path: string; name: string; byteSize: number }>;
+  }>;
+  registerDroppedPaths: (paths: string[]) => Promise<{
+    paths: string[];
+    files: Array<{ path: string; name: string; byteSize: number }>;
+  }>;
+  /** Resolve File objects from a drop event to absolute paths (Electron). */
+  pathForFile: (file: File) => string;
+  createFromFiles: (payload: {
+    paths: string[];
+    instruction: string;
+    intendedOutcome?: string;
+  }) => Promise<{
+    id: string;
+    status: string;
+    agentLaunched: boolean;
+    receiptDir: string;
+    handoffPath: string;
+    files: Array<{
+      filename: string;
+      byteSize?: number;
+      sha256?: string;
+      contentStatus?: string;
+    }>;
+    hint: string;
+  }>;
 };
 
 const api: DesktopApi = {
@@ -55,6 +84,19 @@ const api: DesktopApi = {
   openExternal: (url) => ipcRenderer.invoke("evidence:openExternal", url),
   readImage: (filePath) => ipcRenderer.invoke("evidence:readImage", filePath),
   bridgeStatus: () => ipcRenderer.invoke("bridge:status"),
+  pickFiles: () => ipcRenderer.invoke("handoff:pickFiles"),
+  registerDroppedPaths: (paths) =>
+    ipcRenderer.invoke("handoff:registerDroppedPaths", paths),
+  pathForFile: (file) => {
+    try {
+      return webUtils.getPathForFile(file);
+    } catch {
+      // Older Electron fallback — may be empty under sandbox.
+      return (file as File & { path?: string }).path || "";
+    }
+  },
+  createFromFiles: (payload) =>
+    ipcRenderer.invoke("handoff:createFromFiles", payload),
 };
 
 contextBridge.exposeInMainWorld("tabhandoff", api);

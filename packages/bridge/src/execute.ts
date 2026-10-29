@@ -173,7 +173,7 @@ export async function patchHandoffExecution(
 
   const job = (await readJob(home, id)) ?? {
     id,
-    url: pkg.page.url,
+    ...(pkg.page?.url ? { url: pkg.page.url } : {}),
     instruction: pkg.instruction,
     status: "queued" as const,
     createdAt: pkg.capturedAt,

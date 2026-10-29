@@ -143,6 +143,7 @@ export async function runHandoff(input: RunHandoffInput): Promise<RunHandoffResu
       name: `tabhandoff-${input.id.slice(0, 8)}`,
       description: input.instruction.slice(0, 160),
       startUrl: safeUrl.toString(),
+      sourceTypes: ["browser"],
       instruction: input.instruction,
       successHints: ["Receipt markdown produced", "At least one screenshot"],
       tags: ["tabhandoff", "generated"],
@@ -208,6 +209,7 @@ export async function runHandoff(input: RunHandoffInput): Promise<RunHandoffResu
         name: `tabhandoff-failed-${input.id.slice(0, 8)}`,
         description: input.instruction.slice(0, 160),
         startUrl: input.url.startsWith("http") ? input.url : "https://example.com",
+        sourceTypes: ["browser"],
         instruction: input.instruction,
         successHints: [],
         tags: ["tabhandoff", "failed"],
@@ -294,11 +296,17 @@ function toYaml(card: TaskCard): string {
           .join("\n")}`
       : JSON.stringify(s);
 
-  return [
+  const lines = [
     `schemaVersion: "0.1"`,
     `name: ${esc(card.name)}`,
     `description: ${esc(card.description ?? "")}`,
-    `startUrl: ${esc(card.startUrl)}`,
+  ];
+  if (card.startUrl) lines.push(`startUrl: ${esc(card.startUrl)}`);
+  if (card.sourceTypes?.length) {
+    lines.push(`sourceTypes:`);
+    for (const t of card.sourceTypes) lines.push(`  - ${esc(t)}`);
+  }
+  lines.push(
     `instruction: ${esc(card.instruction)}`,
     `successHints:`,
     ...card.successHints.map((h) => `  - ${esc(h)}`),
@@ -307,5 +315,6 @@ function toYaml(card: TaskCard): string {
     `sourceHandoffId: ${esc(card.sourceHandoffId ?? "")}`,
     `createdAt: ${esc(card.createdAt)}`,
     ``,
-  ].join("\n");
+  );
+  return lines.join("\n");
 }

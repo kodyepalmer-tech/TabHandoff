@@ -193,13 +193,43 @@ async function buildRecord(home: string, id: string): Promise<ActivityRecord | n
 
   const handoffPath = path.join(receiptDir, "handoff.json");
   let portableStatus: string | undefined;
+  let handoffPageUrl: string | undefined;
+  let handoffPageTitle: string | undefined;
+  let handoffInstruction: string | undefined;
+  let handoffFileSources: ActivityRecord["fileSources"] = [];
   if (await exists(handoffPath)) {
     const handoff = safeJsonParse<{
       execution?: { status?: string };
-      page?: { title?: string; url?: string };
+      page?: { title?: string; url?: string; selectedText?: string };
       instruction?: string;
+      sources?: Array<{
+        type?: string;
+        filename?: string;
+        displayPath?: string;
+        mediaType?: string;
+        byteSize?: number;
+        sha256?: string;
+        contentStatus?: "excerpted" | "attached_not_analyzed";
+        artifactFilename?: string;
+        textExcerpt?: string;
+      }>;
     }>(await readFile(handoffPath, "utf8"));
     portableStatus = handoff?.execution?.status;
+    handoffPageUrl = handoff?.page?.url;
+    handoffPageTitle = handoff?.page?.title;
+    handoffInstruction = handoff?.instruction;
+    handoffFileSources = (handoff?.sources ?? [])
+      .filter((s) => s?.type === "file" && s.filename)
+      .map((s) => ({
+        filename: s.filename!,
+        displayPath: s.displayPath,
+        mediaType: s.mediaType,
+        byteSize: s.byteSize,
+        sha256: s.sha256,
+        contentStatus: s.contentStatus,
+        artifactFilename: s.artifactFilename,
+        textExcerpt: s.textExcerpt,
+      }));
   }
 
   let card = undefined as ReturnType<typeof parseCardYaml> | undefined;
@@ -216,8 +246,14 @@ async function buildRecord(home: string, id: string): Promise<ActivityRecord | n
     snap?.url ||
     receiptParsed?.url ||
     card?.startUrl ||
+    handoffPageUrl ||
     "";
-  if (!url && !storeJob && !(await exists(receiptDir))) {
+  if (
+    !url &&
+    handoffFileSources.length === 0 &&
+    !storeJob &&
+    !(await exists(receiptDir))
+  ) {
     return null;
   }
 
@@ -226,6 +262,7 @@ async function buildRecord(home: string, id: string): Promise<ActivityRecord | n
     snap?.instruction ||
     receiptParsed?.instruction ||
     card?.instruction ||
+    handoffInstruction ||
     "(missing instruction)";
 
   // Prefer honest package_created over a misleading queued job snapshot.
@@ -284,12 +321,44 @@ async function buildRecord(home: string, id: string): Promise<ActivityRecord | n
 
   const pageExcerpt = receiptParsed?.result?.slice(0, 2000);
 
+  const hasBrowser = Boolean(url);
+  const hasFiles = handoffFileSources.length > 0;
+  const primarySourceType: ActivityRecord["primarySourceType"] = hasBrowser
+    ? hasFiles
+      ? "mixed"
+      : "browser"
+    : hasFiles
+      ? "file"
+      : "unknown";
+
+  const fileLabel =
+    handoffFileSources.length === 0
+      ? ""
+      : handoffFileSources.length === 1
+        ? handoffFileSources[0]!.filename
+        : `${handoffFileSources[0]!.filename} +${handoffFileSources.length - 1}`;
+
+  const hostname = hasBrowser
+    ? hostnameOf(url)
+    : hasFiles
+      ? "files"
+      : "local";
+  const displayLabel = hasBrowser
+    ? hostnameOf(url)
+    : fileLabel || card?.name || "File handoff";
+
   const record: ActivityRecord = {
     id,
     schemaVersion: "0.1",
-    url: url || "https://invalid.invalid/",
-    hostname: hostnameOf(url || "https://invalid.invalid/"),
-    pageTitle: receiptParsed?.pageTitle || card?.name,
+    ...(hasBrowser ? { url } : {}),
+    hostname,
+    primarySourceType,
+    displayLabel,
+    pageTitle:
+      handoffPageTitle ||
+      receiptParsed?.pageTitle ||
+      card?.name ||
+      (hasFiles ? fileLabel : undefined),
     instruction,
     note: storeJob?.note || snap?.note || receiptParsed?.note,
     status,
@@ -303,6 +372,7 @@ async function buildRecord(home: string, id: string): Promise<ActivityRecord | n
     screenshotCount: screenshotPaths.length,
     screenshotPaths,
     thumbnailPath: screenshotPaths[0],
+    fileSources: handoffFileSources,
     receiptDir,
     receiptPath: (await exists(receiptPath)) ? receiptPath : storeJob?.receiptPath,
     cardPath: (await exists(cardPath)) ? cardPath : storeJob?.cardPath,

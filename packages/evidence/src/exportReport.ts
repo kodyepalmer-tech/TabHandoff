@@ -62,7 +62,14 @@ function renderExportMarkdown(
     `|---|---|`,
     `| **ID** | \`${record.id}\` |`,
     `| **Status** | ${record.status} |`,
-    `| **URL** | ${record.url} |`,
+    `| **Source** | ${record.primarySourceType} · ${record.displayLabel} |`,
+    ...(record.url
+      ? [`| **URL** | ${record.url} |`]
+      : record.fileSources?.length
+        ? [
+            `| **Files** | ${record.fileSources.map((f) => f.filename).join(", ")} |`,
+          ]
+        : []),
     `| **When** | ${record.createdAt} |`,
     `| **Screenshots** | ${record.screenshotCount} |`,
     ``,
