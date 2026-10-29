@@ -1,13 +1,9 @@
 import type { Page } from "playwright";
 import { extractFromPage } from "./extract.js";
+import { detectLlmProvider } from "./provider.js";
 
 export type LlmProvider = "openai" | "anthropic" | null;
-
-export function detectLlmProvider(): LlmProvider {
-  if (process.env.OPENAI_API_KEY?.trim()) return "openai";
-  if (process.env.ANTHROPIC_API_KEY?.trim()) return "anthropic";
-  return null;
-}
+export { detectLlmProvider };
 
 type ToolCall = {
   name: "click" | "type" | "extract" | "done";

@@ -36,6 +36,7 @@ export async function getBridgeStatus(settings) {
       ok: false,
       error: "missing_token",
       pageExtraction: false,
+      aiCompletion: false,
       workflows: [],
       message: "Add your local bridge token in Settings.",
     };
@@ -51,6 +52,7 @@ export async function getBridgeStatus(settings) {
         ok: false,
         error: body.error || `http_${res.status}`,
         pageExtraction: false,
+        aiCompletion: false,
         workflows: [],
         message: body.message || "Bridge status unavailable.",
       };
@@ -59,6 +61,7 @@ export async function getBridgeStatus(settings) {
       ok: true,
       pageExtraction: Boolean(body.pageExtraction),
       agentExecution: Boolean(body.agentExecution),
+      aiCompletion: Boolean(body.aiCompletion),
       workflows: Array.isArray(body.workflows) ? body.workflows : [],
       message: body.message || "",
       home: body.home,
@@ -68,10 +71,78 @@ export async function getBridgeStatus(settings) {
       ok: false,
       error: "bridge_unreachable",
       pageExtraction: false,
+      aiCompletion: false,
       workflows: [],
       message: "Could not reach the local TabHandoff bridge.",
     };
   }
+}
+
+/**
+ * Run AI on captured context via local loopback.
+ * Extension never holds the API key — bridge process env only.
+ */
+export async function postAiRun(settings, payload) {
+  const base = settings.base || DEFAULT_BASE;
+  const token = settings.token || "";
+  if (!token) {
+    return {
+      ok: false,
+      status: "unavailable",
+      error: "missing_token",
+      message:
+        "Add your local bridge token in Settings to Run with AI (key stays on the bridge).",
+      apiKeyIncluded: false,
+    };
+  }
+
+  let res;
+  try {
+    res = await fetch(`${base}/v1/ai/run`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    return {
+      ok: false,
+      status: "failed",
+      error: "bridge_unreachable",
+      message:
+        "Could not reach the local TabHandoff bridge. Start desktop/`pnpm bridge`, then retry Run with AI.",
+      apiKeyIncluded: false,
+    };
+  }
+
+  let body = {};
+  try {
+    body = await res.json();
+  } catch {
+    body = {};
+  }
+
+  return {
+    ok: Boolean(body.ok),
+    status: body.status || (res.ok ? "done" : "failed"),
+    provider: body.provider ?? null,
+    model: body.model ?? null,
+    result: body.result || "",
+    error: body.error,
+    message:
+      body.message ||
+      (res.ok
+        ? "Model finished."
+        : res.status === 503
+          ? "No API key on the bridge — Run with AI unavailable."
+          : "Model call failed."),
+    handoffId: body.handoffId,
+    resultPath: body.resultPath,
+    apiKeyIncluded: false,
+    httpStatus: res.status,
+  };
 }
 
 export async function postHandoff(settings, payload) {
