@@ -104,17 +104,21 @@ Static strip (same real frames):
 
 ## For AI agents
 
+TabHandoff’s differentiator is **verified task handoffs** between agents (portable state + continuation checks) — not a generic chat UI. Local `run-ai` is optional infrastructure.
+
 1. [docs/agents.md](docs/agents.md) — discover → install → parse → create → continue → export  
-2. Schema: [docs/schema.md](docs/schema.md) · [docs/schema/handoff.schema.json](docs/schema/handoff.schema.json)  
-3. Example: [`fixtures/portable-handoff/sample-research-001/`](fixtures/portable-handoff/sample-research-001/)  
-4. Prove the loop: `pnpm build && pnpm test:agent`
+2. [docs/verified-handoff.md](docs/verified-handoff.md) — schema **0.2**, CLI↔MCP transfer, `verify-continuation`  
+3. Schema: [docs/schema.md](docs/schema.md) · [docs/schema/handoff.schema.json](docs/schema/handoff.schema.json)  
+4. Example: [`fixtures/portable-handoff/sample-research-001/`](fixtures/portable-handoff/sample-research-001/)  
+5. Prove the loops: `pnpm build && pnpm test:agent && pnpm test:verified-handoff` · live demo: `pnpm demo:verified-handoff`
 
 ```bash
 tabhandoff validate fixtures/portable-handoff/sample-research-001
 tabhandoff read fixtures/portable-handoff/sample-research-001
-tabhandoff create --url https://example.com --instruction "Summarize and list next steps"
-tabhandoff continue <id>
-tabhandoff export <id> --out ./exports --archive
+tabhandoff create-verified --url https://example.com --instruction "Summarize and list next steps"
+tabhandoff export <id> --out ./exports --archive   # includes INSPECT.html
+tabhandoff continue <export-path> --verified --destination-agent agent-b
+tabhandoff verify-continuation <successor> --previous <export-path> --require-execution
 ```
 
 Unsupported bots: copy the exported folder — [docs/manual-export.md](docs/manual-export.md).

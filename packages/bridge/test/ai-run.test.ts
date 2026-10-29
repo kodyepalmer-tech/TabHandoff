@@ -36,13 +36,16 @@ describe("Priority 4 AI execution slice", () => {
   });
 
   it("executeAiRun is honestly unavailable without a key", async () => {
+    // Isolated home so ~/.tabhandoff/ai-settings.json cannot inject a local provider
+    const home = await mkdtemp(path.join(os.tmpdir(), "th-ai-none-"));
+    temps.push(home);
     const result = await executeAiRun(
       {
         instruction: "Summarize",
         url: "https://example.com",
         pageText: "Hello world",
       },
-      { deps: { env: {} } },
+      { home, deps: { env: {}, allowLocalProbe: false } },
     );
     assert.equal(result.ok, false);
     assert.equal(result.status, "unavailable");
