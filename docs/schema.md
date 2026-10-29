@@ -1,10 +1,11 @@
 # TabHandoff portable handoff schema
 
-**Schema version:** `0.1` (literal on every package)  
-**Protocol package version:** `0.1.0` (`PROTOCOL_VERSION`)  
+**Schema version:** `0.1` (portable) or `0.2` (verified task handoff)  
+**Protocol package version:** `0.2.0` (`PROTOCOL_VERSION`)  
 **Source of truth:** Zod schemas in `@tabhandoff/protocol` (`packages/protocol/src/index.ts`)  
-**Machine-readable JSON Schema:** [schema/handoff.schema.json](./schema/handoff.schema.json)  
-**Example package:** [fixtures/portable-handoff/sample-research-001/](../fixtures/portable-handoff/sample-research-001/)
+**Machine-readable JSON Schema:** [schema/handoff.schema.json](./schema/handoff.schema.json) (0.1 baseline; 0.2 fields validated in Zod)  
+**Example package:** [fixtures/portable-handoff/sample-research-001/](../fixtures/portable-handoff/sample-research-001/)  
+**Verified handoff guide:** [verified-handoff.md](./verified-handoff.md)
 
 Agents must validate and parse `handoff.json`. Do **not** reverse-engineer the format from Markdown prose (`summary.md` / `receipt.md` are human-readable mirrors).
 
@@ -54,7 +55,15 @@ Live store path: `~/.tabhandoff/receipts/<id>/` (override with `TABHANDOFF_HOME`
 | `execution.status` | yes | See statuses below |
 | `execution.agentLaunched` | yes | `true` only if a model-assisted path actually started |
 | `execution.events[]` | yes | Chronological evidence trail |
-| `sourceAgent` / `destinationAgent` | no | When known |
+| `sourceAgent` / `destinationAgent` | no | When known (prefer `agentIdentity` on 0.2) |
+| `acceptanceCriteria` | 0.2 | What destination must satisfy |
+| `claims[]` | 0.2 | `{ text, kind }` where kind is `observed_fact` \| `user_statement` \| `summary` \| `unverified_claim` |
+| `tests[]` | 0.2 | `{ id, command, expected?, result, outputExcerpt?, ranAt? }` |
+| `permissions` | **required on 0.2** | Explicit allowNetwork / allowFileWrite / allowShell / allowModelCall |
+| `missingInputs[]` | 0.2 | Known gaps — never fabricate |
+| `agentIdentity` | **source required on 0.2** | `{ source, destination? }` with supported `interface` |
+| `provenance` | **required on 0.2** | createdBy/At, transferId?, previousPackageSha256? |
+| `execution.verification` | no | `{ outcome: pass\|fail\|unverified, checkedAt?, notes[] }` |
 | `untrustedContentWarning` | yes | Prompt-injection warning string |
 
 ### Execution statuses

@@ -15,6 +15,47 @@ export async function saveBridgeSettings({ base, token }) {
   });
 }
 
+/**
+ * Redeem a short pairing code for the bridge token (one-time).
+ * Does not disable auth — only bootstraps the token onto this device.
+ */
+export async function completePairing(base, code) {
+  const root = (base || DEFAULT_BASE).replace(/\/$/, "");
+  let res;
+  try {
+    res = await fetch(`${root}/v1/pair/complete`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: String(code || "").trim() }),
+    });
+  } catch {
+    return {
+      ok: false,
+      error: "bridge_unreachable",
+      message: "Could not reach the local bridge. Start the desktop app first.",
+    };
+  }
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok || !body.ok || !body.token) {
+    return {
+      ok: false,
+      error: body.error || `http_${res.status}`,
+      message: body.message || "Pairing failed.",
+    };
+  }
+  await saveBridgeSettings({
+    base: body.base || root,
+    token: body.token,
+  });
+  return {
+    ok: true,
+    base: body.base || root,
+    message: body.message || "Paired.",
+    /** Never echo the token back into the UI layer unnecessarily */
+    tokenSaved: true,
+  };
+}
+
 export async function probeBridge(settings) {
   const base = settings?.base || DEFAULT_BASE;
   try {
@@ -36,6 +77,9 @@ export async function getBridgeStatus(settings) {
       ok: false,
       error: "missing_token",
       pageExtraction: false,
+      aiCompletion: false,
+      aiProvider: null,
+      aiModel: null,
       workflows: [],
       message: "Add your local bridge token in Settings.",
     };
@@ -51,6 +95,9 @@ export async function getBridgeStatus(settings) {
         ok: false,
         error: body.error || `http_${res.status}`,
         pageExtraction: false,
+        aiCompletion: false,
+        aiProvider: null,
+        aiModel: null,
         workflows: [],
         message: body.message || "Bridge status unavailable.",
       };
@@ -59,6 +106,9 @@ export async function getBridgeStatus(settings) {
       ok: true,
       pageExtraction: Boolean(body.pageExtraction),
       agentExecution: Boolean(body.agentExecution),
+      aiCompletion: Boolean(body.aiCompletion),
+      aiProvider: body.aiProvider || null,
+      aiModel: body.aiModel || null,
       workflows: Array.isArray(body.workflows) ? body.workflows : [],
       message: body.message || "",
       home: body.home,
@@ -68,10 +118,149 @@ export async function getBridgeStatus(settings) {
       ok: false,
       error: "bridge_unreachable",
       pageExtraction: false,
+      aiCompletion: false,
+      aiProvider: null,
+      aiModel: null,
       workflows: [],
       message: "Could not reach the local TabHandoff bridge.",
     };
   }
+}
+
+/** List saved AI tasks from the local bridge (persisted under ~/.tabhandoff/ai-tasks). */
+export async function listAiTasks(settings, limit = 30) {
+  const base = settings.base || DEFAULT_BASE;
+  const token = settings.token || "";
+  if (!token) {
+    return { ok: false, error: "missing_token", tasks: [] };
+  }
+  try {
+    const res = await fetch(
+      `${base}/v1/ai/tasks?limit=${encodeURIComponent(String(limit))}`,
+      {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}` },
+      },
+    );
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return {
+        ok: false,
+        error: body.error || `http_${res.status}`,
+        tasks: [],
+        message: body.message,
+      };
+    }
+    return {
+      ok: true,
+      tasks: Array.isArray(body.tasks) ? body.tasks : [],
+    };
+  } catch {
+    return {
+      ok: false,
+      error: "bridge_unreachable",
+      tasks: [],
+      message: "Could not reach the local TabHandoff bridge.",
+    };
+  }
+}
+
+export async function getAiTask(settings, id) {
+  const base = settings.base || DEFAULT_BASE;
+  const token = settings.token || "";
+  if (!token || !id) {
+    return { ok: false, error: "missing_token_or_id" };
+  }
+  try {
+    const res = await fetch(`${base}/v1/ai/tasks/${encodeURIComponent(id)}`, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return {
+        ok: false,
+        error: body.error || `http_${res.status}`,
+        message: body.message,
+      };
+    }
+    return { ok: true, task: body.task };
+  } catch {
+    return {
+      ok: false,
+      error: "bridge_unreachable",
+      message: "Could not reach the local TabHandoff bridge.",
+    };
+  }
+}
+
+/**
+ * Run AI on captured context via local loopback.
+ * Extension never holds the API key — bridge process env only.
+ */
+export async function postAiRun(settings, payload) {
+  const base = settings.base || DEFAULT_BASE;
+  const token = settings.token || "";
+  if (!token) {
+    return {
+      ok: false,
+      status: "unavailable",
+      error: "missing_token",
+      message:
+        "Add your local bridge token in Settings to Run with AI (key stays on the bridge).",
+      apiKeyIncluded: false,
+    };
+  }
+
+  let res;
+  try {
+    res = await fetch(`${base}/v1/ai/run`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    return {
+      ok: false,
+      status: "failed",
+      error: "bridge_unreachable",
+      message:
+        "Could not reach the local TabHandoff bridge. Start desktop/`pnpm bridge`, then retry Run with AI.",
+      apiKeyIncluded: false,
+    };
+  }
+
+  let body = {};
+  try {
+    body = await res.json();
+  } catch {
+    body = {};
+  }
+
+  return {
+    ok: Boolean(body.ok),
+    status: body.status || (res.ok ? "done" : "failed"),
+    provider: body.provider ?? null,
+    model: body.model ?? null,
+    result: body.result || "",
+    error: body.error,
+    message:
+      body.message ||
+      (res.ok
+        ? "Model finished."
+        : res.status === 503
+          ? "No API key on the bridge — Run with AI unavailable."
+          : "Model call failed."),
+    handoffId: body.handoffId,
+    taskId: body.taskId,
+    resultPath: body.resultPath,
+    taskPath: body.taskPath,
+    apiKeyIncluded: false,
+    httpStatus: res.status,
+  };
 }
 
 export async function postHandoff(settings, payload) {

@@ -53,6 +53,35 @@ export {
   type LiveHandoffStatus,
 } from "./execute.js";
 export {
+  executeAiRun,
+  aiCompletionAvailable,
+  aiCompletionAvailableAsync,
+  listAiTasks,
+  getAiTask,
+  aiTasksDir,
+  type AiRunRequest,
+  type AiRunResponse,
+  type AiTaskRecord,
+} from "./ai-run.js";
+export {
+  mintPairingCode,
+  pairingStatus,
+  redeemPairingCode,
+  clearPairingState,
+} from "./pairing.js";
+export {
+  loadAiSettings,
+  saveAiSettings,
+  aiSettingsPath,
+  envWithAiSettings,
+  type AiSettings,
+} from "./ai-settings.js";
+export {
+  probeLocalRuntimes,
+  preserveExactModelId,
+  type LocalRuntimeProbe,
+} from "@tabhandoff/runner";
+export {
   PortableError,
   HASH_INTEGRITY_NOTE,
   resolveHandoffDir,
@@ -60,18 +89,36 @@ export {
   validateHandoffTarget,
   createPortableHandoff,
   createFilePortableHandoff,
+  createVerifiedHandoff,
   verifyFileArtifactIntegrity,
   appendProgress,
+  recordDestinationExecution,
   attachEvidence,
   markExecutionStatus,
   continueHandoff,
   exportHandoffPackage,
   summarizePackageForAgent,
   type AppendProgressInput,
+  type RecordDestinationExecutionInput,
   type AttachEvidenceInput,
   type MarkStatusInput,
   type ContinueHandoffInput,
+  type CreateVerifiedHandoffInput,
   type ExportHandoffInput,
   type ExportHandoffResult,
   type FileIntegrityResult,
 } from "./portable.js";
+export {
+  verifyContinuation,
+  evaluateContinuationBaseline,
+  applyTestResult,
+  type ContinuationVerificationReport,
+  type VerificationCheck,
+  type EvalHarnessCaseResult,
+  type CheckOutcome,
+} from "./verify-continuation.js";
+export {
+  renderInspectHtml,
+  writeInspectHtml,
+  type InspectWriteResult,
+} from "./inspect.js";

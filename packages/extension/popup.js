@@ -13,18 +13,28 @@ import {
   getBridgeStatus,
   postHandoff,
   getHandoffStatus,
+  postAiRun,
+  listAiTasks,
+  getAiTask,
+  completePairing,
 } from "./lib/bridge-client.js";
+
+const HISTORY_KEY = "aiTaskHistory";
+const HISTORY_LIMIT = 40;
 
 const state = {
   tab: null,
   selectedText: "",
+  pageText: "",
   screenshotDataUrl: null,
   screenshotError: null,
   lastPackage: null,
   lastBridgeResult: null,
+  lastAiResult: null,
   bridgeCaps: null,
   pollTimer: null,
   zipDownloaded: false,
+  preferAi: true,
 };
 
 const $ = (id) => document.getElementById(id);
@@ -82,6 +92,22 @@ async function readPageSelection(tabId) {
   }
 }
 
+/** Visible text for AI context — truncated; never includes cookies/storage. */
+async function readPageText(tabId) {
+  try {
+    const [{ result }] = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () => {
+        const text = (document.body?.innerText || "").replace(/\s+\n/g, "\n").trim();
+        return text.slice(0, 20_000);
+      },
+    });
+    return result || "";
+  } catch {
+    return "";
+  }
+}
+
 async function captureShot(tab) {
   try {
     const res = await chrome.runtime.sendMessage({
@@ -98,6 +124,34 @@ async function captureShot(tab) {
   } catch (e) {
     state.screenshotDataUrl = null;
     state.screenshotError = e?.message || "Screenshot not available.";
+  }
+}
+
+function updatePrimaryActions() {
+  const canHandOff = Boolean(state.tab?.url?.startsWith("http"));
+  const hasInstruction = Boolean($("instruction").value.trim());
+  const enabled = canHandOff && hasInstruction;
+  $("btn-review").disabled = !enabled;
+  $("btn-run-ai").disabled = !enabled;
+
+  const caps = state.bridgeCaps;
+  const canAi = Boolean(caps?.ok && caps.aiCompletion);
+  if (canAi) {
+    $("btn-run-ai").textContent = "Run with AI";
+    $("capture-hint").textContent =
+      `AI ready via ${caps.aiProvider || "local bridge"}${caps.aiModel ? ` (${caps.aiModel})` : ""}. Keys stay on this computer — never in the extension.`;
+  } else if (caps?.reachable && caps?.hasToken) {
+    $("btn-run-ai").textContent = "Run with AI";
+    $("capture-hint").textContent =
+      "Bridge is connected but no AI provider is configured. Set OPENAI_API_KEY / GROQ_API_KEY, or run Ollama locally. TabHandoff will not invent a result.";
+  } else if (caps?.reachable) {
+    $("btn-run-ai").textContent = "Run with AI";
+    $("capture-hint").textContent =
+      "Bridge is reachable — paste the token in Settings to Run with AI.";
+  } else {
+    $("btn-run-ai").textContent = "Run with AI";
+    $("capture-hint").textContent =
+      "Start pnpm bridge or the desktop app, then paste the token in Settings. Without a provider, Run with AI fails honestly.";
   }
 }
 
@@ -118,20 +172,19 @@ function renderCapture() {
   if (state.screenshotDataUrl) {
     $("page-shot").src = state.screenshotDataUrl;
     $("page-shot").classList.remove("hidden");
-    $("shot-note").textContent = "Screenshot included when you confirm.";
+    $("shot-note").textContent = "Screenshot captured for context / optional ZIP.";
   } else {
     $("page-shot").classList.add("hidden");
     $("shot-note").textContent =
       state.screenshotError ||
-      "No screenshot (some pages block capture). You can still hand off the link and text.";
+      "No screenshot (some pages block capture). You can still run with page text.";
   }
 
-  const canHandOff = Boolean(url?.startsWith("http"));
-  $("btn-review").disabled = !canHandOff || !$("instruction").value.trim();
-  if (!canHandOff) {
+  if (!url?.startsWith("http")) {
     $("shot-note").textContent =
       "Open a normal http(s) webpage to hand it off. Browser settings pages are not supported.";
   }
+  updatePrimaryActions();
 }
 
 async function refreshBridgePill() {
@@ -156,14 +209,140 @@ async function loadCapabilities() {
       ok: false,
       pageExtraction: false,
       agentExecution: false,
+      aiCompletion: false,
+      aiProvider: null,
+      aiModel: null,
       reachable: probe.ok,
       hasToken: Boolean(settings.token),
     };
+    updatePrimaryActions();
     return state.bridgeCaps;
   }
   const caps = await getBridgeStatus(settings);
   state.bridgeCaps = { ...caps, reachable: true, hasToken: true };
+  updatePrimaryActions();
   return state.bridgeCaps;
+}
+
+async function loadLocalHistory() {
+  const stored = await chrome.storage.local.get(HISTORY_KEY);
+  return Array.isArray(stored[HISTORY_KEY]) ? stored[HISTORY_KEY] : [];
+}
+
+async function saveLocalHistoryEntry(entry) {
+  const prev = await loadLocalHistory();
+  const next = [entry, ...prev.filter((e) => e.id !== entry.id)].slice(
+    0,
+    HISTORY_LIMIT,
+  );
+  await chrome.storage.local.set({ [HISTORY_KEY]: next });
+  return next;
+}
+
+function formatWhen(iso) {
+  if (!iso) return "";
+  try {
+    return new Intl.DateTimeFormat(undefined, {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(new Date(iso));
+  } catch {
+    return iso;
+  }
+}
+
+async function renderHistory() {
+  const list = $("history-list");
+  const empty = $("history-empty");
+  list.innerHTML = "";
+
+  let tasks = [];
+  const settings = await loadBridgeSettings();
+  const probe = await probeBridge(settings);
+  if (probe.ok && settings.token) {
+    const remote = await listAiTasks(settings, 30);
+    if (remote.ok && remote.tasks.length) {
+      tasks = remote.tasks.map((t) => ({
+        id: t.id,
+        at: t.at,
+        instruction: t.instruction,
+        title: t.title,
+        url: t.url,
+        status: t.status,
+        provider: t.provider,
+        model: t.model,
+        result: t.result,
+        message: t.message,
+        ok: t.ok,
+        source: "bridge",
+      }));
+    }
+  }
+
+  if (!tasks.length) {
+    const local = await loadLocalHistory();
+    tasks = local;
+  }
+
+  if (!tasks.length) {
+    empty.classList.remove("hidden");
+    return;
+  }
+  empty.classList.add("hidden");
+
+  for (const task of tasks.slice(0, 20)) {
+    const li = document.createElement("li");
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "history-item";
+    const title =
+      (task.instruction || "").slice(0, 72) ||
+      task.title ||
+      task.url ||
+      task.id;
+    btn.innerHTML = `<span class="hi-title"></span><span class="hi-meta"></span>`;
+    btn.querySelector(".hi-title").textContent = title;
+    btn.querySelector(".hi-meta").textContent = [
+      task.status || "?",
+      task.provider || "",
+      formatWhen(task.at),
+    ]
+      .filter(Boolean)
+      .join(" · ");
+    btn.addEventListener("click", () => {
+      void openHistoryTask(task);
+    });
+    li.appendChild(btn);
+    list.appendChild(li);
+  }
+}
+
+async function openHistoryTask(task) {
+  let full = task;
+  if (task.source === "bridge" || (!task.result && task.id)) {
+    const settings = await loadBridgeSettings();
+    const remote = await getAiTask(settings, task.id);
+    if (remote.ok && remote.task) {
+      full = { ...task, ...remote.task };
+    }
+  }
+
+  state.lastAiResult = {
+    ok: Boolean(full.ok),
+    status: full.status || (full.ok ? "done" : "failed"),
+    provider: full.provider,
+    model: full.model,
+    result: full.result || "",
+    message: full.message || "Saved task",
+    error: full.error,
+    taskId: full.id,
+    resultPath: full.resultPath || full.taskPath,
+  };
+  showAiResult(state.lastAiResult, {
+    activitySaved: false,
+    handoffId: full.handoffId || null,
+    fromHistory: true,
+  });
 }
 
 function fillReview() {
@@ -184,6 +363,7 @@ function fillReview() {
   const bridgeReady = Boolean(caps?.ok && caps.hasToken);
   const canExtract = Boolean(bridgeReady && caps.pageExtraction);
   const hasLlm = Boolean(bridgeReady && caps.agentExecution);
+  const canAi = Boolean(bridgeReady && caps.aiCompletion);
 
   $("save-activity-row").classList.remove("hidden");
   if (bridgeReady) {
@@ -200,32 +380,51 @@ function fillReview() {
     $("save-activity").checked = false;
     $("save-activity").disabled = true;
     $("save-activity-label").textContent =
-      "Also save to My Activity (start desktop/bridge + token — optional)";
+      "Also save to My Activity (start desktop/bridge + token)";
   }
 
   if (canExtract) {
-    $("rev-workflow").textContent = hasLlm
-      ? "Download ZIP + optional model-assisted isolated browser"
-      : "Download ZIP + optional page extraction in an isolated browser";
     $("run-workflow-row").classList.remove("hidden");
     $("run-workflow").checked = false;
     $("run-workflow").disabled = false;
     $("run-workflow-label").textContent = hasLlm
       ? "Also run model-assisted browser steps (isolated — no cookies copied)"
       : "Also run page extraction in an isolated browser (no cookies copied)";
-    $("rev-workflow-note").textContent = hasLlm
-      ? "Default path downloads a package. Model steps only run when checked and a key is present."
-      : "Default path downloads a package. Extraction is deterministic DOM reading — not autonomous AI.";
-    $("btn-confirm").textContent = "Save package";
   } else {
-    $("rev-workflow").textContent =
-      "Download portable ZIP — package created (no agent executed)";
     $("run-workflow-row").classList.add("hidden");
     $("run-workflow").checked = false;
-    $("rev-workflow-note").textContent =
-      "Works without the desktop app. Optional My Activity save needs the local bridge.";
-    $("btn-confirm").textContent = "Save package";
   }
+
+  if (canAi) {
+    $("run-ai-row").classList.remove("hidden");
+    $("run-ai").checked = state.preferAi;
+    $("run-ai").disabled = false;
+    $("run-ai-label").textContent = `Run with AI via ${caps.aiProvider || "bridge"}${caps.aiModel ? ` (${caps.aiModel})` : ""} — key never leaves this computer`;
+    $("rev-workflow").textContent =
+      "Run with AI on captured context (ZIP optional)";
+    $("btn-confirm").textContent = "Run with AI";
+    $("rev-workflow-note").textContent =
+      "Primary path calls the model through the local bridge. ZIP download is optional sharing — not required to see the result.";
+  } else if (bridgeReady) {
+    $("run-ai-row").classList.add("hidden");
+    $("run-ai").checked = false;
+    $("rev-workflow").textContent = canExtract
+      ? "Package / optional page extraction — Run with AI unavailable (no provider)"
+      : "Package only — Run with AI unavailable (no provider)";
+    $("btn-confirm").textContent = "Save package";
+    $("rev-workflow-note").textContent =
+      "Configure OPENAI_API_KEY, GROQ_API_KEY, ANTHROPIC_API_KEY, or local Ollama on the bridge process. TabHandoff will not invent an AI result.";
+  } else {
+    $("run-ai-row").classList.add("hidden");
+    $("run-ai").checked = false;
+    $("rev-workflow").textContent =
+      "Download portable ZIP — package created (no agent executed)";
+    $("btn-confirm").textContent = "Save package";
+    $("rev-workflow-note").textContent =
+      "Connect the local bridge + token (and a provider) for Run with AI. ZIP still works offline.";
+  }
+
+  $("download-zip").checked = !canAi;
 }
 
 function screenshotPayload() {
@@ -352,6 +551,7 @@ function downloadZip(pkg = state.lastPackage) {
 }
 
 function showPackageOnlyResult({ activitySaved, activityError }) {
+  $("btn-copy-result").classList.add("hidden");
   setStatusPill("Package created", "ok");
   $("result-title").textContent = "Package created — not agent executed";
   const lines = [
@@ -365,7 +565,7 @@ function showPackageOnlyResult({ activitySaved, activityError }) {
   } else {
     lines.push(
       "",
-      "Bridge was not used. Connect desktop later if you want My Activity.",
+      "Bridge was not used. Connect desktop later if you want My Activity or Run with AI.",
     );
   }
   lines.push(
@@ -377,9 +577,84 @@ function showPackageOnlyResult({ activitySaved, activityError }) {
   show("step-result");
 }
 
-async function createPackage() {
+function showAiResult(ai, { activitySaved, handoffId, fromHistory }) {
+  state.lastAiResult = ai;
+  $("btn-copy-result").classList.toggle("hidden", !ai.result);
+
+  if (ai.status === "done" && ai.ok) {
+    setStatusPill(fromHistory ? "Saved result" : "AI done", "ok");
+    $("result-title").textContent = fromHistory
+      ? "Saved AI task"
+      : "Run with AI finished";
+  } else if (ai.status === "unavailable") {
+    setStatusPill("AI unavailable", "");
+    $("result-title").textContent = "Run with AI unavailable";
+  } else {
+    setStatusPill("AI failed", "bad");
+    $("result-title").textContent = "Run with AI failed";
+  }
+
+  const lines = [
+    ai.message || "",
+    ai.provider ? `Provider: ${ai.provider}${ai.model ? ` (${ai.model})` : ""}` : "",
+    ai.taskId ? `Task id: ${ai.taskId}` : "",
+    "",
+  ];
+  if (ai.result) {
+    lines.push("Result:", ai.result.slice(0, 6000));
+  }
+  if (ai.error && ai.status !== "done") {
+    lines.push("", `Error: ${ai.error}`);
+  }
+  if (!fromHistory) {
+    lines.push(
+      "",
+      "Task is saved locally — close and reopen TabHandoff to find it under Saved tasks.",
+    );
+  }
+  if (activitySaved) {
+    lines.push("Also saved to My Activity on this computer.");
+  }
+  if (handoffId) {
+    lines.push(`Handoff id: ${handoffId}`);
+  }
+  $("result-body").textContent = lines
+    .filter((l, i, a) => !(l === "" && a[i - 1] === ""))
+    .join("\n");
+  if (ai.resultPath || ai.taskPath) {
+    $("result-path").classList.remove("hidden");
+    $("result-path").textContent = ai.resultPath || ai.taskPath;
+  } else {
+    $("result-path").classList.add("hidden");
+  }
+  show("step-result");
+}
+
+async function persistAiHistory(ai, pkg) {
+  if (!ai?.taskId && !ai?.result && ai?.status !== "unavailable") return;
+  const entry = {
+    id: ai.taskId || `local-${Date.now()}`,
+    at: new Date().toISOString(),
+    instruction: pkg?.instruction || $("instruction").value.trim(),
+    title: pkg?.page?.title || state.tab?.title || "",
+    url: pkg?.page?.url || state.tab?.url || "",
+    status: ai.status,
+    provider: ai.provider,
+    model: ai.model,
+    result: ai.result || "",
+    message: ai.message || "",
+    ok: Boolean(ai.ok),
+    error: ai.error,
+    source: "local",
+  };
+  await saveLocalHistoryEntry(entry);
+  void renderHistory();
+}
+
+async function createPackage({ forceAi = false, forceZip = false } = {}) {
   stopPoll();
   state.zipDownloaded = false;
+  state.lastAiResult = null;
   const instruction = $("instruction").value.trim();
   let pkg;
   try {
@@ -399,13 +674,11 @@ async function createPackage() {
     $("result-title").textContent = "Could not create package";
     $("result-body").textContent = e?.message || String(e);
     $("result-path").classList.add("hidden");
+    $("btn-copy-result").classList.add("hidden");
     show("step-result");
     return;
   }
   state.lastPackage = pkg;
-
-  // Always offer a local ZIP first — works with or without bridge.
-  downloadZip(pkg);
 
   const settings = await loadBridgeSettings();
   const probe = await probeBridge(settings);
@@ -413,11 +686,36 @@ async function createPackage() {
   const wantRun =
     Boolean($("run-workflow")?.checked) &&
     Boolean(state.bridgeCaps?.ok && state.bridgeCaps.pageExtraction);
+  const runAi = forceAi || Boolean($("run-ai")?.checked);
+  const downloadNow =
+    forceZip ||
+    Boolean($("download-zip")?.checked) ||
+    (!runAi && !wantActivity && !wantRun);
 
-  const canTalkToBridge = Boolean(probe.ok && settings.token && wantActivity);
+  if (downloadNow) {
+    downloadZip(pkg);
+  }
+
+  const needBridge = wantActivity || wantRun || runAi;
+  const canTalkToBridge = Boolean(probe.ok && settings.token && needBridge);
 
   if (!canTalkToBridge) {
     state.lastBridgeResult = { ok: false, error: "bridge_skipped" };
+    if (runAi) {
+      const ai = {
+        ok: false,
+        status: "unavailable",
+        message: !probe.ok
+          ? "Bridge offline — Run with AI did not run. Start pnpm bridge / desktop and paste the token."
+          : "Missing bridge token — Run with AI did not run. Paste the token from bridge output in Settings.",
+        error: !probe.ok ? "bridge_offline" : "missing_token",
+        result: "",
+      };
+      await persistAiHistory(ai, pkg);
+      showAiResult(ai, { activitySaved: false, handoffId: null });
+      return;
+    }
+    if (!downloadNow) downloadZip(pkg);
     showPackageOnlyResult({
       activitySaved: false,
       activityError: wantActivity
@@ -429,54 +727,117 @@ async function createPackage() {
     return;
   }
 
-  $("result-title").textContent = wantRun
-    ? "Starting handoff…"
-    : "Saving to My Activity…";
-  setStatusPill(wantRun ? "Queued" : "Saving", "");
-  $("result-body").textContent = "Talking to the local TabHandoff bridge…";
+  $("result-title").textContent = runAi
+    ? "Running with AI…"
+    : wantRun
+      ? "Starting handoff…"
+      : "Saving to My Activity…";
+  setStatusPill(runAi ? "AI running" : wantRun ? "Queued" : "Saving", "");
+  $("result-body").textContent = runAi
+    ? "Calling the configured model through the local bridge…"
+    : "Talking to the local TabHandoff bridge…";
   $("result-path").classList.add("hidden");
+  $("btn-copy-result").classList.add("hidden");
   show("step-result");
 
-  const result = await postHandoff(settings, {
-    url: pkg.page.url,
-    title: pkg.page.title,
-    selectedText: pkg.page.selectedText,
-    instruction: pkg.instruction,
-    screenshots: screenshotPayload(),
-    extensionId: chrome.runtime.id,
-    runWorkflow: wantRun,
-  });
-  state.lastBridgeResult = result;
+  let handoffId = null;
+  let activitySaved = false;
 
-  if (result.ok) {
-    if (result.workflowStarted) {
-      applyLiveStatus({
-        ...result,
-        executionStatus: result.executionStatus || "running",
-        desktopHint: result.desktopHint,
+  if (wantActivity || wantRun) {
+    const result = await postHandoff(settings, {
+      url: pkg.page.url,
+      title: pkg.page.title,
+      selectedText: pkg.page.selectedText,
+      instruction: pkg.instruction,
+      screenshots: screenshotPayload(),
+      extensionId: chrome.runtime.id,
+      runWorkflow: wantRun,
+    });
+    state.lastBridgeResult = result;
+
+    if (result.ok) {
+      handoffId = result.id;
+      activitySaved = true;
+      if (result.workflowStarted && !runAi) {
+        applyLiveStatus({
+          ...result,
+          executionStatus: result.executionStatus || "running",
+          desktopHint: result.desktopHint,
+        });
+        await pollUntilDone(settings, result.id);
+        return;
+      }
+      if (result.workflowStarted && runAi) {
+        void pollUntilDone(settings, result.id);
+      }
+    } else if (!runAi) {
+      if (!downloadNow) downloadZip(pkg);
+      showPackageOnlyResult({
+        activitySaved: false,
+        activityError: result.message || "bridge could not save",
       });
-      await pollUntilDone(settings, result.id);
       return;
     }
+  }
 
-    setStatusPill("Package created", "ok");
-    $("result-title").textContent = "Package created — not agent executed";
-    $("result-body").textContent =
-      (result.message || "Saved on this computer. No agent was launched.") +
-      "\n\nZIP also downloaded for sharing." +
-      "\n\n" +
-      (result.desktopHint ||
-        "Open TabHandoff desktop → My Activity and refresh.");
-    $("result-path").classList.remove("hidden");
-    $("result-path").textContent =
-      result.receiptDir || result.handoffPath || "";
+  if (runAi) {
+    if (!state.pageText && state.tab?.id) {
+      state.pageText = await readPageText(state.tab.id);
+    }
+    const ai = await postAiRun(settings, {
+      url: pkg.page.url,
+      title: pkg.page.title,
+      selectedText: pkg.page.selectedText,
+      pageText: state.pageText || undefined,
+      instruction: pkg.instruction,
+      handoffId: handoffId || undefined,
+    });
+    // If AI not available on bridge despite UI (stale caps), surface honestly
+    if (!ai.ok && ai.status === "unavailable" && !state.bridgeCaps?.aiCompletion) {
+      ai.message =
+        ai.message ||
+        "No AI provider on the bridge. Configure a key or start Ollama.";
+    }
+    await persistAiHistory(ai, pkg);
+    showAiResult(ai, { activitySaved, handoffId });
     return;
   }
 
+  if (activitySaved) {
+    setStatusPill("Package created", "ok");
+    $("result-title").textContent = "Package created — not agent executed";
+    $("result-body").textContent =
+      (state.lastBridgeResult?.message ||
+        "Saved on this computer. No agent was launched.") +
+      (downloadNow ? "\n\nZIP also downloaded for sharing." : "") +
+      "\n\n" +
+      (state.lastBridgeResult?.desktopHint ||
+        "Open TabHandoff desktop → My Activity and refresh.");
+    $("result-path").classList.remove("hidden");
+    $("result-path").textContent =
+      state.lastBridgeResult?.receiptDir ||
+      state.lastBridgeResult?.handoffPath ||
+      "";
+    return;
+  }
+
+  if (!downloadNow) downloadZip(pkg);
   showPackageOnlyResult({
     activitySaved: false,
-    activityError: result.message || "bridge could not save",
+    activityError: "bridge could not save",
   });
+}
+
+async function runAiPrimary() {
+  state.preferAi = true;
+  await loadCapabilities();
+  // Pre-check run-ai checkbox state even if review not shown
+  if ($("run-ai")) $("run-ai").checked = true;
+  if ($("download-zip")) $("download-zip").checked = false;
+  if ($("save-activity") && state.bridgeCaps?.ok) {
+    $("save-activity").checked = true;
+  }
+  await createPackage({ forceAi: true });
 }
 
 async function copySummary() {
@@ -499,6 +860,16 @@ async function copyAiBrief() {
   }, 2000);
 }
 
+async function copyResult() {
+  const text = state.lastAiResult?.result;
+  if (!text) return;
+  await navigator.clipboard.writeText(text);
+  $("btn-copy-result").textContent = "Copied";
+  setTimeout(() => {
+    $("btn-copy-result").textContent = "Copy result";
+  }, 1500);
+}
+
 async function openSettings() {
   const settings = await loadBridgeSettings();
   $("bridge-base").value = settings.base;
@@ -508,8 +879,8 @@ async function openSettings() {
   $("bridge-status").textContent = probe.ok
     ? settings.token
       ? caps?.message || "Bridge is reachable on this computer."
-      : "Bridge is reachable. Paste a token only if you want My Activity / extraction."
-    : "Bridge is not reachable. Package download still works without it.";
+      : "Bridge is reachable. Paste a token to enable Run with AI / My Activity."
+    : "Bridge is not reachable. Start desktop or pnpm bridge.";
   show("step-settings");
 }
 
@@ -520,13 +891,16 @@ async function finishOnboarding() {
 
 function wire() {
   $("instruction").addEventListener("input", () => {
-    $("btn-review").disabled =
-      !$("instruction").value.trim() ||
-      !state.tab?.url?.startsWith("http");
+    updatePrimaryActions();
   });
 
   $("btn-onboard-continue").addEventListener("click", () => {
     void finishOnboarding();
+  });
+
+  $("btn-run-ai").addEventListener("click", () => {
+    if (!$("instruction").value.trim()) return;
+    void runAiPrimary();
   });
 
   $("btn-review").addEventListener("click", () => {
@@ -542,14 +916,19 @@ function wire() {
     show("step-capture");
   });
   $("btn-confirm").addEventListener("click", () => {
-    void createPackage();
+    void createPackage({});
   });
   $("btn-download").addEventListener("click", () => downloadZip());
   $("btn-copy").addEventListener("click", () => void copySummary());
   $("btn-copy-brief").addEventListener("click", () => void copyAiBrief());
+  $("btn-copy-result").addEventListener("click", () => void copyResult());
   $("btn-again").addEventListener("click", () => {
     stopPoll();
-    window.close();
+    show("step-capture");
+    void renderHistory();
+  });
+  $("btn-refresh-history").addEventListener("click", () => {
+    void renderHistory();
   });
   $("btn-settings").addEventListener("click", () => void openSettings());
   $("btn-settings-back").addEventListener("click", () => show("step-capture"));
@@ -560,7 +939,28 @@ function wire() {
     });
     await refreshBridgePill();
     await loadCapabilities();
+    await renderHistory();
     $("bridge-status").textContent = "Saved.";
+  });
+  $("btn-pair").addEventListener("click", async () => {
+    $("bridge-status").textContent = "Pairing…";
+    const result = await completePairing(
+      $("bridge-base").value.trim(),
+      $("pair-code").value.trim(),
+    );
+    if (result.ok) {
+      $("pair-code").value = "";
+      $("bridge-token").value = "";
+      const settings = await loadBridgeSettings();
+      $("bridge-base").value = settings.base;
+      $("bridge-status").textContent =
+        "Paired. Token saved on this device only — not shown again.";
+      await refreshBridgePill();
+      await loadCapabilities();
+      await renderHistory();
+    } else {
+      $("bridge-status").textContent = result.message || "Pairing failed.";
+    }
   });
 }
 
@@ -575,9 +975,14 @@ async function init() {
   state.selectedText =
     (await readPendingSelection()) ||
     (state.tab?.id ? await readPageSelection(state.tab.id) : "");
+  if (state.tab?.id && state.tab.url?.startsWith("http")) {
+    state.pageText = await readPageText(state.tab.id);
+  }
 
   renderCapture();
-  void refreshBridgePill().then(() => loadCapabilities());
+  void refreshBridgePill()
+    .then(() => loadCapabilities())
+    .then(() => renderHistory());
 
   if (state.tab?.id && state.tab.url?.startsWith("http")) {
     await captureShot(state.tab);
@@ -585,9 +990,6 @@ async function init() {
   } else {
     renderCapture();
   }
-
-  $("btn-review").disabled =
-    !$("instruction").value.trim() || !state.tab?.url?.startsWith("http");
 }
 
 void init();

@@ -165,12 +165,16 @@ function registerIpc(): void {
         home: cachedHome,
         agentExecution: false,
         pageExtraction: false,
+        aiCompletion: false,
+        aiProvider: null,
+        aiModel: null,
       };
     }
     const { probeBridgeCapabilities } = await import("@tabhandoff/bridge");
-    const caps = await probeBridgeCapabilities();
+    const caps = await probeBridgeCapabilities({ fresh: true });
     return {
       running: true,
+      adopted: Boolean(bridge.adopted),
       url: bridge.url,
       host: bridge.config.host,
       port: bridge.config.port,
@@ -178,8 +182,114 @@ function registerIpc(): void {
       home: bridge.home,
       agentExecution: caps.llmAgent,
       pageExtraction: caps.pageExtraction,
+      aiCompletion: caps.aiCompletion,
+      aiProvider: caps.aiProvider ?? null,
+      aiModel: caps.aiModel ?? null,
       workflows: caps.workflows,
       message: caps.message,
+    };
+  });
+
+  ipcMain.handle("ai:listTasks", async (_e, limit?: number) => {
+    const { listAiTasks } = await import("@tabhandoff/bridge");
+    const tasks = await listAiTasks({
+      home: cachedHome,
+      limit: typeof limit === "number" ? limit : 50,
+    });
+    return { ok: true, tasks, home: cachedHome };
+  });
+
+  ipcMain.handle("ai:getTask", async (_e, id: string) => {
+    const { getAiTask } = await import("@tabhandoff/bridge");
+    const task = await getAiTask(id, { home: cachedHome });
+    return { ok: Boolean(task), task };
+  });
+
+  ipcMain.handle("ai:runtimes", async () => {
+    const { probeLocalRuntimes } = await import("@tabhandoff/bridge");
+    const runtimes = await probeLocalRuntimes();
+    return { ok: true, runtimes };
+  });
+
+  ipcMain.handle("ai:getSettings", async () => {
+    const { loadAiSettings } = await import("@tabhandoff/bridge");
+    const settings = await loadAiSettings(cachedHome);
+    return { ok: true, settings };
+  });
+
+  ipcMain.handle(
+    "ai:saveSettings",
+    async (
+      _e,
+      payload: { provider: string; model: string; baseUrl?: string },
+    ) => {
+      const { saveAiSettings } = await import("@tabhandoff/bridge");
+      const settings = await saveAiSettings(
+        {
+          provider: payload?.provider || "auto",
+          model: payload?.model || "",
+          baseUrl: payload?.baseUrl,
+        },
+        cachedHome,
+      );
+      return { ok: true, settings };
+    },
+  );
+
+  ipcMain.handle("ai:testConnection", async () => {
+    const { executeAiRun } = await import("@tabhandoff/bridge");
+    const result = await executeAiRun(
+      {
+        instruction: "Reply with exactly the word PONG and nothing else.",
+        url: "https://example.com",
+        title: "connection-test",
+        pageText: "TabHandoff connection test fixture.",
+      },
+      { home: cachedHome },
+    );
+    return {
+      ok: result.ok,
+      status: result.status,
+      provider: result.provider,
+      model: result.model,
+      result: result.result,
+      message: result.message,
+      error: result.error,
+      apiKeyIncluded: false,
+    };
+  });
+
+  ipcMain.handle("bridge:startPairing", async () => {
+    await ensureBridge();
+    if (!bridge) {
+      return {
+        ok: false,
+        error: bridgeStartError || "bridge_offline",
+        message: "Bridge is not running.",
+      };
+    }
+    const res = await fetch(`${bridge.url}/v1/pair/start`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${bridge.config.token}` },
+    });
+    const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    return {
+      ok: Boolean(body.ok),
+      code: body.code,
+      expiresInSec: body.expiresInSec,
+      message: body.message,
+      error: body.error,
+      adopted: Boolean(bridge.adopted),
+    };
+  });
+
+  ipcMain.handle("bridge:ensure", async () => {
+    await ensureBridge();
+    return {
+      running: Boolean(bridge),
+      adopted: Boolean(bridge?.adopted),
+      error: bridgeStartError,
+      url: bridge?.url,
     };
   });
 
@@ -311,14 +421,52 @@ function registerIpc(): void {
   );
 }
 
+/**
+ * Start bridge, or adopt an already-running loopback instance that accepts
+ * our token (same home config). Avoids EADDRINUSE fights with `pnpm bridge`.
+ */
 async function ensureBridge(): Promise<void> {
   if (bridge) return;
+  const config = await loadOrCreateBridgeConfig({ home: cachedHome });
   try {
-    const config = await loadOrCreateBridgeConfig({ home: cachedHome });
     bridge = await startBridgeServer({ config, home: cachedHome });
     bridgeStartError = null;
+    return;
   } catch (err) {
-    bridgeStartError = err instanceof Error ? err.message : String(err);
+    const msg = err instanceof Error ? err.message : String(err);
+    const busy = /EADDRINUSE/i.test(msg);
+    if (!busy) {
+      bridgeStartError = msg;
+      bridge = null;
+      return;
+    }
+  }
+
+  // Port in use — try to adopt if our token works
+  const url = `http://${config.host}:${config.port}`;
+  try {
+    const res = await fetch(`${url}/v1/status`, {
+      headers: { Authorization: `Bearer ${config.token}` },
+    });
+    if (!res.ok) {
+      bridgeStartError = `Port ${config.port} is in use by another process that rejected this home’s token. Stop the other bridge (or other app on that port) and restart desktop.`;
+      bridge = null;
+      return;
+    }
+    bridge = {
+      config,
+      home: cachedHome,
+      url,
+      adopted: true,
+      close: async () => {
+        /* do not kill the external process */
+      },
+    };
+    bridgeStartError = null;
+  } catch (err) {
+    bridgeStartError = `Port ${config.port} busy and adopt failed: ${
+      err instanceof Error ? err.message : String(err)
+    }`;
     bridge = null;
   }
 }

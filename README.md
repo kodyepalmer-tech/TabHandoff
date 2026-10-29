@@ -100,20 +100,36 @@ Static strip (same real frames):
 
 ## For AI agents
 
+TabHandoff’s differentiator is **verified task handoffs** between agents (portable state + continuation checks) — not a generic chat UI. Local `run-ai` is optional infrastructure.
+
 1. [docs/agents.md](docs/agents.md) — discover → install → parse → create → continue → export  
-2. Schema: [docs/schema.md](docs/schema.md) · [docs/schema/handoff.schema.json](docs/schema/handoff.schema.json)  
-3. Example: [`fixtures/portable-handoff/sample-research-001/`](fixtures/portable-handoff/sample-research-001/)  
-4. Prove the loop: `pnpm build && pnpm test:agent`
+2. [docs/verified-handoff.md](docs/verified-handoff.md) — schema **0.2**, CLI↔MCP transfer, `verify-continuation`  
+3. Schema: [docs/schema.md](docs/schema.md) · [docs/schema/handoff.schema.json](docs/schema/handoff.schema.json)  
+4. Example: [`fixtures/portable-handoff/sample-research-001/`](fixtures/portable-handoff/sample-research-001/)  
+5. Prove the loops: `pnpm build && pnpm test:agent && pnpm test:verified-handoff` · live demo: `pnpm demo:verified-handoff`
 
 ```bash
 tabhandoff validate fixtures/portable-handoff/sample-research-001
 tabhandoff read fixtures/portable-handoff/sample-research-001
-tabhandoff create --url https://example.com --instruction "Summarize and list next steps"
-tabhandoff continue <id>
-tabhandoff export <id> --out ./exports --archive
+tabhandoff create-verified --url https://example.com --instruction "Summarize and list next steps"
+tabhandoff export <id> --out ./exports --archive   # includes INSPECT.html
+tabhandoff continue <export-path> --verified --destination-agent agent-b
+tabhandoff verify-continuation <successor> --previous <export-path> --require-execution
 ```
 
 Unsupported bots: copy the exported folder — [docs/manual-export.md](docs/manual-export.md).
+
+---
+
+## Run with AI (local bridge)
+
+Set `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` (or a free OpenAI-compatible endpoint via `OPENAI_BASE_URL`) on the bridge/CLI process — never in the extension. Then check **Run with AI** after Review, or use:
+
+```bash
+tabhandoff run-ai --instruction "Summarize this page" --url https://example.com --context ./page.txt
+```
+
+Details: [docs/ai-execution.md](docs/ai-execution.md) · end-to-end handoff: [docs/phase3-e2e-handoff.md](docs/phase3-e2e-handoff.md)
 
 ---
 

@@ -79,17 +79,24 @@ Job runner (isolated browser):
   tabhandoff status <id>
   tabhandoff receipt <id>
 
+AI on captured context (no Playwright; key from env only):
+  tabhandoff run-ai --instruction <text> [--url <url>] [--title <t>] [--selected <text>] [--context <file-or-text>] [--handoff <id>]
+  Bridge: POST /v1/ai/run (extension uses loopback — no CWS host-permission expansion)
+
 Portable packages (agents — §12):
   tabhandoff create --url <url> --instruction <text> [--title <t>] [--selected <text>]
   tabhandoff create --file <path> [--file <path>…] --instruction <text>   # file-only (no URL)
+  tabhandoff create-verified --instruction <text> [--url <url>] [--source-agent <name>] [--dest-agent <name>]
   tabhandoff validate <id-or-path>
   tabhandoff read <id-or-path>
-  tabhandoff export <id-or-path> --out <dir> [--archive]
-  tabhandoff continue <id-or-path> [--instruction <text>]
+  tabhandoff inspect <id-or-path> [--out <file.html>]   # static preview; no install required to open
+  tabhandoff export <id-or-path> --out <dir> [--archive]  # includes INSPECT.html
+  tabhandoff continue <id-or-path> [--instruction <text>] [--destination-agent <name>] [--verified]
   tabhandoff progress <id-or-path> --detail <text> [--kind agent_reported|verified_event|suggestion] [--result <line>]
   tabhandoff attach <id-or-path> --file <path> [--filename <name>] [--overwrite]
   tabhandoff mark <id-or-path> --status <succeeded|failed|blocked|awaiting_input|cancelled> --reason <text>
   tabhandoff verify-files <id-or-path>   # SHA-256 integrity of artifacts/
+  tabhandoff verify-continuation <id-or-path> [--previous <path>] [--require-execution]
 
   tabhandoff mcp                  Start MCP server on stdio (for Cursor/Claude)
 
@@ -191,9 +198,39 @@ async function cmdDoctor(): Promise<void> {
     name: "llm-key",
     ok: true,
     detail: llm
-      ? `${llm} detected — agent loop enabled`
-      : "none — DOM extractor only (fine for v0.1 public extracts)",
+      ? `${llm} env key detected — agent loop + run-ai enabled`
+      : "no cloud API key in env (optional if a local runtime is up)",
   });
+
+  try {
+    const { resolveAiProviderAsync, probeLocalRuntimes } = await import(
+      "@tabhandoff/runner"
+    );
+    const runtimes = await probeLocalRuntimes();
+    for (const rt of runtimes) {
+      checks.push({
+        name: `local-${rt.id}`,
+        ok: true,
+        detail: rt.ok
+          ? `${rt.message}${rt.models[0] ? ` · e.g. ${rt.models[0]}` : ""}`
+          : rt.message,
+      });
+    }
+    const resolved = await resolveAiProviderAsync();
+    checks.push({
+      name: "ai-provider",
+      ok: true,
+      detail: resolved
+        ? `${resolved.id} / ${resolved.model} — run-ai / /v1/ai/run ready`
+        : "none — start Ollama or LM Studio, or set OPENAI_API_KEY / GROQ_API_KEY / ANTHROPIC_API_KEY",
+    });
+  } catch (err) {
+    checks.push({
+      name: "ai-provider",
+      ok: false,
+      detail: `probe failed: ${err instanceof Error ? err.message : String(err)}`,
+    });
+  }
 
   checks.push({
     name: "proof-store",
@@ -205,7 +242,9 @@ async function cmdDoctor(): Promise<void> {
   console.log(`🕊️ tabhandoff doctor\n`);
   for (const c of checks) {
     console.log(`${c.ok ? "✅" : "❌"} ${c.name}: ${c.detail}`);
-    if (!c.ok && c.name !== "llm-key") failed = true;
+    if (!c.ok && c.name !== "llm-key" && !c.name.startsWith("local-")) {
+      failed = true;
+    }
   }
   console.log(``);
   console.log(`Where's the proof? Local on this machine:`);
@@ -330,6 +369,86 @@ async function cmdMcp(): Promise<void> {
   const { pathToFileURL } = await import("node:url");
   const entry = path.join(repoRoot, "packages/mcp/dist/stdio.js");
   await import(pathToFileURL(entry).href);
+}
+
+async function cmdRunAi(args: Args): Promise<void> {
+  const { executeAiRun } = await import("@tabhandoff/bridge");
+  const { resolveAiProviderAsync } = await import("@tabhandoff/runner");
+  const instruction = flag(args, "instruction");
+  if (!instruction) {
+    console.error(
+      "Usage: tabhandoff run-ai --instruction <text> [--url <url>] [--title <t>] [--selected <text>] [--context <file-or-text>] [--handoff <id>]",
+    );
+    process.exitCode = 1;
+    return;
+  }
+
+  let pageText = flag(args, "context");
+  if (pageText) {
+    try {
+      // Prefer file contents when --context points at an existing path
+      pageText = await readFile(pageText, "utf8");
+    } catch {
+      /* treat flag value as literal context text */
+    }
+  }
+
+  const provider = await resolveAiProviderAsync();
+  if (!provider) {
+    console.log(
+      JSON.stringify(
+        {
+          ok: false,
+          status: "unavailable",
+          provider: null,
+          model: null,
+          result: "",
+          error: "no_api_key",
+          message:
+            "No AI provider configured. Set OPENAI_API_KEY, ANTHROPIC_API_KEY, GROQ_API_KEY, or run Ollama locally — TabHandoff did not call a model.",
+          apiKeyIncluded: false,
+        },
+        null,
+        2,
+      ),
+    );
+    process.exitCode = 2;
+    return;
+  }
+
+  console.error(
+    `🕊️ run-ai via ${provider.id} (${provider.model}) — credentials from env / local daemon only`,
+  );
+  const result = await executeAiRun({
+    instruction,
+    url: flag(args, "url"),
+    title: flag(args, "title"),
+    selectedText: flag(args, "selected"),
+    pageText,
+    handoffId: flag(args, "handoff"),
+  });
+
+  console.log(
+    JSON.stringify(
+      {
+        ok: result.ok,
+        status: result.status,
+        provider: result.provider,
+        model: result.model,
+        result: result.result,
+        error: result.error,
+        message: result.message,
+        handoffId: result.handoffId,
+        taskId: result.taskId,
+        resultPath: result.resultPath,
+        taskPath: result.taskPath,
+        apiKeyIncluded: false,
+      },
+      null,
+      2,
+    ),
+  );
+  if (!result.ok) process.exitCode = result.status === "unavailable" ? 2 : 1;
 }
 
 async function cmdBridge(args: Args): Promise<void> {
@@ -503,6 +622,124 @@ async function cmdVerifyFiles(args: Args): Promise<void> {
   }
 }
 
+async function cmdCreateVerified(args: Args): Promise<void> {
+  const { createVerifiedHandoff, PortableError } = await import(
+    "@tabhandoff/bridge"
+  );
+  const instruction = flag(args, "instruction");
+  if (!instruction) {
+    console.error(
+      "Usage: tabhandoff create-verified --instruction <text> [--url <url>] [--title <t>] [--selected <text>] [--source-agent <name>] [--dest-agent <name>] [--outcome <text>]",
+    );
+    process.exitCode = 1;
+    return;
+  }
+  try {
+    const sourceName = flag(args, "source-agent") ?? "cli-agent-a";
+    const destName = flag(args, "dest-agent");
+    const stored = await createVerifiedHandoff({
+      instruction,
+      url: flag(args, "url"),
+      title: flag(args, "title"),
+      selectedText: flag(args, "selected"),
+      note: flag(args, "note"),
+      intendedOutcome: flag(args, "outcome"),
+      acceptanceCriteria: flagList(args, "accept"),
+      sourceIdentity: {
+        name: sourceName,
+        interface: "cli",
+        tool: "tabhandoff create-verified",
+      },
+      destinationIdentity: destName
+        ? { name: destName, interface: "cli", tool: "tabhandoff continue" }
+        : { name: "cli-agent-b", interface: "mcp", tool: "handoff_read" },
+    });
+    console.log(
+      JSON.stringify(
+        {
+          id: stored.id,
+          schemaVersion: stored.package.schemaVersion,
+          status: stored.executionStatus,
+          agentLaunched: stored.agentLaunched,
+          receiptDir: stored.receiptDir,
+          handoffPath: stored.handoffPath,
+          hint: "Verified package created (0.2) — no agent launched. Export, inspect, then continue in destination agent.",
+        },
+        null,
+        2,
+      ),
+    );
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : String(err));
+    process.exitCode = 1;
+    if (err instanceof PortableError) return;
+  }
+}
+
+async function cmdInspect(args: Args): Promise<void> {
+  const { writeInspectHtml, PortableError } = await import("@tabhandoff/bridge");
+  const target = args._[1];
+  if (!target) {
+    console.error("Usage: tabhandoff inspect <id-or-path> [--out <file.html>]");
+    process.exitCode = 1;
+    return;
+  }
+  try {
+    const result = await writeInspectHtml(target, {
+      outPath: flag(args, "out"),
+    });
+    console.log(
+      JSON.stringify(
+        {
+          id: result.id,
+          htmlPath: result.htmlPath,
+          packagePath: result.packagePath,
+          hint: "Open the HTML in any browser — no TabHandoff install required to inspect. No credentials embedded.",
+        },
+        null,
+        2,
+      ),
+    );
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : String(err));
+    process.exitCode = 1;
+    if (err instanceof PortableError) return;
+  }
+}
+
+async function cmdVerifyContinuation(args: Args): Promise<void> {
+  const { verifyContinuation, evaluateContinuationBaseline, PortableError } =
+    await import("@tabhandoff/bridge");
+  const { readHandoffPackage } = await import("@tabhandoff/bridge");
+  const target = args._[1];
+  if (!target) {
+    console.error(
+      "Usage: tabhandoff verify-continuation <id-or-path> [--previous <path>] [--require-execution] [--expected <substring>]",
+    );
+    process.exitCode = 1;
+    return;
+  }
+  try {
+    const report = await verifyContinuation(target, {
+      previousPath: flag(args, "previous"),
+      requireDestinationExecution: bool(args, "require-execution"),
+    });
+    const { package: pkg } = await readHandoffPackage(target);
+    const baseline = evaluateContinuationBaseline(pkg, report, {
+      expectedSubstring: flag(args, "expected"),
+    });
+    console.log(JSON.stringify({ report, baseline }, null, 2));
+    if (report.outcome === "fail") process.exitCode = 1;
+    if (report.outcome === "unverified" && bool(args, "require-execution")) {
+      process.exitCode = 2;
+    }
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : String(err));
+    process.exitCode = 1;
+    if (err instanceof PortableError) return;
+  }
+}
+
 async function cmdValidate(args: Args): Promise<void> {
   const { validateHandoffTarget, PortableError } = await import(
     "@tabhandoff/bridge"
@@ -620,23 +857,33 @@ async function cmdContinue(args: Args): Promise<void> {
     return;
   }
   try {
+    const destAgent = flag(args, "destination-agent");
     const result = await continueHandoff({
       target,
       instruction: flag(args, "instruction"),
       intendedOutcome: flag(args, "outcome"),
       sourceAgent: flag(args, "source-agent"),
-      destinationAgent: flag(args, "destination-agent"),
+      destinationAgent: destAgent,
+      verified: bool(args, "verified"),
+      destinationIdentity: destAgent
+        ? {
+            name: destAgent,
+            interface: "cli",
+            tool: "tabhandoff continue",
+          }
+        : undefined,
     });
     console.log(
       JSON.stringify(
         {
           id: result.id,
           previousHandoffId: result.previousId,
+          schemaVersion: result.package.schemaVersion,
           status: result.executionStatus,
           agentLaunched: result.agentLaunched,
           receiptDir: result.receiptDir,
           handoffPath: result.handoffPath,
-          hint: "Successor package created — prior evidence stays in the previous package. No agent was launched.",
+          hint: "Successor package created — prior evidence stays in the previous package. No agent was launched. Creating a successor is NOT successful continuation; destination must execute work, then verify-continuation.",
         },
         null,
         2,
@@ -816,6 +1063,9 @@ async function main(): Promise<void> {
     case "run":
       await cmdRun(args);
       break;
+    case "run-ai":
+      await cmdRunAi(args);
+      break;
     case "capture":
       await cmdCapture(args);
       break;
@@ -828,11 +1078,17 @@ async function main(): Promise<void> {
     case "create":
       await cmdCreate(args);
       break;
+    case "create-verified":
+      await cmdCreateVerified(args);
+      break;
     case "validate":
       await cmdValidate(args);
       break;
     case "read":
       await cmdReadPackage(args);
+      break;
+    case "inspect":
+      await cmdInspect(args);
       break;
     case "export":
       await cmdExport(args);
@@ -851,6 +1107,9 @@ async function main(): Promise<void> {
       break;
     case "verify-files":
       await cmdVerifyFiles(args);
+      break;
+    case "verify-continuation":
+      await cmdVerifyContinuation(args);
       break;
     case "mcp":
       await cmdMcp();

@@ -22,6 +22,7 @@
         </div>
         <nav class="nav">
           <button class="nav-item is-active" data-view="activity" type="button">My Activity</button>
+          <button class="nav-item" data-view="ai" type="button">AI tasks</button>
           <button class="nav-item" data-view="handoff" type="button">Hand off</button>
           <button class="nav-item" data-view="evidence" type="button">Evidence</button>
           <button class="nav-item" data-view="settings" type="button">Settings</button>
@@ -75,6 +76,39 @@
               files, or run the CLI / MCP, then hit Refresh. Evidence lives in
               <code>~/.tabhandoff/receipts/</code>.
             </p>
+          </div>
+        </section>
+
+        <section id="view-ai" class="view">
+          <header class="stage-head">
+            <div>
+              <h1>AI tasks</h1>
+              <p class="lede">
+                Results from extension / CLI <strong>Run with AI</strong> — persisted under
+                <code>~/.tabhandoff/ai-tasks/</code>. Reopen anytime.
+              </p>
+            </div>
+            <div class="head-actions">
+              <button type="button" class="btn ghost" id="btn-refresh-ai">Refresh</button>
+            </div>
+          </header>
+          <div id="ai-meta" class="meta-line"></div>
+          <div id="ai-list" class="activity-grid" aria-live="polite"></div>
+          <div id="ai-empty" class="empty hidden">
+            <h2>No AI tasks yet</h2>
+            <p>
+              From the browser extension: ask <em>What do you want done?</em> →
+              <strong>Run with AI</strong> (bridge + provider required). Or CLI:
+              <code>tabhandoff run-ai --instruction "…"</code>.
+            </p>
+          </div>
+          <div id="ai-detail" class="panel hidden" style="margin-top: 16px">
+            <h3 id="ai-detail-title">Result</h3>
+            <p class="fine" id="ai-detail-meta"></p>
+            <pre id="ai-detail-body" class="code-block"></pre>
+            <div class="head-actions">
+              <button type="button" class="btn ghost" id="btn-reveal-ai">Reveal folder</button>
+            </div>
           </div>
         </section>
 
@@ -228,9 +262,47 @@
             </div>
             <p class="fine">
               The bridge listens on this computer only. When Playwright is available it can run
-              page extraction (DOM — not autonomous AI). Model-assisted steps need an API key.
+              page extraction (DOM — not autonomous AI). Run with AI needs a configured provider
+              (Ollama local, or OPENAI_/GROQ_/ANTHROPIC_ keys in the desktop process env).
               Status is always honest — package-only when nothing runs.
             </p>
+            <hr class="settings-rule" />
+            <h3>Connect your local AI</h3>
+            <p class="fine" id="ai-provider-line">Checking…</p>
+            <p class="fine" id="ai-runtimes-line">Probing Ollama / LM Studio…</p>
+            <label class="field">
+              <span>Provider</span>
+              <select id="ai-provider-select">
+                <option value="auto">Auto-detect local</option>
+                <option value="ollama">Ollama</option>
+                <option value="lmstudio">LM Studio</option>
+                <option value="openai-compatible">OpenAI-compatible (env key)</option>
+                <option value="anthropic">Anthropic (env key)</option>
+                <option value="groq">Groq (env key)</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Model (exact id, keep tags like :135m or :latest)</span>
+              <input id="ai-model-input" type="text" spellcheck="false" placeholder="smollm2:135m" list="ai-model-list" />
+              <datalist id="ai-model-list"></datalist>
+            </label>
+            <div class="head-actions">
+              <button type="button" class="btn primary" id="btn-save-ai">Save AI settings</button>
+              <button type="button" class="btn ghost" id="btn-test-ai">Test connection</button>
+              <button type="button" class="btn ghost" id="btn-refresh-runtimes">Refresh runtimes</button>
+            </div>
+            <p class="fine" id="ai-test-line">API keys stay in process env — never stored in settings or packages.</p>
+            <hr class="settings-rule" />
+            <h3>Pair browser extension</h3>
+            <p class="fine">
+              Prefer a short pairing code over pasting the long token. Auth stays on for all other
+              bridge calls.
+            </p>
+            <p class="fine" id="pair-code-line">No active pairing code.</p>
+            <div class="head-actions">
+              <button type="button" class="btn primary" id="btn-pair-code">Show pairing code</button>
+              <button type="button" class="btn ghost" id="btn-ensure-bridge">Restart / adopt bridge</button>
+            </div>
           </div>
         </section>
       </main>

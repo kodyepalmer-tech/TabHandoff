@@ -1,8 +1,12 @@
 import { access } from "node:fs/promises";
-import { detectLlmProvider } from "@tabhandoff/runner";
+import {
+  detectLlmProvider,
+  resolveAiProvider,
+  resolveAiProviderAsync,
+} from "@tabhandoff/runner";
 
 export type SupportedWorkflow = {
-  id: "page_extraction" | "llm_browser";
+  id: "page_extraction" | "llm_browser" | "ai_completion";
   label: string;
   description: string;
 };
@@ -12,13 +16,21 @@ export type BridgeCapabilities = {
   pageExtraction: boolean;
   /** Model-assisted isolated browser when OPENAI_/ANTHROPIC_ key is set */
   llmAgent: boolean;
+  /**
+   * Context→model completion via /v1/ai/run (no Playwright required).
+   * True when env keys OR a live local Ollama daemon is available.
+   */
+  aiCompletion: boolean;
+  /** Detected provider id when known (never includes secrets) */
+  aiProvider?: string | null;
+  aiModel?: string | null;
   workflows: SupportedWorkflow[];
   /** Honest summary for /v1/status */
   message: string;
 };
 
 let cached: { at: number; value: BridgeCapabilities } | null = null;
-const CACHE_MS = 30_000;
+const CACHE_MS = 15_000;
 /** Test-only override — null means use real probe */
 let testOverride: BridgeCapabilities | null = null;
 
@@ -55,7 +67,10 @@ export async function probeBridgeCapabilities(options?: {
   }
 
   const pageExtraction = await chromiumReady();
+  const provider = await resolveAiProviderAsync();
+  const hasProvider = provider !== null;
   const llmAgent = pageExtraction && detectLlmProvider() !== null;
+  const aiCompletion = hasProvider;
   const workflows: SupportedWorkflow[] = [];
 
   if (pageExtraction) {
@@ -74,22 +89,42 @@ export async function probeBridgeCapabilities(options?: {
         "Isolated browser with model-assisted steps (API key detected). Still no cookie/credential clone.",
     });
   }
+  if (aiCompletion) {
+    workflows.push({
+      id: "ai_completion",
+      label: "Run with AI",
+      description:
+        "Send captured page context + instruction to the configured model via loopback /v1/ai/run. Key stays in bridge env — never in the extension or ZIP.",
+    });
+  }
 
   let message: string;
   if (workflows.length === 0) {
     message =
-      "Bridge can store packages only. Playwright/Chromium is not available — no page extraction will run.";
+      "Bridge can store packages only. Playwright/Chromium is not available and no AI provider is configured — no extraction or AI run.";
+  } else if (aiCompletion && llmAgent) {
+    message = `Bridge can store packages, run page extraction / model-assisted browser steps, and Run with AI (${provider?.id}/${provider?.model}).`;
+  } else if (aiCompletion && pageExtraction) {
+    message = `Bridge can store packages, run page extraction (DOM), and Run with AI (${provider?.id}/${provider?.model}).`;
+  } else if (aiCompletion) {
+    message = `Bridge can store packages and Run with AI (${provider?.id}/${provider?.model}). Playwright/Chromium not available for page extraction.`;
   } else if (llmAgent) {
     message =
       "Bridge can store packages and run page extraction or model-assisted browser steps in an isolated Chromium.";
   } else {
     message =
-      "Bridge can store packages and run page extraction (deterministic DOM) in an isolated Chromium. No API key — not autonomous AI.";
+      "Bridge can store packages and run page extraction (deterministic DOM) in an isolated Chromium. No AI provider — Run with AI unavailable.";
   }
+
+  // Keep resolveAiProvider sync path in message when only sync keys exist
+  void resolveAiProvider;
 
   const value: BridgeCapabilities = {
     pageExtraction,
     llmAgent,
+    aiCompletion,
+    aiProvider: provider?.id ?? null,
+    aiModel: provider?.model ?? null,
     workflows,
     message,
   };

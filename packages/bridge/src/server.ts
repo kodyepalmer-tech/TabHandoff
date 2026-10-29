@@ -15,11 +15,26 @@ import {
   startSupportedWorkflow,
   workflowInflightCount,
 } from "./execute.js";
+import {
+  executeAiRun,
+  listAiTasks,
+  getAiTask,
+  type AiRunRequest,
+} from "./ai-run.js";
+import type { AiProviderDeps } from "@tabhandoff/runner";
+import { mintPairingCode, pairingStatus, redeemPairingCode } from "./pairing.js";
+import {
+  loadAiSettings,
+  saveAiSettings,
+} from "./ai-settings.js";
+import { probeLocalRuntimes } from "@tabhandoff/runner";
 
 export type BridgeServer = {
   config: BridgeConfig;
   home: string;
   url: string;
+  /** True when we attached to an already-running loopback bridge */
+  adopted?: boolean;
   close: () => Promise<void>;
 };
 
@@ -60,7 +75,7 @@ function sendJson(
   if (origin && isExtensionOrLocalOrigin(origin)) {
     headers["Access-Control-Allow-Origin"] = origin;
     headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type";
-    headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS";
+    headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, OPTIONS";
     headers["Vary"] = "Origin";
   }
   res.writeHead(status, headers);
@@ -121,6 +136,8 @@ export async function startBridgeServer(options: {
   onStored?: (stored: StoredHandoff) => void;
   /** Inject runner for tests via execute.startSupportedWorkflow */
   workflowRunner?: Parameters<typeof startSupportedWorkflow>[0]["runner"];
+  /** Inject AI provider deps (fetch/env) for /v1/ai/run tests */
+  aiDeps?: AiProviderDeps;
 }): Promise<BridgeServer> {
   const home = tabHandoffHome(options.home);
   const { config } = options;
@@ -141,6 +158,7 @@ export async function startBridgeServer(options: {
 
     try {
       if (req.method === "GET" && url.pathname === "/health") {
+        const pair = pairingStatus();
         sendJson(
           res,
           200,
@@ -152,6 +170,75 @@ export async function startBridgeServer(options: {
             port: config.port,
             /** Never expose token here */
             authRequired: true,
+            pairingActive: pair.active,
+            pairingExpiresInSec: pair.expiresInSec,
+          },
+          origin,
+        );
+        return;
+      }
+
+      /** Bootstrap token with a short-lived code from desktop — auth not disabled elsewhere. */
+      if (req.method === "POST" && url.pathname === "/v1/pair/complete") {
+        if (!isExtensionOrLocalOrigin(origin)) {
+          sendJson(res, 403, { ok: false, error: "origin_not_allowed" }, origin);
+          return;
+        }
+        let raw: Buffer;
+        try {
+          raw = await readBody(req, 4096);
+        } catch {
+          sendJson(res, 400, { ok: false, error: "bad_body" }, origin);
+          return;
+        }
+        let json: JsonBody = {};
+        try {
+          json = JSON.parse(raw.toString("utf8")) as JsonBody;
+        } catch {
+          sendJson(res, 400, { ok: false, error: "invalid_json" }, origin);
+          return;
+        }
+        const redeemed = redeemPairingCode(String(json.code ?? ""));
+        if (!redeemed.ok) {
+          sendJson(
+            res,
+            redeemed.error === "rate_limited" ? 429 : 401,
+            {
+              ok: false,
+              error: redeemed.error,
+              message: redeemed.message,
+            },
+            origin,
+          );
+          return;
+        }
+        sendJson(
+          res,
+          200,
+          {
+            ok: true,
+            base: `http://${config.host}:${config.port}`,
+            token: config.token,
+            message:
+              "Paired. Token stays on this computer — never share it or put it in screenshots.",
+          },
+          origin,
+        );
+        return;
+      }
+
+      if (req.method === "POST" && url.pathname === "/v1/pair/start") {
+        if (!requireAuth(req, res, config, origin)) return;
+        const minted = mintPairingCode();
+        sendJson(
+          res,
+          200,
+          {
+            ok: true,
+            code: minted.code,
+            expiresInSec: minted.expiresInSec,
+            message:
+              "Enter this code in the browser extension within two minutes.",
           },
           origin,
         );
@@ -160,7 +247,9 @@ export async function startBridgeServer(options: {
 
       if (req.method === "GET" && url.pathname === "/v1/status") {
         if (!requireAuth(req, res, config, origin)) return;
-        const caps = await probeBridgeCapabilities();
+        const caps = await probeBridgeCapabilities({ fresh: true });
+        const settings = await loadAiSettings(home);
+        const pair = pairingStatus();
         sendJson(
           res,
           200,
@@ -170,9 +259,198 @@ export async function startBridgeServer(options: {
             ready: true,
             agentExecution: caps.llmAgent,
             pageExtraction: caps.pageExtraction,
+            aiCompletion: caps.aiCompletion,
+            aiProvider: caps.aiProvider ?? null,
+            aiModel: caps.aiModel ?? null,
+            aiSettings: settings
+              ? {
+                  provider: settings.provider,
+                  model: settings.model,
+                  baseUrl: settings.baseUrl ?? null,
+                }
+              : null,
+            pairingActive: pair.active,
             workflows: caps.workflows,
             inflight: workflowInflightCount(),
             message: caps.message,
+          },
+          origin,
+        );
+        return;
+      }
+
+      if (req.method === "GET" && url.pathname === "/v1/ai/runtimes") {
+        if (!requireAuth(req, res, config, origin)) return;
+        const runtimes = await probeLocalRuntimes();
+        sendJson(res, 200, { ok: true, runtimes }, origin);
+        return;
+      }
+
+      if (req.method === "GET" && url.pathname === "/v1/ai/settings") {
+        if (!requireAuth(req, res, config, origin)) return;
+        const settings = await loadAiSettings(home);
+        sendJson(res, 200, { ok: true, settings }, origin);
+        return;
+      }
+
+      if (req.method === "PUT" && url.pathname === "/v1/ai/settings") {
+        if (!requireAuth(req, res, config, origin)) return;
+        let raw: Buffer;
+        try {
+          raw = await readBody(req, 16_384);
+        } catch {
+          sendJson(res, 400, { ok: false, error: "bad_body" }, origin);
+          return;
+        }
+        let json: JsonBody = {};
+        try {
+          json = JSON.parse(raw.toString("utf8")) as JsonBody;
+        } catch {
+          sendJson(res, 400, { ok: false, error: "invalid_json" }, origin);
+          return;
+        }
+        try {
+          const settings = await saveAiSettings(
+            {
+              provider: String(json.provider ?? "auto"),
+              model: String(json.model ?? ""),
+              baseUrl:
+                typeof json.baseUrl === "string" ? json.baseUrl : undefined,
+            },
+            home,
+          );
+          sendJson(res, 200, { ok: true, settings }, origin);
+        } catch (err) {
+          sendJson(
+            res,
+            400,
+            {
+              ok: false,
+              error: "invalid_settings",
+              message: err instanceof Error ? err.message : String(err),
+            },
+            origin,
+          );
+        }
+        return;
+      }
+
+      if (req.method === "GET" && url.pathname === "/v1/ai/tasks") {
+        if (!requireAuth(req, res, config, origin)) return;
+        const limitRaw = url.searchParams.get("limit");
+        const limit = limitRaw ? Number(limitRaw) : 50;
+        const tasks = await listAiTasks({
+          home,
+          limit: Number.isFinite(limit) ? Math.min(Math.max(limit, 1), 100) : 50,
+        });
+        sendJson(res, 200, { ok: true, tasks }, origin);
+        return;
+      }
+
+      if (req.method === "GET" && url.pathname.startsWith("/v1/ai/tasks/")) {
+        if (!requireAuth(req, res, config, origin)) return;
+        const id = decodeURIComponent(
+          url.pathname.slice("/v1/ai/tasks/".length),
+        );
+        const task = await getAiTask(id, { home });
+        if (!task) {
+          sendJson(res, 404, { ok: false, error: "not_found" }, origin);
+          return;
+        }
+        sendJson(res, 200, { ok: true, task }, origin);
+        return;
+      }
+
+      if (req.method === "POST" && url.pathname === "/v1/ai/run") {
+        if (!isExtensionOrLocalOrigin(origin)) {
+          sendJson(res, 403, { ok: false, error: "origin_not_allowed" }, origin);
+          return;
+        }
+        if (!requireAuth(req, res, config, origin)) return;
+
+        let raw: Buffer;
+        try {
+          raw = await readBody(req, BRIDGE_MAX_BODY_BYTES);
+        } catch (e) {
+          const code = (e as { code?: string }).code;
+          if (code === "body_too_large") {
+            sendJson(
+              res,
+              413,
+              {
+                ok: false,
+                error: "body_too_large",
+                message: `Body exceeds ${BRIDGE_MAX_BODY_BYTES} bytes.`,
+              },
+              origin,
+            );
+            return;
+          }
+          throw e;
+        }
+
+        let json: JsonBody;
+        try {
+          json = JSON.parse(raw.toString("utf8")) as JsonBody;
+        } catch {
+          sendJson(
+            res,
+            400,
+            { ok: false, error: "invalid_json", message: "Body must be JSON." },
+            origin,
+          );
+          return;
+        }
+
+        const request: AiRunRequest = {
+          instruction: String(json.instruction ?? ""),
+          url: typeof json.url === "string" ? json.url : undefined,
+          title: typeof json.title === "string" ? json.title : undefined,
+          selectedText:
+            typeof json.selectedText === "string" ? json.selectedText : undefined,
+          pageText: typeof json.pageText === "string" ? json.pageText : undefined,
+          handoffId:
+            typeof json.handoffId === "string" ? json.handoffId : undefined,
+          taskId: typeof json.taskId === "string" ? json.taskId : undefined,
+        };
+
+        logLine(
+          `ai/run start handoffId=${request.handoffId ? "yes" : "no"} url=${request.url ? "yes" : "no"}`,
+        );
+
+        const result = await executeAiRun(request, {
+          home,
+          deps: options.aiDeps,
+        });
+
+        // Honest HTTP mapping — never 200-ok a fake success
+        const httpStatus =
+          result.status === "done"
+            ? 200
+            : result.status === "unavailable"
+              ? 503
+              : 502;
+
+        logLine(
+          `ai/run status=${result.status} provider=${result.provider ?? "none"} ok=${result.ok}`,
+        );
+
+        sendJson(
+          res,
+          httpStatus,
+          {
+            ok: result.ok,
+            status: result.status,
+            provider: result.provider,
+            model: result.model,
+            result: result.result,
+            error: result.error,
+            message: result.message,
+            handoffId: result.handoffId,
+            taskId: result.taskId,
+            resultPath: result.resultPath,
+            taskPath: result.taskPath,
+            apiKeyIncluded: false,
           },
           origin,
         );
