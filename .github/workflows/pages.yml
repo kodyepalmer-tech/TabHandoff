@@ -1,3 +1,12 @@
+# Deploy static website/ to GitHub Pages.
+# Project-site URL: https://<owner>.github.io/TabHandoff/ (relative links in website/).
+#
+# Prerequisite (founder, once): Settings → Pages → Build and deployment → Source: GitHub Actions.
+# That creates the Pages site. actions/configure-pages cannot create it with the default
+# GITHUB_TOKEN even if enablement: true (needs a PAT/App with admin — we do not use that).
+#
+# After this file lands on main, the path filter re-runs deploy automatically.
+# Or: Actions → Deploy website → Run workflow (workflow_dispatch).
 name: Deploy website
 
 on:
@@ -8,6 +17,7 @@ on:
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
+# Least privilege for deploy-pages OIDC + artifact publish
 permissions:
   contents: read
   pages: write
@@ -15,19 +25,44 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   deploy:
+    # Repeat at job scope so restricted repo/org defaults still grant Pages write
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify Pages site (Actions build)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if ! gh api "repos/${GITHUB_REPOSITORY}/pages" --jq .build_type 2>/tmp/pages-api.err | grep -qx workflow; then
+            {
+              echo "::error::GitHub Pages site missing or not using GitHub Actions."
+              echo "Founder: Settings → Pages → Source: GitHub Actions, then re-run this workflow."
+              echo "Do not rely on configure-pages enablement with GITHUB_TOKEN (cannot create Pages)."
+              cat /tmp/pages-api.err || true
+            } >&2
+            exit 1
+          fi
+          echo "Pages site OK (build_type=workflow)"
+          echo "Expected project URL: https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}/"
 
       - name: Setup Pages
+        id: pages
         uses: actions/configure-pages@v5
+        # enablement intentionally omitted/false: GITHUB_TOKEN cannot create the site
 
       - name: Upload website
         uses: actions/upload-pages-artifact@v3
@@ -37,3 +72,9 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Deployment summary
+        run: |
+          echo "page_url=${{ steps.deployment.outputs.page_url }}"
+          echo "base_url=${{ steps.pages.outputs.base_url }}"
+          echo "base_path=${{ steps.pages.outputs.base_path }}"
