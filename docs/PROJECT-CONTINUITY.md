@@ -1,7 +1,19 @@
 # TabHandoff — Project Continuity
 
-**Last updated:** 2026-10-30 (Agent B dogfood continuation; Agent A review 2026-10-29/30, see section 8)
+**Last updated:** 2026-10-31 (Phase 1 seamless work; see the 2026-10-31 update below — sections after it still describe the pre-merge state and should be read with that update in mind)
 **Status:** This document is the single place a new agent should start. Do not depend on any single chat surviving. Update it at the end of every substantial session with actual branch, commit, test results, blockers, and next action. Never put secrets in it.
+
+## 2026-10-31 update — main is now 6db54b1, open PRs: 0
+
+- Main HEAD (verified via GitHub ls-remote): `6db54b1` — "Merge pull request #22".
+- Merged, in order: PR #20 verifier fix (`e5a01bb`, separate `--require-continuation` from `--require-execution`, 61-pass suite at the time), PR #21 dogfood continuation (`b674441`, corrected continuity doc + `docs/roadmap.md` from PR #7 only), PR #22 attach fix (`6db54b1`, see below).
+- Closed with reasons on each PR: #17 superseded by #21, #6 superseded (website/release already in main via PR #14/#16), #7 superseded in part (roadmap preserved in #21, wording not merged). Drafts #18/#19 were closed because GitHub rejected password sign-in in the browser ("account does not support password sign-in") and drafts cannot merge; the same branches were reopened as ready PRs #20/#21 via the GitHub connector.
+- Approval change, 2026-10-30 evening: Kody chose blanket advance approval for TabHandoff, including merges and releases, to stop per-step asks. Report work after the fact; do not silently expose secrets or incur unexpected paid costs.
+- Product bar, 2026-10-30: a 10-step user journey is insane — the handoff must be seamless and lossless. The 10 items are internal verification checkpoints, not user steps. Target: capture, hand off, resume exactly where it left off, no re-explaining, no rework, no manual setup, no lost context.
+- Phase 1 fresh-install audit, 2026-10-31, fresh clone of main `b674441`: clone ~3s, pnpm install 384 packages ~6s cached, pnpm build PASS ~41s, `pnpm test:verified-handoff` 4 pass, 0 fail. Sandbox note: pnpm was not on default PATH and version-switching to pinned 10.33.4 failed locally; the one-command `scripts/install.sh` (corepack) is the shorter stranger path. Remaining user-visible frictions: Load unpacked extension (until Chrome Web Store), pairing (desktop "Show pairing code" -> type code in extension Settings), and the CLI handoff chain (create -> export -> move file -> continue -> manual progress -> export successor -> verify).
+- Attach fix, PR #22: `attachEvidence` in `packages/bridge/src/portable.ts` previously hardcoded `mediaType: "image/png"`. It now uses `guessMediaType(filename)` (same map as file packages); explicit mediaType still wins; unknown extensions get `application/octet-stream`. Test added: .png stays image/png, .md -> text/markdown, .xyz -> application/octet-stream. End-to-end CLI check confirmed .md now reports text/markdown with the same SHA.
+- Bridge pairing already in code: `POST /v1/pair/start` (desktop, authenticated) mints a short-lived code, `POST /v1/pair/complete` (extension/local origin only) redeems it for the token. Next seamless fix design: one-click pairing approval in desktop instead of typing a code/token — do not auto-issue the token to any local origin.
+- Next: one-click pairing, one-action handoff hiding export/continue/verify, auto progress recording, then a real execution proof (run-ai destination passing `--require-execution`), then a first pre-release. No DNS, release/tag, or Chrome Web Store change was made in the 2026-10-30 merge run or this Phase 1 run, except the merges above.
 
 ## 1. Product vision and positioning
 
@@ -21,7 +33,7 @@ It is **not** another generic chatbot, AI assistant, or model dashboard.
 
 **Long-term hypothesis:** open-source handoff protocol and portable reference implementation, plus commercial managed compatibility, history, collaboration, governance, audit, and enterprise controls.
 
-**Messaging honesty rule:** Browser capture is what ships today. File capture, desktop capture, and universal app support are roadmap, not shipped. Do not claim them as shipped. See `docs/roadmap.md` when it lands (currently only in unmerged PR #7, see below).
+**Messaging honesty rule:** Browser capture is what ships today. File capture, desktop capture, and universal app support are roadmap, not shipped. Do not claim them as shipped. See `docs/roadmap.md`, now in main via PR #21.
 
 ## 2. Architecture (as in main)
 
