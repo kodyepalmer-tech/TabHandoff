@@ -1,6 +1,6 @@
 {
   "name": "@tabhandoff/desktop",
-  "version": "0.1.0-pre.1",
+  "version": "0.1.0-pre.2",
   "description": "TabHandoff desktop — local AI activity and evidence library",
   "license": "MIT",
   "private": true,
@@ -12,10 +12,10 @@
     "start": "electron . --no-sandbox",
     "dev": "pnpm build && electron . --no-sandbox",
     "stage": "node ./scripts/stage-release.mjs",
-    "dist": "pnpm build && pnpm stage && electron-builder --config electron-builder.yml",
-    "dist:linux": "pnpm build && pnpm stage && electron-builder --config electron-builder.yml --linux AppImage deb",
-    "dist:mac": "pnpm build && pnpm stage && electron-builder --config electron-builder.yml --mac dmg",
-    "dist:win": "pnpm build && pnpm stage && electron-builder --config electron-builder.yml --win nsis",
+    "dist": "pnpm build && pnpm stage && electron-builder --config electron-builder.yml --publish never",
+    "dist:linux": "pnpm build && pnpm stage && electron-builder --config electron-builder.yml --linux AppImage deb --publish never",
+    "dist:mac": "pnpm build && pnpm stage && electron-builder --config electron-builder.yml --mac dmg --publish never",
+    "dist:win": "pnpm build && pnpm stage && electron-builder --config electron-builder.yml --win nsis --publish never",
     "checksums": "node ./scripts/checksums.mjs"
   },
   "dependencies": {
