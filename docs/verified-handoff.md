@@ -58,6 +58,99 @@ tabhandoff verify-continuation <successor-id> --previous ./exports/<id> --requir
 
 ---
 
+## Four stages — do not conflate them
+
+TabHandoff distinguishes four different claims. A pass at one stage never
+claims a later stage.
+
+| Stage | What it means | What proves it | What does NOT prove it |
+|---|---|---|---|
+| 0. Import | The destination received and validated a package. | `validate` + chain + context present. | Nothing about work done. |
+| 1. Continuation | The destination reviewed the task and did meaningful work on it. | `--require-continuation`: linked successor + a post-continue work event + corroboration (see below). | Importing, reading, or creating a successor alone. Progress text alone. |
+| 2. Execution | A destination AI execution actually ran. | `--require-execution`: `agentLaunched=true` + a verified `run-ai` event with `ok=true` + a result line. | Progress text mentioning run-ai. A DOM extraction (that is `page_extraction`, not AI execution). |
+| 3. Independent verification | A verifier (not the destination) checked the package with `--previous`, chain hash, and artifact integrity. | `verify-continuation` report, with its limitations. | The destination's own claim that it succeeded. |
+
+### Continuation evidence (corroboration, not just a message)
+
+`--require-continuation` passes only if, compared with the previous
+package when `--previous` is given, at least one of these is true:
+
+- a new `previousResults` line beyond the automatic
+  “Continued from handoff …” line;
+- `remainingWork` changed (not a verbatim copy);
+- a declared test moved from `not_run`/`unverified` to `pass` or `fail`
+  (a failed test is honest continuation evidence, even though the task
+  itself did not succeed);
+- a new attached artifact that passes SHA integrity.
+
+A `progress` event with detail text alone, with none of the above,
+**fails** `--require-continuation`. Writing “I did work” is not work.
+Use `--previous` for the result-line comparison; without it, result
+lines cannot be distinguished from carried-forward results, and the
+check stays `unverified` for that path.
+
+### Execution evidence (strict, preserved)
+
+`--require-execution` is intentionally stricter than continuation, and
+this model does **not** broaden it to accept progress events:
+
+- `execution.agentLaunched` must be `true`. CLI `progress` can never set
+  this, nor can it set `execution.workflow` or `execution.mode`.
+- There must be a `verified_event` whose tool contains `run-ai`, with
+  `ok=true`, and a result line.
+- A DOM extraction (`workflow: page_extraction`, `agentLaunched: false`)
+  does **not** count as AI execution.
+- A progress event whose detail merely mentions run-ai, with
+  `agentLaunched: false` and no `run-ai` tool event, **fails**
+  `--require-execution`, even if it passes `--require-continuation`.
+
+In plain language: a docs-only destination that edits files, runs
+tests, and records progress should pass `--require-continuation` and
+fail `--require-execution`. That is correct, not a bug. Claiming
+execution for that work would be a false positive.
+
+### Dogfood procedure (updated)
+
+For a development-session handoff (Agent A → Agent B):
+
+```bash
+# Agent A: capture, record real work, export
+tabhandoff create-verified --url https://github.com/kodyepalmer-tech/TabHandoff \
+  --instruction "…" --source-agent muse-agent-a --dest-agent muse-agent-b
+tabhandoff progress <id> --detail "…" --kind verified_event --result "<real result>"
+tabhandoff export <id> --out ./exports/agent-a
+
+# Agent B: import, continue, do real work in a fresh clone, record progress
+tabhandoff validate ./exports/agent-a/<id>
+tabhandoff continue ./exports/agent-a/<id> --destination-agent muse-agent-b --verified
+# … edit files, run pnpm build and pnpm test:verified-handoff, record the
+# exact counts as a progress result line …
+tabhandoff progress <successor-id> --detail "…" --kind verified_event --result "pnpm build PASS; …"
+tabhandoff export <successor-id> --out ./exports/agent-b-successor
+
+# Verify the two stages separately — do not collapse them:
+tabhandoff verify-continuation <successor-id> --previous ./exports/agent-a/<id> --require-continuation
+tabhandoff verify-continuation <successor-id> --previous ./exports/agent-a/<id> --require-execution
+# Expected for a docs-only continuation: first passes, second fails.
+# Expected for a real run-ai continuation: both pass.
+```
+
+### Limitations (honest)
+
+- Corroboration is auditable evidence (result lines, artifacts, test
+  results, remaining-work changes that can be checked against the
+  destination branch/files). It is **not** cryptographic proof of work;
+  an actor with file access could fabricate a package. Verification
+  checks package honesty, not absolute proof.
+- SHA integrity proves artifacts were not altered after packaging. It
+  does not prove an event occurred.
+- Execution evidence is system-recorded by the `run-ai` / llm workflow
+  path. A library caller that manually calls `recordDestinationExecution`
+  with `agentLaunched: true` is outside the CLI's trusted path and must
+  be treated as integration-asserted, not CLI-verified, in any audit.
+
+---
+
 ## Sharing / inspect without install
 
 - Export folder includes `handoff.json`, `summary.md`, `EXPORT.md`, **`INSPECT.html`**

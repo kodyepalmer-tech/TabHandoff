@@ -58,6 +58,13 @@ export async function verifyContinuation(
     previousPath?: string;
     /** Require at least one destination verified_event after continue. */
     requireDestinationExecution?: boolean;
+    /**
+     * Require corroborated destination continuation (see destination_continuation
+     * check). This is a LOWER bar than --require-execution: it proves the
+     * destination did meaningful work on the task, not that it ran an AI model.
+     * It never, by itself, claims AI execution happened.
+     */
+    requireContinuation?: boolean;
   },
 ): Promise<ContinuationVerificationReport> {
   const checkedAt = new Date().toISOString();
@@ -230,7 +237,138 @@ export async function verifyContinuation(
     });
   }
 
-  // 7. Destination execution — require real verified events when asked
+  // 7. Destination continuation vs destination execution — two different bars.
+  //
+  // Stage 0 — Import: validate + chain + context only. Importing, reading, or
+  // creating a successor (agent.continue) is NEVER continuation or execution.
+  //
+  // Stage 1 — Continuation (--require-continuation): the destination did
+  // meaningful work on the task. It must be CORROBORATED, not just asserted
+  // in a progress message. Corroboration is at least one of, compared with
+  // the previous package when --previous is given, otherwise checked inside
+  // the successor package:
+  //   - a new previousResults line beyond the automatic "Continued from..." line
+  //   - remainingWork changed (not a verbatim copy)
+  //   - a declared test moved from not_run/unverified to pass or fail
+  //   - a new attached artifact that passes SHA integrity
+  // A progress event with detail text alone, with none of the above, FAILS
+  // --require-continuation. That is the false-positive guard: writing
+  // "I did work" is not work.
+  //
+  // Stage 2 — Execution (--require-execution, UNCHANGED strictness, tightened
+  // here): a model-assisted destination execution actually ran. It requires
+  // ALL of: agentLaunched === true, a verified_event whose tool contains
+  // "run-ai" (or execution workflow llm_browser / mode llm), ok === true,
+  // and a result (new previousResults line). A progress event that merely
+  // MENTIONS run-ai in its detail, with agentLaunched false and no llm
+  // workflow, FAILS. CLI progress can never set agentLaunched, workflow, or
+  // mode, so it can never fabricate execution through this path.
+  //
+  // Stage 3 — Independent verification: this report itself, run with
+  // --previous, chain hash, and artifact integrity. It checks package
+  // honesty, not model quality, and SHA integrity does not prove an event
+  // occurred — it only proves artifacts were not altered after packaging.
+  // Corroboration is evidence that can be audited against the destination
+  // branch/files, not cryptographic proof of work.
+
+  // Load the previous package once for corroboration comparison, if given.
+  let prevPkg: PortableHandoffPackage | null = null;
+  if (options?.previousPath) {
+    try {
+      prevPkg = (await readHandoffPackage(options.previousPath, {
+        home: options?.home,
+      })).package;
+    } catch {
+      prevPkg = null;
+    }
+  }
+
+  const continueIdx = pkg.execution.events.findIndex(
+    (e) => e.tool === "agent.continue",
+  );
+  const postContinueEvents =
+    continueIdx >= 0
+      ? pkg.execution.events.slice(continueIdx + 1)
+      : pkg.previousHandoffId
+        ? []
+        : pkg.execution.events;
+  const postContinueWorkEvents = postContinueEvents.filter(
+    (e) =>
+      (e.kind === "verified_event" || e.kind === "agent_reported") &&
+      Boolean(e.detail?.trim()),
+  );
+
+  const autoContinueLine = (r: string) =>
+    r.startsWith("Continued from handoff ");
+  const prevResults = prevPkg?.previousResults ?? [];
+  const newResultLines = pkg.previousResults.filter(
+    (r) => !autoContinueLine(r) && !prevResults.includes(r),
+  );
+  // Without a previous package, a successor always carries the previous
+  // results forward, so a bare count cannot prove a new result. In that
+  // case only artifact/test/remaining evidence counts, and the check is
+  // unverified unless --previous was given for the result-line path.
+  const remainingChanged =
+    prevPkg !== null &&
+    JSON.stringify(pkg.remainingWork) !==
+      JSON.stringify(prevPkg.remainingWork);
+  const testResultsChanged = (pkg.tests ?? []).some(
+    (t) => t.result === "pass" || t.result === "fail",
+  );
+  const artifactChanged =
+    integrity.checked > 0 && integrity.ok && pkg.screenshots.length > 0
+      ? prevPkg === null
+        ? true
+        : pkg.screenshots.some(
+            (s) =>
+              !prevPkg!.screenshots.some((p) => p.filename === s.filename),
+          )
+      : false;
+  // Artifact evidence only counts if there is actually a new artifact
+  // compared with the previous package, or, when no previous is given, if
+  // the successor carries artifacts at all and integrity passed.
+  const corroborationTypes: string[] = [];
+  if (newResultLines.length > 0 && prevPkg !== null)
+    corroborationTypes.push(`newResultLines=${newResultLines.length}`);
+  if (remainingChanged) corroborationTypes.push("remainingWorkChanged");
+  if (testResultsChanged) corroborationTypes.push("testResultPassOrFail");
+  if (artifactChanged) corroborationTypes.push("newArtifactIntegrityOk");
+  const corroborated = corroborationTypes.length > 0;
+  const linked =
+    Boolean(pkg.previousHandoffId) &&
+    (prevPkg === null || prevPkg.id === pkg.previousHandoffId);
+  const continuationPass =
+    linked &&
+    postContinueWorkEvents.length > 0 &&
+    corroborated;
+
+  checks.push({
+    id: "destination_continuation",
+    name: "Destination continued work (corroborated, not import-only)",
+    outcome: options?.requireContinuation
+      ? continuationPass
+        ? "pass"
+        : "fail"
+      : continuationPass
+        ? "pass"
+        : "unverified",
+    detail: !pkg.previousHandoffId
+      ? "No previousHandoffId — this is a source package, not a continuation."
+      : !linked
+        ? "previousHandoffId does not match the provided previous package."
+        : postContinueWorkEvents.length === 0
+          ? "No post-continue destination work event. Import / continue alone is not continuation."
+          : !corroborated
+            ? "Post-continue event present, but no corroboration: no new result line, remainingWork change, test pass/fail, or new artifact. Progress text alone does not pass."
+            : `Corroborated by: ${corroborationTypes.join(", ")}; post-continue events=${postContinueWorkEvents.length}. This proves continuation, NOT AI execution.`,
+  });
+  if (options?.requireContinuation && prevPkg === null) {
+    limitations.push(
+      "Continuation result-line corroboration requires --previous <path>; without it, result lines alone cannot be distinguished from carried-forward results.",
+    );
+  }
+
+  // Destination execution — strict, preserved, and tightened.
   const destEvents = pkg.execution.events.filter(
     (e) =>
       e.kind === "verified_event" &&
@@ -240,28 +378,49 @@ export async function verifyContinuation(
         e.tool?.includes("continuation") ||
         e.tool === "agent.continue"),
   );
+  const executionEvents = pkg.execution.events.filter(
+    (e) =>
+      e.kind === "verified_event" &&
+      e.tool?.includes("run-ai") &&
+      e.ok === true,
+  );
+  const executionPass =
+    pkg.execution.agentLaunched === true &&
+    (pkg.execution.workflow === "llm_browser" ||
+      pkg.execution.mode === "llm" ||
+      executionEvents.length > 0) &&
+    executionEvents.length > 0 &&
+    newResultLines.length > 0;
+  // For execution, newResultLines must be checked against the previous
+  // package when available; when no previous is given, a run-ai event with
+  // a result is still required, and the result line is the event's own
+  // previousResults addition — approximate by requiring at least one
+  // non-auto previousResults entry. That approximation is only used when
+  // --previous was not supplied, and is noted in limitations.
+  const executionPassNoPrev =
+    prevPkg === null &&
+    pkg.execution.agentLaunched === true &&
+    executionEvents.length > 0 &&
+    pkg.previousResults.some((r) => !autoContinueLine(r));
   if (options?.requireDestinationExecution) {
-    const launchedHonestly =
-      pkg.execution.agentLaunched === true ||
-      destEvents.some((e) => e.tool?.includes("run-ai") || e.ok === true);
-    // Prompt-only: agentLaunched false and only continue event → unverified/fail
-    const onlyContinue =
-      destEvents.length > 0 &&
-      destEvents.every((e) => e.tool === "agent.continue");
-    if (onlyContinue || destEvents.length === 0) {
+    if (executionPass || executionPassNoPrev) {
       checks.push({
         id: "destination_execution",
-        name: "Destination executed continuation (not prompt-only)",
-        outcome: "fail",
-        detail:
-          "No destination verified_event beyond package continue. Creating a successor package alone is not successful continuation.",
+        name: "Destination AI execution (not prompt-only, not progress-only)",
+        outcome: "pass",
+        detail: `run-ai verified_event(s)=${executionEvents.length}; agentLaunched=true; workflow=${pkg.execution.workflow ?? "n/a"}; mode=${pkg.execution.mode ?? "n/a"}. Continuation also required separately — see destination_continuation.`,
       });
     } else {
       checks.push({
         id: "destination_execution",
-        name: "Destination executed continuation (not prompt-only)",
-        outcome: launchedHonestly || destEvents.length > 0 ? "pass" : "unverified",
-        detail: `${destEvents.length} destination-related verified_event(s); agentLaunched=${pkg.execution.agentLaunched}`,
+        name: "Destination AI execution (not prompt-only, not progress-only)",
+        outcome: "fail",
+        detail:
+          pkg.execution.agentLaunched !== true
+            ? "No AI execution: agentLaunched is not true. A progress message mentioning run-ai, without a system-recorded run-ai event and agentLaunched=true, does not count."
+            : executionEvents.length === 0
+              ? "No verified run-ai event with ok=true. Progress events (agent.progress) do not count as execution."
+              : "Run-ai event present, but no corroborating result line. Execution without an output does not pass.",
       });
     }
   } else {
@@ -350,7 +509,33 @@ export async function verifyContinuation(
     });
   }
 
-  const outcome = overallOutcome(checks);
+  // Overall outcome reflects the modes actually requested, not every
+  // informational check. Without any --require-* flag, the old behaviour
+  // is preserved: an unverified informational check keeps the overall
+  // result unverified, so a bare verify never claims a pass.
+  // With --require-continuation only, destination_execution (unverified,
+  // because execution was not requested) does not block a continuation
+  // pass. With --require-execution, destination_continuation is also a
+  // gate, because execution should imply continuation.
+  const gatedChecks =
+    options?.requireContinuation || options?.requireDestinationExecution
+      ? checks.filter((c) => {
+          if (c.id === "destination_continuation")
+            return Boolean(
+              options?.requireContinuation ||
+                options?.requireDestinationExecution,
+            );
+          if (c.id === "destination_execution")
+            return Boolean(options?.requireDestinationExecution);
+          return true;
+        })
+      : checks;
+  const outcome = overallOutcome(gatedChecks);
+  if (options?.requireContinuation && !options?.requireDestinationExecution) {
+    limitations.push(
+      "Overall outcome in --require-continuation mode reflects continuation and base checks only; it does not claim AI execution. Run --require-execution separately for that claim.",
+    );
+  }
   return {
     ok: outcome === "pass",
     outcome,
