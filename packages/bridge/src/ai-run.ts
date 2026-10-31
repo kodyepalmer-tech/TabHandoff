@@ -11,6 +11,7 @@ import {
 } from "@tabhandoff/runner";
 import { receiptsDir, tabHandoffHome } from "./home.js";
 import { envWithAiSettings, loadAiSettings } from "./ai-settings.js";
+import { recordDestinationExecution } from "./portable.js";
 
 export type AiRunRequest = AiCompletionInput & {
   /** Optional existing handoff id to attach result under */
@@ -45,6 +46,14 @@ export type AiRunResponse = AiCompletionResult & {
   taskPath?: string;
   /** Always false in ZIP/package payloads — keys never leave process env */
   apiKeyIncluded: false;
+  /**
+   * True when this run actually recorded a run-ai verified_event with
+   * agentLaunched=true into the handoff package, so verify-continuation
+   * --require-execution can pass. False when there was no real package
+   * to record into (e.g. a mock handoffId) — the run itself still
+   * succeeded, but execution is NOT claimed for that package.
+   */
+  executionRecorded?: boolean;
 };
 
 const MAX_PAGE_TEXT = 24_000;
@@ -193,6 +202,7 @@ export async function executeAiRun(
     };
   }
 
+  let executionRecorded = false;
   if (handoffId) {
     const receiptDir = path.join(receiptsDir(home), handoffId);
     try {
@@ -213,6 +223,39 @@ export async function executeAiRun(
     } catch {
       /* task already persisted under ai-tasks */
     }
+    // Wire a real run-ai into the package's execution record. Before
+    // this, run-ai only wrote ai-result.json beside the receipt, so
+    // verify-continuation --require-execution could only pass via a
+    // library call in tests — never from the actual CLI. Now a real
+    // model run records a run-ai verified_event with agentLaunched=true
+    // and a result line, and only then can execution pass. If the
+    // handoffId is not a real package, recording fails and the run
+    // stays honest: executionRecorded=false, no execution claimed.
+    if (result.ok && result.result.trim()) {
+      try {
+        const firstLine =
+          result.result
+            .split("\n")
+            .map((l) => l.trim())
+            .find((l) => l.length > 0) ?? result.result.trim();
+        await recordDestinationExecution({
+          target: handoffId,
+          tool: "tabhandoff.run-ai",
+          detail: `Destination run-ai completed via ${result.provider ?? "unknown"}/${result.model ?? "unknown"}.`,
+          resultLine: firstLine.slice(0, 500),
+          agentLaunched: true,
+          ok: true,
+          verificationOutcome: "unverified",
+          verificationNotes: [
+            "Run-ai event recorded by TabHandoff after a real model call. Run verify-continuation for the independent check.",
+          ],
+          home,
+        });
+        executionRecorded = true;
+      } catch {
+        executionRecorded = false;
+      }
+    }
   }
 
   return {
@@ -222,6 +265,7 @@ export async function executeAiRun(
     resultPath,
     taskPath,
     apiKeyIncluded: false,
+    executionRecorded,
   };
 }
 

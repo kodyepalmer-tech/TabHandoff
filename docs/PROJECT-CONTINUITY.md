@@ -1,7 +1,15 @@
 # TabHandoff — Project Continuity
 
-**Last updated:** 2026-10-31 (Seamless Phase 1, continued — see the update below; older sections still describe pre-merge state)
+**Last updated:** 2026-10-31 (Real execution proof — see the update below; older sections still describe pre-merge state)
 **Status:** This document is the single place a new agent should start. Do not depend on any single chat surviving. Update it at the end of every substantial session with actual branch, commit, test results, blockers, and next action. Never put secrets in it.
+
+## 2026-10-31 update, real execution proof
+
+- Gap found: `tabhandoff run-ai` only wrote `ai-result.json` beside the receipt. It never recorded a run-ai verified_event into the package, so `verify-continuation --require-execution` could only pass via a library call in tests, never from the actual CLI. That is now fixed, not faked: `executeAiRun` in `packages/bridge/src/ai-run.ts` records a `tabhandoff.run-ai` verified_event with `agentLaunched=true` and the model's first result line, but only after a real model call succeeds and only into a real package. `executionRecorded` in the CLI output says whether that recording happened; false means no execution is claimed for that package. New test in `packages/bridge/test/ai-run.test.ts` proves the wiring with a mocked provider and `--require-execution` passing.
+- Real proof, local model, one sandbox: Ollama 0.40.13, model `smollm2:135m` (exact tag preserved; Ollama's own `pull` hung on the manifest in this sandbox, so the manifest and blobs were fetched from the Ollama registry with curl and placed in Ollama's model store — `ollama list` then showed the model with the registry digest, so this is the real published model, not a mock). Source `a6a1dbb7-d78f-443b-9ec2-ba68fa570ac9` → destination `ollama-smollm2` → successor `881cb422-5f99-4039-aa32-b901ec84278f`. Model output, verbatim: "TabHandoff is a local AI runner that helps users complete tasks and work on projects without compromising their progress." Honest quality note: it is a loose 135M-model sentence, not a precise product description — verification checks that execution happened and a result was recorded, not model quality.
+- Verification: `tabhandoff verify-continuation <successor> --previous <source> --require-continuation --require-execution` → outcome pass, exit 0. Both `destination_continuation` (corroborated by new result line) and `destination_execution` (run-ai verified_event=1, agentLaunched=true) pass.
+- Full test suite at this point: 65 pass, 0 fail (evidence 10, runner 11, bridge 44, including the new run-ai wiring test).
+- Next: first pre-release (tag using the existing release pipeline, verify artifacts/checksums, state plainly that early desktop builds are unsigned). No DNS, release/tag, or Chrome Web Store change in this run.
 
 ## 2026-10-31 update, seamless Phase 1 continued
 

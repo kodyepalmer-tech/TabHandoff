@@ -10,6 +10,12 @@ import {
 import { loadOrCreateBridgeConfig } from "../src/config.ts";
 import { startBridgeServer } from "../src/server.ts";
 import { executeAiRun } from "../src/ai-run.ts";
+import {
+  continueHandoff,
+  createVerifiedHandoff,
+  readHandoffPackage,
+  verifyContinuation,
+} from "../src/index.ts";
 import { sanitizeError } from "@tabhandoff/runner";
 
 describe("Priority 4 AI execution slice", () => {
@@ -320,5 +326,68 @@ describe("Priority 4 AI execution slice", () => {
     if (result.ok) {
       assert.ok(result.result.length > 0);
     }
+  });
+
+  it("executeAiRun records a run-ai verified_event into a real package, so --require-execution can pass", async () => {
+    const home = await mkdtemp(path.join(os.tmpdir(), "th-ai-exec-record-"));
+    temps.push(home);
+    const created = await createVerifiedHandoff({
+      instruction: "Summarize the captured text in one line.",
+      url: "https://example.com/",
+      title: "Example",
+      selectedText: "This domain is for use in illustrative examples.",
+      intendedOutcome: "One honest summary line.",
+      sourceIdentity: { name: "mock-agent-a", interface: "cli", tool: "create-verified" },
+      destinationIdentity: { name: "mock-destination", interface: "cli", tool: "run-ai" },
+      home,
+    });
+    const successor = await continueHandoff({
+      target: created.id,
+      destinationAgent: "mock-destination",
+      verified: true,
+      home,
+    });
+    const fakeFetch: typeof fetch = async () => {
+      return new Response(
+        JSON.stringify({
+          choices: [{ message: { content: "Mocked summary line." } }],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    };
+    const result = await executeAiRun(
+      {
+        instruction: "Summarize",
+        url: "https://example.com",
+        pageText: "This domain is for use in illustrative examples.",
+        handoffId: successor.id,
+      },
+      {
+        home,
+        deps: {
+          fetch: fakeFetch,
+          env: {
+            OPENAI_API_KEY: "test-key",
+            OPENAI_MODEL: "gpt-4o-mini",
+          },
+        },
+      },
+    );
+    assert.equal(result.ok, true);
+    assert.equal(result.executionRecorded, true);
+    const { package: pkg } = await readHandoffPackage(successor.id, { home });
+    assert.equal(pkg.execution.agentLaunched, true);
+    assert.ok(
+      pkg.execution.events.some(
+        (e) => e.kind === "verified_event" && e.tool?.includes("run-ai") && e.ok === true,
+      ),
+    );
+    assert.ok(pkg.previousResults.some((r) => r.includes("Mocked summary line")));
+    const report = await verifyContinuation(successor.id, {
+      home,
+      previousPath: created.id,
+      requireDestinationExecution: true,
+    });
+    assert.equal(report.outcome, "pass");
   });
 });
