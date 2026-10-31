@@ -8,9 +8,9 @@ This policy describes how TabHandoff handles data. It is written for Chrome Web 
 
 ## Summary
 
-- **Primary path:** connect local AI (desktop/bridge) → browser task → real result → saved history on this machine.
-- **Optional:** download a portable ZIP when you want to share. ZIP is not required for Run with AI.
-- Captured page context is processed on **your** computer via loopback (`127.0.0.1`) and/or an AI provider endpoint **you** configure on the bridge — not a TabHandoff cloud account.
+- **Primary product path:** portable handoff packages for AI coding agents (browser capture ships today).
+- **Optional:** local bridge / Run with AI / desktop history — supporting infrastructure.
+- Captured page context stays on **your** computer unless you export or share; optional loopback on `127.0.0.1`; provider keys stay on the bridge/CLI process if you configure one — not a TabHandoff cloud account.
 - We do **not** sell personal data. We do **not** use captured page content for advertising.
 
 ## Data the extension may access

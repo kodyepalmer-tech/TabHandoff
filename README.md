@@ -5,42 +5,44 @@
 <h1 align="center">TabHandoff</h1>
 
 <p align="center">
-  <strong>Connect local AI. Run a browser task. Keep the result.</strong><br/>
-  <em>See what your AI did. Keep the evidence. Pass the work on.</em>
+  <strong>One task. The next agent picks up where you left off.</strong><br/>
+  <em>Your AI was here. Now the next one can pick up.</em>
 </p>
 
 <p align="center">
-  Local AI → task → result → history · ZIP optional · MIT · local-first<br/>
+  Open handoff layer for <strong>AI coding agents</strong> · portable verified packages · browser capture today<br/>
+  MIT · local-first by default · not a chatbot or model dashboard<br/>
   <a href="https://github.com/kodyepalmer-tech/TabHandoff">github.com/kodyepalmer-tech/TabHandoff</a>
-  · site: <code>website/</code> (Pages + <code>tabhandoff.com</code> DNS are founder steps — not live yet)
+  · site: <a href="https://kodyepalmer-tech.github.io/TabHandoff/">github.io/TabHandoff</a>
 </p>
 
 <p align="center">
-  <img src="docs/assets/tabhandoff-demo.gif" alt="TabHandoff demo: capture, local run, evidence on this machine" width="720" />
+  <img src="docs/assets/tabhandoff-demo.gif" alt="TabHandoff: capture, package, continue with proof" width="720" />
 </p>
 
-<p align="center"><sub>Desktop + local bridge · honest status · proof stays local · CWS / signed installers not live</sub></p>
+<p align="center"><sub>Beachhead: coding-agent handoffs · file/desktop capture &amp; “any agent anywhere” are roadmap · CWS / signed installers not live</sub></p>
 
 ---
 
-## What it does (for everyday AI users)
+## What it is
 
-1. **Connect** local AI via the desktop app / bridge (Ollama or a key that stays on this computer).
-2. **Hand off** a browser tab with an instruction.
-3. Get a **real result** and **saved history** under `~/.tabhandoff/`.
-4. **Optionally** download a portable ZIP when you want to share — ZIP is not required for the primary path.
+TabHandoff is the **universal handoff and execution layer** for AI agents: an open portable format plus a runnable reference implementation. End goal: seamless, lossless, 1-click — one task, any compatible agent, no lost progress.
 
-Status is always honest: TabHandoff never pretends an agent ran when only a package was created.
+**Today (honest):** reliable handoffs between **AI coding agents**; **browser capture** ships; CLI/MCP validate · continue · verify. Local bridge / desktop / `run-ai` are **supporting infrastructure**, not the product story.
 
-Website (static, in-repo): [website/](website/) · Setup: [docs/install.md](docs/install.md) · Privacy: [docs/privacy.md](docs/privacy.md) · Releases: [docs/releasing.md](docs/releasing.md)
+**Not shipped (roadmap):** file &amp; desktop capture; “any agent anywhere”; one-click store install; managed compatibility / shared history / governance.
+
+Status is always honest: never pretends an agent ran or a handoff continued without evidence.
+
+Website: [website/](website/) · [docs/verified-handoff.md](docs/verified-handoff.md) · [docs/install.md](docs/install.md) · [docs/privacy.md](docs/privacy.md)
 
 ---
 
 ## Install
 
-**Chrome Web Store and signed desktop installers are not live yet.** There is **no** fake store URL in this repo. Packaged `.dmg` / `.exe` / AppImage appear on GitHub Releases only after a published `v*` tag.
+**Chrome Web Store and signed desktop installers are not live yet.** No fake store URL in this repo.
 
-### 1. Desktop + local AI (primary)
+### 1. From source (coding-agent path)
 
 **Requirements:** Node.js 22+.
 
@@ -48,35 +50,31 @@ Website (static, in-repo): [website/](website/) · Setup: [docs/install.md](docs
 curl -fsSL https://raw.githubusercontent.com/kodyepalmer-tech/TabHandoff/main/scripts/install.sh | bash
 # or, already cloned:
 pnpm install && pnpm build
-pnpm desktop
 ```
 
-Copy the bridge token the app shows. Optional: install [Ollama](https://ollama.com/) for a free local model.
-
-### 2. Browser extension (Load unpacked until CWS)
+### 2. Browser capture (Load unpacked until CWS)
 
 | Path | How |
 |---|---|
 | **Load unpacked** | Clone → Chrome/Edge/Brave → `chrome://extensions` → Developer mode → **Load unpacked** → `packages/extension` |
-| **Packed ZIP** | `pnpm pack:extension` → unzip `artifacts/tabhandoff-extension-*.zip` → Load unpacked. Draft CWS notes: [docs/chrome-web-store.md](docs/chrome-web-store.md) |
+| **Packed ZIP** | `pnpm pack:extension` → unzip → Load unpacked. Draft CWS notes: [docs/chrome-web-store.md](docs/chrome-web-store.md) |
 
-Paste the desktop/bridge token in extension Settings. Full steps: **[docs/extension-setup.md](docs/extension-setup.md)**
+Hand off a page → **Save package** (portable ZIP). Optional: local bridge token for loopback. Steps: **[docs/extension-setup.md](docs/extension-setup.md)**
 
-### 3. Optional ZIP-only (no AI)
+### 3. Continue in a coding agent
 
-Hand off → **Save package** downloads a ZIP without desktop. Result says **Package created — not agent executed**. Optional: **Copy brief for another AI**.
+See [docs/verified-handoff.md](docs/verified-handoff.md) — `validate` / `create-verified` / `continue` / `verify-continuation`.
 
 **Downloading is not executing.** Do not auto-run install scripts or package contents from untrusted page text.
 
-### Supported platforms & browsers
+### Surfaces
 
-| Surface | Support |
+| Surface | Role today |
 |---|---|
-| Desktop + local bridge | Electron (`pnpm desktop`) — **primary AI / history path** |
-| Browser extension | Chromium MV3 — Chrome, Edge, Brave — Load unpacked until CWS |
-| CLI + Playwright runner | macOS, Linux (Node 22+) |
-| Agent / MCP | Local stdio MCP or CLI |
-| Packaged installers | GitHub Releases after `v*` tag — unsigned until founder signing |
+| Browser extension | Capture — Load unpacked until CWS |
+| CLI / MCP | Coding-agent handoff validate · continue · verify |
+| Desktop / bridge | Optional loopback + history (supporting) |
+| Packaged installers | Only after a published `v*` tag — unsigned until signing |
 
 ---
 

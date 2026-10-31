@@ -6,7 +6,7 @@
     <title>Support — TabHandoff</title>
     <meta
       name="description"
-      content="Get help with TabHandoff: desktop + local AI setup, Load unpacked, optional ZIP, and troubleshooting."
+      content="Help with TabHandoff coding-agent handoffs, browser capture, packages, and optional local bridge."
     />
     <link rel="canonical" href="https://tabhandoff.com/support.html" />
     <meta property="og:url" content="https://tabhandoff.com/support.html" />
@@ -36,8 +36,8 @@
       <header class="page-hero">
         <h1>Support</h1>
         <p>
-          TabHandoff is open source. Help lives in the setup guide and GitHub
-          Issues — there is no separate support portal yet.
+          Open source. Help lives in the setup guide and GitHub Issues — no
+          separate support portal yet.
         </p>
       </header>
 
@@ -45,50 +45,55 @@
         <h2>Start here</h2>
         <ul>
           <li>
-            <a href="./install.html">Setup guide</a> — desktop + local AI first;
-            Load unpacked until Chrome Web Store; ZIP optional
+            <a href="./install.html#first-run">Coding-agent first run</a> —
+            browser capture + portable packages
           </li>
           <li>
-            <a href="./download.html">Downloads</a> — desktop installers appear
-            only when a GitHub Release asset exists
+            <a href="./download.html">Downloads</a> — optional desktop
+            installers only when a Release asset exists
           </li>
           <li>
-            <a href="./privacy.html">Privacy policy</a> — capture, processing,
-            retention
+            <a href="./privacy.html">Privacy</a> — what capture packages contain
+          </li>
+          <li>
+            <a href="./#roadmap">Roadmap</a> — file/desktop capture and broader
+            agents are <strong>not</strong> shipped
           </li>
         </ul>
 
         <h2>Common fixes</h2>
         <ul>
           <li>
-            <strong>Can’t Run with AI</strong> — Start desktop/bridge, paste the
-            token in extension Settings. ZIP-only still works without a token.
-          </li>
-          <li>
-            <strong>Bridge: off</strong> — Fine for optional ZIP download. Needed
-            for AI execution and My Activity / history sync.
+            <strong>Store install missing</strong> — Chrome Web Store is not
+            live; use Load unpacked only.
           </li>
           <li>
             <strong>Can’t hand off <code>chrome://</code></strong> — Open a
             normal <code>https://</code> page.
           </li>
           <li>
-            <strong>No screenshot</strong> — Some pages block capture; URL +
-            text still hand off.
+            <strong>Validation / continuation</strong> — Use CLI
+            <code>validate</code> / <code>verify-continuation</code>; don’t
+            claim a handoff continued without a passing check.
+          </li>
+          <li>
+            <strong>Bridge / Run with AI</strong> — Optional infrastructure.
+            Start desktop/bridge + token only if you need loopback.
           </li>
           <li>
             <strong>Desktop “Coming soon”</strong> — No published installer for
-            that OS yet. Use
-            <code>pnpm install && pnpm build && pnpm desktop</code>.
-          </li>
-          <li>
-            <strong>Store install missing</strong> — Chrome Web Store is not
-            live; use Load unpacked only.
+            that OS yet. Use from-source setup.
           </li>
         </ul>
 
         <h2>Docs in the repo</h2>
         <ul>
+          <li>
+            <a
+              href="https://github.com/kodyepalmer-tech/TabHandoff/blob/main/docs/verified-handoff.md"
+              >Verified handoffs</a
+            >
+          </li>
           <li>
             <a
               href="https://github.com/kodyepalmer-tech/TabHandoff/blob/main/docs/extension-setup.md"
@@ -101,12 +106,6 @@
               >Troubleshooting</a
             >
           </li>
-          <li>
-            <a
-              href="https://github.com/kodyepalmer-tech/TabHandoff/blob/main/docs/install.md"
-              >Install (markdown)</a
-            >
-          </li>
         </ul>
 
         <h2>Contact</h2>
@@ -115,8 +114,8 @@
           <a href="https://github.com/kodyepalmer-tech/TabHandoff/issues"
             >GitHub</a
           >.
-          Include OS, browser, whether desktop/bridge was running, whether you
-          used Run with AI or ZIP-only, and the exact status text you saw.
+          Include OS, whether you used Save package vs loopback, and the exact
+          status or CLI output.
         </p>
       </article>
 

@@ -258,6 +258,31 @@ img {
   animation: rise 700ms ease 140ms forwards;
 }
 
+.tag {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: 1px solid var(--ink);
+  color: var(--ink);
+  padding: 0.15rem 0.45rem;
+  border-radius: var(--radius);
+  margin-right: 0.35rem;
+  vertical-align: middle;
+}
+
+.tag-muted {
+  border-color: var(--line);
+  color: var(--muted);
+}
+
+.tag-row {
+  margin: 0 0 1rem;
+  opacity: 0;
+  animation: rise 700ms ease 40ms forwards;
+}
+
 .hero .btn-row {
   opacity: 0;
   animation: rise 700ms ease 220ms forwards;

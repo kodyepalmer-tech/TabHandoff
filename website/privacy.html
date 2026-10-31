@@ -6,7 +6,7 @@
     <title>Privacy Policy — TabHandoff</title>
     <meta
       name="description"
-      content="What TabHandoff captures, where it is processed (local AI / loopback), how long it is kept, and optional ZIP sharing."
+      content="What TabHandoff captures into handoff packages, where processing happens, retention, and optional sharing."
     />
     <link rel="canonical" href="https://tabhandoff.com/privacy.html" />
     <meta property="og:url" content="https://tabhandoff.com/privacy.html" />
@@ -50,11 +50,11 @@
 
       <article class="prose">
         <p>
-          TabHandoff helps you hand a browser task to AI that runs on
-          <strong>your</strong> computer (or a provider endpoint you configure),
-          then keeps the result in local history. A portable ZIP is optional for
-          sharing. There is no TabHandoff cloud account required for the core
-          path.
+          TabHandoff builds <strong>portable handoff packages</strong> from
+          context you choose (browser capture ships today). Packages stay on
+          your machine unless you export or share them. An optional local bridge
+          can run loopback helpers — there is no TabHandoff cloud account for
+          the core path.
         </p>
 
         <h2>Summary</h2>
@@ -64,9 +64,10 @@
             selected text, optional visible-tab screenshot.
           </li>
           <li>
-            <strong>Processed:</strong> on this machine via the local bridge
-            (<code>127.0.0.1</code>) and your chosen AI (local model or API key
-            that stays on the bridge process — not in the extension).
+            <strong>Processed:</strong> on-device when you build a package; optional
+            loopback bridge on <code>127.0.0.1</code>; if you configure a provider
+            on the bridge/CLI, that endpoint receives only what you send — keys
+            stay off the extension.
           </li>
           <li>
             <strong>Retained:</strong> under <code>~/.tabhandoff/</code> until

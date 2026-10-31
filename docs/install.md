@@ -1,25 +1,24 @@
 # Install TabHandoff
 
-Public pages: [website/install.html](../website/install.html) · [website/download.html](../website/download.html) · [website/privacy.html](../website/privacy.html) · [website/support.html](../website/support.html)
+Public site: [github.io/TabHandoff](https://kodyepalmer-tech.github.io/TabHandoff/) · [install](../website/install.html) · [download](../website/download.html) · [privacy](../website/privacy.html) · [support](../website/support.html)
 
-**Product order:** desktop + local AI → browser task → real result → saved history. **ZIP is optional.** Load unpacked until Chrome Web Store. Do not invent live CWS or installer URLs.
+**Product path today:** coding-agent handoffs — browser capture → portable package → CLI/MCP continue & verify. Desktop/bridge optional. No CWS / signed installers until published. File/desktop capture = roadmap.
 
-## Desktop + local AI (primary, from source today)
+## From source (coding-agent path)
 
 ```bash
 git clone https://github.com/kodyepalmer-tech/TabHandoff.git
 cd TabHandoff
 pnpm install && pnpm build
-pnpm desktop          # evidence library + local bridge + history
 ```
 
-Optional free local model: install [Ollama](https://ollama.com/), pull a model, keep it running. Paste the bridge token into the extension Settings.
-
-CLI quick install:
+Browser capture: [extension-setup.md](./extension-setup.md) · verified continue: [verified-handoff.md](./verified-handoff.md).
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/kodyepalmer-tech/TabHandoff/main/scripts/install.sh | bash
 ```
+
+Optional supporting tools: `pnpm desktop` / `pnpm bridge` for loopback.
 
 ## Desktop installers (GitHub Releases — when tagged)
 
@@ -48,18 +47,16 @@ sha256sum -c SHA256SUMS --ignore-missing
 
 1. `pnpm install && pnpm build` (or use a packed `pnpm pack:extension` ZIP)
 2. Load unpacked `packages/extension` in Chromium
-3. Paste desktop/bridge token for Run with AI / history
-4. Optional: also download a ZIP for sharing
+3. Hand off → **Save package** (portable ZIP)
+4. Optional: paste desktop/bridge token only for loopback / Run with AI
 
 Details: [extension-setup.md](./extension-setup.md) · Privacy: [privacy.md](./privacy.md)
 
-## Optional ZIP-only
+## Optional ZIP-only / loopback
 
-Save package / Download ZIP works without desktop. Status says package created — not agent executed.
+Save package works without desktop. Status says package created — not agent executed. Bridge/desktop are optional infrastructure.
 
 ## Page extraction (Playwright)
-
-Packaged desktop includes the library + bridge. Playwright Chromium is optional for isolated page extraction:
 
 ```bash
 pnpm --filter @tabhandoff/cli exec playwright install chromium

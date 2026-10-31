@@ -6,7 +6,7 @@
     <title>Download TabHandoff</title>
     <meta
       name="description"
-      content="Download TabHandoff desktop when GitHub Releases publish installers. Load unpacked for the extension until Chrome Web Store is live."
+      content="Optional desktop installers for TabHandoff when GitHub Releases publish them. Coding-agent path is from source + browser capture today."
     />
     <link rel="canonical" href="https://tabhandoff.com/download.html" />
     <meta property="og:url" content="https://tabhandoff.com/download.html" />
@@ -36,22 +36,22 @@
       <header class="page-hero">
         <h1>Download</h1>
         <p>
-          Desktop is the primary surface for local AI + saved history. Installers
-          ship on
+          Desktop installers are <strong>optional supporting tools</strong> (local
+          bridge / activity). They appear on
           <a href="https://github.com/kodyepalmer-tech/TabHandoff/releases"
             >GitHub Releases</a
           >
-          only after a version tag is published. Buttons appear only when that
-          asset actually exists — otherwise Coming soon + the source path. We do
-          not advertise unsigned installers as “live” when no release exists.
+          only after a version tag is published. Buttons show only when the
+          asset exists — otherwise Coming soon + the source path.
         </p>
       </header>
 
       <p class="warn prose" style="max-width: 44rem">
-        <strong>Extension:</strong>
-        <a href="./install.html#extension">Load unpacked</a> until Chrome Web
-        Store is published.
-        <a href="./install.html">Full setup</a> ·
+        <strong>Primary today:</strong>
+        <a href="./install.html#first-run">coding-agent setup from source</a>
+        + browser <a href="./install.html#extension">Load unpacked</a>
+        (Chrome Web Store not live). Signed one-click install is
+        <span class="tag tag-muted">roadmap</span>.
         <a href="./privacy.html">Privacy</a> ·
         <a href="./support.html">Support</a>
       </p>
@@ -79,15 +79,14 @@
       >
         <h2>macOS</h2>
         <p class="download-meta">
-          Disk image · Apple Silicon and Intel when published · unsigned until
-          notarization is configured
+          Disk image · when published · unsigned until notarization is configured
         </p>
         <ul class="asset-list" data-os="mac"></ul>
         <div class="fallback-path">
-          <strong>Current path if the installer isn’t ready:</strong>
-          clone the repo, then
-          <code>pnpm install && pnpm build && pnpm desktop</code>.
-          See <a href="./install.html#macos">setup notes</a>.
+          <strong>Current path:</strong>
+          <code>pnpm install && pnpm build</code> then CLI / extension — see
+          <a href="./install.html">setup</a>. Optional desktop:
+          <code>pnpm desktop</code>.
         </div>
       </section>
 
@@ -100,14 +99,13 @@
       >
         <h2>Windows</h2>
         <p class="download-meta">
-          NSIS installer · x64 · unsigned until Authenticode is configured
+          NSIS installer · x64 · when published · unsigned until Authenticode
         </p>
         <ul class="asset-list" data-os="win"></ul>
         <div class="fallback-path">
-          <strong>Current path if the installer isn’t ready:</strong>
-          Node 22+, then
-          <code>pnpm install && pnpm build && pnpm desktop</code>.
-          See <a href="./install.html#windows">setup notes</a>.
+          <strong>Current path:</strong> Node 22+, then
+          <code>pnpm install && pnpm build</code> —
+          <a href="./install.html">setup</a>.
         </div>
       </section>
 
@@ -119,32 +117,28 @@
         hidden
       >
         <h2>Linux</h2>
-        <p class="download-meta">AppImage and .deb · x64</p>
+        <p class="download-meta">AppImage and .deb · x64 · when published</p>
         <ul class="asset-list" data-os="linux"></ul>
         <div class="fallback-path">
-          <strong>Current path if the installer isn’t ready:</strong>
-          <code>pnpm install && pnpm build && pnpm desktop</code>.
-          See <a href="./install.html#linux">setup notes</a>.
+          <strong>Current path:</strong>
+          <code>pnpm install && pnpm build</code> —
+          <a href="./install.html">setup</a>.
         </div>
       </section>
 
       <section class="section" style="border-top: none; padding-top: 1rem">
         <h2>Also available</h2>
         <p class="section-lede">
-          Primary product: desktop + local AI + history. Extension is the
-          browser capture/trigger surface. ZIP is optional sharing. Agents use
-          CLI / MCP.
+          Product: open handoff packages for coding agents. Extension = browser
+          capture. Desktop/CLI bridge = optional infrastructure.
         </p>
         <ul>
           <li>
-            <a href="./install.html#extension">Browser extension — Load unpacked</a>
-            (CWS not live)
+            <a href="./install.html#first-run">Coding-agent first run</a>
           </li>
           <li>
-            <a
-              href="https://github.com/kodyepalmer-tech/TabHandoff/blob/main/docs/extension-setup.md"
-              >Extension setup docs</a
-            >
+            <a href="./install.html#extension">Browser extension — Load unpacked</a>
+            (CWS not live)
           </li>
           <li>
             <a href="https://github.com/kodyepalmer-tech/TabHandoff/releases"
@@ -164,7 +158,7 @@
       <footer class="site-footer">
         <span>TabHandoff · MIT</span>
         <span>
-          <a href="./install.html">Setup &amp; troubleshoot</a>
+          <a href="./install.html">Setup</a>
           ·
           <a href="./privacy.html">Privacy</a>
           ·

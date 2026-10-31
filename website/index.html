@@ -3,10 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>TabHandoff — Connect local AI. Get a real result. Keep the history.</title>
+    <title>TabHandoff — One task. The next agent picks up.</title>
     <meta
       name="description"
-      content="TabHandoff hands a browser task to your local AI, returns a real result, and saves history on your machine. ZIP export is optional. Local-first."
+      content="TabHandoff is the open handoff layer for AI coding agents: portable verified packages so progress isn’t lost. Browser capture ships today."
     />
     <link rel="canonical" href="https://tabhandoff.com/" />
     <meta property="og:url" content="https://tabhandoff.com/" />
@@ -15,7 +15,7 @@
     <meta property="og:title" content="TabHandoff" />
     <meta
       property="og:description"
-      content="Connect local AI. Run a browser task. Keep the result on your machine."
+      content="One task, any compatible agent, no lost progress. Browser capture ships today."
     />
     <meta property="og:image" content="https://tabhandoff.com/assets/tabhandoff-og.png" />
     <meta name="twitter:card" content="summary_large_image" />
@@ -31,6 +31,7 @@
         </a>
         <ul class="nav-links">
           <li><a href="#how">How it works</a></li>
+          <li><a href="#roadmap">Roadmap</a></li>
           <li><a href="./install.html">Setup</a></li>
           <li><a href="./download.html">Download</a></li>
           <li><a href="./privacy.html">Privacy</a></li>
@@ -52,15 +53,23 @@
             />
             <span class="hero-brand-name">TabHandoff</span>
           </div>
-          <h1>Connect local AI. Get a real result. Keep the history.</h1>
+          <p class="tag-row">
+            <span class="tag">Ships today</span>
+            <span class="tag tag-muted">Coding agents</span>
+          </p>
+          <h1>One task. The next agent picks up where you left off.</h1>
           <p class="hero-lede">
-            Hand a browser task to AI that runs on your computer. See what came
-            back. Save it locally. A portable ZIP is optional when you want to
-            share.
+            The open handoff layer for AI coding agents — portable verified
+            packages so progress isn’t lost. Not a chatbot. Not a model
+            dashboard. Browser capture ships today.
           </p>
           <div class="btn-row">
-            <a class="btn btn-primary" href="./install.html">Setup guide</a>
-            <a class="btn btn-ghost" href="./download.html">Desktop download</a>
+            <a class="btn btn-primary" href="./install.html">Get started</a>
+            <a
+              class="btn btn-ghost"
+              href="https://github.com/kodyepalmer-tech/TabHandoff"
+              >View on GitHub</a
+            >
           </div>
         </div>
         <figure class="hero-visual">
@@ -68,10 +77,11 @@
             src="./assets/tabhandoff-demo.gif"
             width="960"
             height="693"
-            alt="TabHandoff demo: capture a page, run locally, keep evidence on this machine"
+            alt="TabHandoff: capture context, package a handoff, continue with proof"
           />
           <figcaption>
-            Local AI path · honest status · proof stays on your machine
+            Your AI was here. Now the next one can pick up. · Honest status ·
+            local-first by default
           </figcaption>
         </figure>
       </header>
@@ -79,36 +89,37 @@
       <section class="section" id="how">
         <h2>How it works</h2>
         <p class="section-lede">
-          Primary path: local AI on your machine. Status stays honest — TabHandoff
-          never pretends an agent ran when only a package was created.
+          Beachhead: reliable handoffs between <strong>AI coding agents</strong>.
+          Status stays honest — never pretends an agent ran or continued when it
+          didn’t.
         </p>
         <ol class="steps">
           <li class="step">
-            <span class="step-num">01 · Connect</span>
-            <h3>Local AI + desktop</h3>
+            <span class="step-num">01 · Capture</span>
+            <h3>Browser context <span class="tag">Today</span></h3>
             <p>
-              Run the TabHandoff desktop app (or local bridge). Point it at a
-              free local model (for example Ollama) or a provider key that stays
-              on this computer — never in the browser extension.
+              Hand off a page from Chrome, Edge, or Brave (Load unpacked until
+              the Chrome Web Store listing exists). URL, instruction, optional
+              selection and screenshot — cookies and passwords stay out by
+              design.
             </p>
           </li>
           <li class="step">
-            <span class="step-num">02 · Task</span>
-            <h3>Hand off from the browser</h3>
+            <span class="step-num">02 · Package</span>
+            <h3>Portable verified handoff</h3>
             <p>
-              Open a normal webpage, describe what you want done, and run with
-              AI through the local bridge. The extension is the capture surface;
-              execution happens on your machine.
+              Build an open package (schema 0.1 portable / 0.2 verified) agents
+              can validate, continue, and check — claims, permissions, and
+              continuation proofs instead of a chat transcript dump.
             </p>
           </li>
           <li class="step">
-            <span class="step-num">03 · History</span>
-            <h3>Real result, saved locally</h3>
+            <span class="step-num">03 · Continue</span>
+            <h3>Next coding agent</h3>
             <p>
-              Completed and failed tasks land in local history under
-              <code>~/.tabhandoff/</code>. Optional: also download a portable ZIP
-              when you want to share context — ZIP is not required for the
-              primary path.
+              Pass the package to a compatible CLI or MCP agent. Optional local
+              bridge / desktop helps with loopback runs and history —
+              infrastructure, not the product story.
             </p>
           </li>
         </ol>
@@ -117,50 +128,68 @@
             src="./assets/tabhandoff-demo-strip.png"
             width="1200"
             height="320"
-            alt="Capture → local AI → result → saved history"
+            alt="Capture → package → continue with evidence"
             loading="lazy"
           />
         </figure>
       </section>
 
-      <section class="section" id="install-paths">
+      <section class="section" id="what">
         <div class="agents-block">
-          <h2>How you install today</h2>
+          <h2>What TabHandoff is</h2>
           <p class="section-lede">
-            Chrome Web Store and signed desktop installers are
-            <strong>not</strong> live yet. We do not invent store buttons or
-            download links for missing assets.
+            Universal handoff and execution layer for AI agents: an open
+            portable format plus a runnable reference implementation. End goal:
+            seamless, lossless, one-click — one task, any compatible agent, no
+            lost progress.
           </p>
           <ul>
             <li>
-              <strong>Desktop from source</strong> —
-              <code>pnpm install && pnpm build && pnpm desktop</code>
-              (installers appear on GitHub Releases only after a published
-              <code>v*</code> tag).
+              <strong>Today:</strong> coding-agent handoffs, browser capture,
+              CLI / MCP verify &amp; continue, optional local bridge.
             </li>
             <li>
-              <strong>Browser extension</strong> — Load unpacked from
-              <code>packages/extension</code> (developer path until CWS).
+              <strong>Not this:</strong> another chatbot UI or “pick a model”
+              dashboard.
             </li>
             <li>
-              <strong>Optional ZIP</strong> — Save a portable package when you
-              want to share; not required for Run with AI / history.
+              Longer-term commercial direction (not shipped): managed
+              compatibility, shared history, collaboration, governance, audit.
             </li>
           </ul>
           <p style="margin-top: 1.25rem">
-            <a href="./install.html">Full setup &amp; troubleshooting →</a>
+            <a
+              href="https://github.com/kodyepalmer-tech/TabHandoff/blob/main/docs/verified-handoff.md"
+              >Verified handoff docs →</a
+            >
             ·
-            <a href="./download.html">Download page →</a>
+            <a href="./install.html">Setup →</a>
           </p>
+        </div>
+      </section>
+
+      <section class="section" id="roadmap">
+        <div class="privacy-block">
+          <h2>Roadmap <span class="tag tag-muted">Not shipped</span></h2>
+          <p class="section-lede">
+            Labeled clearly so we don’t burn trust. None of these are live
+            product claims yet.
+          </p>
+          <ul>
+            <li>File and desktop capture (beyond browser tabs)</li>
+            <li>“Any agent anywhere” beyond the coding-agent beachhead</li>
+            <li>One-click consumer install (Chrome Web Store, signed installers)</li>
+            <li>Managed compatibility, shared history, collaboration, governance</li>
+          </ul>
         </div>
       </section>
 
       <section class="section" id="privacy">
         <div class="privacy-block">
-          <h2>Local-first. No mandatory cloud.</h2>
+          <h2>Local-first packages</h2>
           <p class="section-lede">
-            Page context and AI results stay on your machine unless
-            <em>you</em> export or share them.
+            Captured page context stays on your machine unless
+            <em>you</em> export or share a package.
             Full policy: <a href="./privacy.html">Privacy</a>.
           </p>
           <ul>
@@ -169,11 +198,8 @@
               screenshot.
             </li>
             <li>
-              Processed on <code>127.0.0.1</code> via the local bridge / your
-              chosen AI provider endpoint — not a TabHandoff cloud.
-            </li>
-            <li>
-              Retained under <code>~/.tabhandoff/</code> until you delete it.
+              Optional loopback bridge on <code>127.0.0.1</code> — not a
+              TabHandoff cloud account.
             </li>
             <li>
               Cookies, passwords, and authenticated browser state are not copied
@@ -185,10 +211,10 @@
 
       <div class="cta-band">
         <div>
-          <h2>Start on your machine</h2>
+          <h2>Start with a handoff package</h2>
           <p>
-            Setup guide for nontechnical users. Desktop installers and the Chrome
-            Web Store appear only when they are actually published.
+            Setup for coding-agent workflows. Store listings and signed
+            installers appear only when published.
           </p>
         </div>
         <div class="btn-row">
@@ -198,7 +224,7 @@
       </div>
 
       <footer class="site-footer">
-        <span>TabHandoff · MIT · local-first AI handoff</span>
+        <span>TabHandoff · MIT · open handoff layer</span>
         <span>
           <a href="./privacy.html">Privacy</a>
           ·
