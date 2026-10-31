@@ -1,7 +1,16 @@
 # TabHandoff — Project Continuity
 
-**Last updated:** 2026-10-31 (Pre-release 0.1.0-pre.2 downloadable — see the update below; older sections still describe pre-merge state)
+**Last updated:** 2026-10-31 (One-button desktop transfer — see update below; older sections still describe earlier state)
 **Status:** This document is the single place a new agent should start. Do not depend on any single chat surviving. Update it at the end of every substantial session with actual branch, commit, test results, blockers, and next action. Never put secrets in it.
+
+## 2026-10-31 update, one-button desktop transfer
+
+- Gap closed: desktop **Hand off** was package-only. It now has a primary **Transfer** button that runs create → continue → destination `run-ai` → `verify-continuation` (`--require-continuation` + `--require-execution`) in-app. Result (including honest Stage outcomes) shows in the same Hand off view — no file export, no terminal, no token copy for this happy path.
+- Bridge API: `transferAndRun` in `packages/bridge/src/one-button-transfer.ts` (exported from `@tabhandoff/bridge`). Desktop IPC: `handoff:transfer` / preload `transfer`. “Create package only” remains available and never claims verified.
+- Honesty: `plainStatus` is `verified` only when Stage checks pass. No AI provider → `blocked` (package may still be created). Failed model call → never `verified`.
+- Tests: full suite **70 pass, 0 fail** (evidence 10, runner 11, bridge 49 including 5 new one-button-transfer tests). Local proof script: `node scripts/one-button-transfer-proof.mjs` — mocked provider reached `verified` / outcome pass; **Ollama not available in this sandbox**, so live-model proof is an honest blocker for Kody’s machine (install Ollama + a model, then Transfer in the app).
+- Distribution still PAUSED (no Apple signing/notarization, no CWS, no DNS). Base tip before this work: main `4fc07b8` (v0.1.0-pre.2).
+- Next for founder live demo: run desktop with a local provider (`pnpm desktop`, Ollama up), open **Hand off**, type an instruction, click **Transfer**, confirm badge says **verified** and the AI result appears in-panel.
 
 ## 2026-10-31 update, pre-release 0.1.0-pre.2 downloadable
 

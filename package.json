@@ -18,6 +18,7 @@
     "test:agent": "pnpm --filter @tabhandoff/bridge exec node --import tsx --test test/agent-integration.test.ts",
     "test:verified-handoff": "pnpm --filter @tabhandoff/bridge exec node --import tsx --test test/verified-handoff.test.ts",
     "demo:verified-handoff": "node scripts/verified-handoff-demo.mjs",
+    "proof:one-button-transfer": "node scripts/one-button-transfer-proof.mjs",
     "desktop": "pnpm --filter @tabhandoff/desktop start",
     "bridge": "pnpm --filter @tabhandoff/bridge start",
     "install:local": "bash scripts/install.sh",

@@ -639,6 +639,73 @@ select:focus {
   margin-top: 14px;
 }
 
+.transfer-panel {
+  margin-bottom: 16px;
+}
+
+.transfer-result {
+  margin-top: 16px;
+  animation: rise 280ms ease both;
+}
+
+.transfer-result-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.transfer-result-head h3 {
+  margin: 0;
+  font-family: var(--font-display);
+}
+
+.transfer-badge {
+  display: inline-block;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--muted);
+}
+
+.transfer-badge.is-verified {
+  color: #c8f5c0;
+  border-color: rgba(120, 200, 120, 0.45);
+}
+
+.transfer-badge.is-blocked,
+.transfer-badge.is-failed,
+.transfer-badge.is-not_verified {
+  color: #f5d0c0;
+  border-color: rgba(220, 140, 100, 0.45);
+}
+
+.transfer-badge.is-running,
+.transfer-badge.is-unverified {
+  color: #e8e0c0;
+  border-color: rgba(200, 180, 100, 0.4);
+}
+
+.transfer-steps {
+  margin: 12px 0;
+  padding-left: 18px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.transfer-step.is-done {
+  color: var(--ink);
+}
+
+.transfer-step.is-failed,
+.transfer-step.is-blocked {
+  color: #f5d0c0;
+}
+
 .file-meta {
   margin-bottom: 6px;
   font-size: 0.9rem;
