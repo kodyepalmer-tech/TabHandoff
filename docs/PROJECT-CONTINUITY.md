@@ -1,7 +1,15 @@
 # TabHandoff — Project Continuity
 
-**Last updated:** 2026-10-31 (First pre-release in progress — see the update below; older sections still describe pre-merge state)
+**Last updated:** 2026-10-31 (Pre-release 0.1.0-pre.2 downloadable — see the update below; older sections still describe pre-merge state)
 **Status:** This document is the single place a new agent should start. Do not depend on any single chat surviving. Update it at the end of every substantial session with actual branch, commit, test results, blockers, and next action. Never put secrets in it.
+
+## 2026-10-31 update, pre-release 0.1.0-pre.2 downloadable
+
+- v0.1.0-pre.2 release: https://github.com/kodyepalmer-tech/TabHandoff/releases/tag/v0.1.0-pre.2, tag from main 4e1a0b7, marked pre-release (not latest/full), unsigned-builds warning in the body. Release desktop run #2 completed success.
+- Assets verified on the release page: Mac arm64 dmg (110 MB), Windows x64 exe (99 MB), Linux AppImage (115 MB) and .deb (91 MB), plus SHA256SUMS and auto-update yml files. No Intel Mac dmg — the release workflow builds Mac arm64 only in practice, despite the earlier expectation of both arches.
+- Mac Gatekeeper experience (founder, 2026-10-31): opening the unsigned Mac app gave "TabHandoff is damaged and can't be opened. You should move it to the Trash." This is the unsigned/notarized-app Gatekeeper block, not proof of corruption. Workarounds: Finder Ctrl+click > Open, System Settings Privacy & Security > Open Anyway, or xattr -dr com.apple.quarantine. Proper fix for strangers is Apple signing + notarization (paid Apple Developer account — flag cost before starting).
+- License decision (founder, 2026-10-31): keep MIT and monetize around it — free open core/protocol, paid hosted/managed service and enterprise layer, trademark protects the name. Do not switch the core to a restrictive license.
+- Next: Apple signing/notarization decision, Chrome Web Store submission prep, and tabhandoff.com DNS — all founder-gated or external waits, none started. No DNS or Chrome Web Store change in this run.
 
 ## 2026-10-31 update, pre-release fix for 0.1.0-pre.2
 
