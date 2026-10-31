@@ -96,7 +96,9 @@ Portable packages (agents — §12):
   tabhandoff attach <id-or-path> --file <path> [--filename <name>] [--overwrite]
   tabhandoff mark <id-or-path> --status <succeeded|failed|blocked|awaiting_input|cancelled> --reason <text>
   tabhandoff verify-files <id-or-path>   # SHA-256 integrity of artifacts/
-  tabhandoff verify-continuation <id-or-path> [--previous <path>] [--require-execution]
+  tabhandoff verify-continuation <id-or-path> [--previous <path>] [--require-continuation] [--require-execution]
+    # --require-continuation: destination did corroborated work (new result, artifact, test result, or remaining-work change) — NOT AI execution by itself.
+    # --require-execution: destination AI execution actually ran (agentLaunched + verified run-ai event + result) — strict, unchanged in intent.
 
   tabhandoff mcp                  Start MCP server on stdio (for Cursor/Claude)
 
@@ -714,7 +716,7 @@ async function cmdVerifyContinuation(args: Args): Promise<void> {
   const target = args._[1];
   if (!target) {
     console.error(
-      "Usage: tabhandoff verify-continuation <id-or-path> [--previous <path>] [--require-execution] [--expected <substring>]",
+      "Usage: tabhandoff verify-continuation <id-or-path> [--previous <path>] [--require-continuation] [--require-execution] [--expected <substring>]",
     );
     process.exitCode = 1;
     return;
@@ -723,6 +725,7 @@ async function cmdVerifyContinuation(args: Args): Promise<void> {
     const report = await verifyContinuation(target, {
       previousPath: flag(args, "previous"),
       requireDestinationExecution: bool(args, "require-execution"),
+      requireContinuation: bool(args, "require-continuation"),
     });
     const { package: pkg } = await readHandoffPackage(target);
     const baseline = evaluateContinuationBaseline(pkg, report, {
@@ -730,7 +733,10 @@ async function cmdVerifyContinuation(args: Args): Promise<void> {
     });
     console.log(JSON.stringify({ report, baseline }, null, 2));
     if (report.outcome === "fail") process.exitCode = 1;
-    if (report.outcome === "unverified" && bool(args, "require-execution")) {
+    if (
+      report.outcome === "unverified" &&
+      (bool(args, "require-execution") || bool(args, "require-continuation"))
+    ) {
       process.exitCode = 2;
     }
   } catch (err) {
