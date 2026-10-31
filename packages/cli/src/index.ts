@@ -455,6 +455,7 @@ async function cmdRunAi(args: Args): Promise<void> {
         taskId: result.taskId,
         resultPath: result.resultPath,
         taskPath: result.taskPath,
+        executionRecorded: result.executionRecorded ?? false,
         apiKeyIncluded: false,
       },
       null,
