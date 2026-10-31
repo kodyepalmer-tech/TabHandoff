@@ -33,6 +33,7 @@ import { jobsDir, receiptsDir, tabHandoffHome } from "./home.js";
 import {
   buildFilePortablePackage,
   buildPortablePackage,
+  guessMediaType,
   packageForDisk,
   renderSummaryMarkdown,
   renderTaskCardYaml,
@@ -454,7 +455,11 @@ export async function attachEvidence(
   const sha256 = await sha256File(dest);
   const ref: PortableScreenshotRef = {
     filename,
-    mediaType: input.mediaType ?? "image/png",
+    // Never default a non-image attachment to image/png: infer from the
+    // filename (same map used for file packages), falling back to
+    // application/octet-stream for unknown extensions. An explicit
+    // caller-provided mediaType still wins.
+    mediaType: input.mediaType ?? guessMediaType(filename),
     sha256,
   };
 

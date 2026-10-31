@@ -137,6 +137,36 @@ describe("§12 agent integration loop", () => {
     });
     assert.ok(attached.screenshots.some((s) => s.filename === "agent-note.png"));
     assert.ok(attached.screenshots.find((s) => s.filename === "agent-note.png")?.sha256);
+    assert.equal(
+      attached.screenshots.find((s) => s.filename === "agent-note.png")?.mediaType,
+      "image/png",
+    );
+
+    // Non-image attachments must not be mislabelled as image/png.
+    const note = path.join(home, "note.md");
+    await writeFile(note, "# hello\n");
+    const attachedNote = await attachEvidence({
+      target: successor.id,
+      filePath: note,
+      filename: "attached-note.md",
+      home,
+    });
+    assert.equal(
+      attachedNote.screenshots.find((s) => s.filename === "attached-note.md")?.mediaType,
+      "text/markdown",
+    );
+    const unknown = path.join(home, "data.xyz");
+    await writeFile(unknown, "hello\n");
+    const attachedUnknown = await attachEvidence({
+      target: successor.id,
+      filePath: unknown,
+      filename: "data.xyz",
+      home,
+    });
+    assert.equal(
+      attachedUnknown.screenshots.find((s) => s.filename === "data.xyz")?.mediaType,
+      "application/octet-stream",
+    );
 
     await assert.rejects(
       () =>
