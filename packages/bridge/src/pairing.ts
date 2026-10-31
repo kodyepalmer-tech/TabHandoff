@@ -1,4 +1,4 @@
-import { randomInt } from "node:crypto";
+import { randomInt, randomUUID } from "node:crypto";
 
 export type PairingSession = {
   code: string;
@@ -101,9 +101,87 @@ export function redeemPairingCode(
   return { ok: true };
 }
 
+export type PairingRequest = {
+  id: string;
+  status: "pending" | "approved" | "consumed";
+  createdAt: number;
+  expiresAt: number;
+};
+
+const pendingRequests = new Map<string, PairingRequest>();
+
+/**
+ * One-click pairing, no typed code or token.
+ *
+ * Flow: extension POSTs /v1/pair/request (extension/local origin only) and
+ * gets a request id. The desktop app, which already holds the bridge token,
+ * lists pending requests (authenticated) and approves one with a click.
+ * The extension then polls its request; once approved, the bridge returns
+ * the token once to that same extension-origin caller and consumes the
+ * request. An attacker extension could also create a request, but it
+ * cannot get the token unless the desktop user approves that specific
+ * request — approval is the security step, not the code.
+ */
+export function requestPairing(now = Date.now()): PairingRequest {
+  const req: PairingRequest = {
+    id: randomUUID(),
+    status: "pending",
+    createdAt: now,
+    expiresAt: now + CODE_TTL_MS,
+  };
+  pendingRequests.set(req.id, req);
+  return req;
+}
+
+export function listPairingRequests(now = Date.now()): PairingRequest[] {
+  for (const [id, req] of [...pendingRequests]) {
+    if (req.expiresAt <= now) pendingRequests.delete(id);
+  }
+  return [...pendingRequests.values()].filter((r) => r.status === "pending");
+}
+
+export function approvePairingRequest(
+  id: string,
+  now = Date.now(),
+): { ok: true } | { ok: false; error: string } {
+  const req = pendingRequests.get(id);
+  if (!req || req.expiresAt <= now || req.status !== "pending") {
+    return { ok: false, error: "not_found" };
+  }
+  req.status = "approved";
+  return { ok: true };
+}
+
+export function consumeApprovedPairingRequest(
+  id: string,
+  now = Date.now(),
+): { ok: true } | { ok: false; error: string } {
+  const req = pendingRequests.get(id);
+  if (!req || req.expiresAt <= now) {
+    if (req) pendingRequests.delete(id);
+    return { ok: false, error: "not_found" };
+  }
+  if (req.status !== "approved") {
+    return { ok: false, error: "not_approved" };
+  }
+  req.status = "consumed";
+  pendingRequests.delete(id);
+  return { ok: true };
+}
+
+export function pairingRequestStatus(
+  id: string,
+  now = Date.now(),
+): PairingRequest | undefined {
+  const req = pendingRequests.get(id);
+  if (!req || req.expiresAt <= now) return undefined;
+  return req;
+}
+
 /** Test helper */
 export function clearPairingState(): void {
   current = null;
   failCount = 0;
   failWindowStart = 0;
+  pendingRequests.clear();
 }

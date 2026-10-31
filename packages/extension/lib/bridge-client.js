@@ -56,6 +56,67 @@ export async function completePairing(base, code) {
   };
 }
 
+/**
+ * One-click pairing: request approval from the desktop app, then poll
+ * until the desktop user approves (or the request expires). No code or
+ * token is typed. The token is saved on this device only, once, when
+ * the bridge confirms approval — approval by the desktop user is the
+ * security step, not a typed code.
+ */
+export async function requestPairingApproval(base, { pollMs = 2000, timeoutMs = 120000 } = {}) {
+  const root = (base || DEFAULT_BASE).replace(/\/$/, "");
+  let res;
+  try {
+    res = await fetch(`${root}/v1/pair/request`, { method: "POST" });
+  } catch {
+    return {
+      ok: false,
+      error: "bridge_unreachable",
+      message: "Could not reach the local bridge. Start the desktop app first.",
+    };
+  }
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok || !body.ok || !body.requestId) {
+    return {
+      ok: false,
+      error: body.error || `http_${res.status}`,
+      message: body.message || "Pairing request failed.",
+    };
+  }
+  const started = Date.now();
+  while (Date.now() - started < timeoutMs) {
+    await new Promise((r) => setTimeout(r, pollMs));
+    try {
+      const statusRes = await fetch(
+        `${root}/v1/pair/request/${encodeURIComponent(body.requestId)}`,
+      );
+      const statusBody = await statusRes.json().catch(() => ({}));
+      if (statusRes.ok && statusBody.ok && statusBody.status === "approved" && statusBody.token) {
+        await saveBridgeSettings({ base: statusBody.base || root, token: statusBody.token });
+        return { ok: true, base: statusBody.base || root, message: statusBody.message || "Paired.", tokenSaved: true };
+      }
+      if (!statusRes.ok) {
+        return {
+          ok: false,
+          error: statusBody.error || `http_${statusRes.status}`,
+          message: statusBody.message || "Pairing request expired or was not approved.",
+        };
+      }
+    } catch {
+      return {
+        ok: false,
+        error: "bridge_unreachable",
+        message: "Lost connection to the local bridge while waiting for approval.",
+      };
+    }
+  }
+  return {
+    ok: false,
+    error: "timeout",
+    message: "Pairing was not approved in time. Try again and approve it in the desktop app.",
+  };
+}
+
 export async function probeBridge(settings) {
   const base = settings?.base || DEFAULT_BASE;
   try {

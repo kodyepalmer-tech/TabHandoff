@@ -93,6 +93,15 @@ export type DesktopApi = {
     message?: string;
     error?: string;
   }>;
+  listPairingRequests: () => Promise<{
+    ok: boolean;
+    requests: Array<{ id: string; status: string; expiresInSec: number }>;
+    error?: string;
+  }>;
+  approvePairing: (requestId: string) => Promise<{
+    ok: boolean;
+    error?: string;
+  }>;
   ensureBridge: () => Promise<{
     running: boolean;
     adopted?: boolean;
@@ -149,6 +158,9 @@ const api: DesktopApi = {
   saveAiSettings: (payload) => ipcRenderer.invoke("ai:saveSettings", payload),
   testAiConnection: () => ipcRenderer.invoke("ai:testConnection"),
   startPairing: () => ipcRenderer.invoke("bridge:startPairing"),
+  listPairingRequests: () => ipcRenderer.invoke("bridge:listPairingRequests"),
+  approvePairing: (requestId) =>
+    ipcRenderer.invoke("bridge:approvePairing", requestId),
   ensureBridge: () => ipcRenderer.invoke("bridge:ensure"),
   pickFiles: () => ipcRenderer.invoke("handoff:pickFiles"),
   registerDroppedPaths: (paths) =>

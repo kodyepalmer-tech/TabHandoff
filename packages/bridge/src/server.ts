@@ -22,7 +22,16 @@ import {
   type AiRunRequest,
 } from "./ai-run.js";
 import type { AiProviderDeps } from "@tabhandoff/runner";
-import { mintPairingCode, pairingStatus, redeemPairingCode } from "./pairing.js";
+import {
+  approvePairingRequest,
+  consumeApprovedPairingRequest,
+  listPairingRequests,
+  mintPairingCode,
+  pairingRequestStatus,
+  pairingStatus,
+  redeemPairingCode,
+  requestPairing,
+} from "./pairing.js";
 import {
   loadAiSettings,
   saveAiSettings,
@@ -239,6 +248,110 @@ export async function startBridgeServer(options: {
             expiresInSec: minted.expiresInSec,
             message:
               "Enter this code in the browser extension within two minutes.",
+          },
+          origin,
+        );
+        return;
+      }
+
+      // One-click pairing: extension requests, desktop approves, no typed code.
+      if (req.method === "POST" && url.pathname === "/v1/pair/request") {
+        if (!isExtensionOrLocalOrigin(origin)) {
+          sendJson(res, 403, { ok: false, error: "origin_not_allowed" }, origin);
+          return;
+        }
+        const reqPair = requestPairing();
+        sendJson(
+          res,
+          200,
+          {
+            ok: true,
+            requestId: reqPair.id,
+            status: "pending",
+            expiresInSec: Math.max(
+              0,
+              Math.floor((reqPair.expiresAt - Date.now()) / 1000),
+            ),
+            message:
+              "Pairing requested. Approve this request in the desktop app — no code to type.",
+          },
+          origin,
+        );
+        return;
+      }
+
+      if (req.method === "GET" && url.pathname === "/v1/pair/requests") {
+        if (!requireAuth(req, res, config, origin)) return;
+        sendJson(
+          res,
+          200,
+          {
+            ok: true,
+            requests: listPairingRequests().map((r) => ({
+              id: r.id,
+              status: r.status,
+              expiresInSec: Math.max(
+                0,
+                Math.floor((r.expiresAt - Date.now()) / 1000),
+              ),
+            })),
+          },
+          origin,
+        );
+        return;
+      }
+
+      if (req.method === "POST" && url.pathname === "/v1/pair/approve") {
+        if (!requireAuth(req, res, config, origin)) return;
+        let json: JsonBody = {};
+        try {
+          json = JSON.parse((await readBody(req, 4096)).toString("utf8")) as JsonBody;
+        } catch {
+          sendJson(res, 400, { ok: false, error: "invalid_json" }, origin);
+          return;
+        }
+        const approved = approvePairingRequest(String(json.requestId ?? ""));
+        if (!approved.ok) {
+          sendJson(res, 404, { ok: false, error: "not_found" }, origin);
+          return;
+        }
+        sendJson(res, 200, { ok: true, requestId: String(json.requestId) }, origin);
+        return;
+      }
+
+      if (
+        req.method === "GET" &&
+        url.pathname.startsWith("/v1/pair/request/")
+      ) {
+        if (!isExtensionOrLocalOrigin(origin)) {
+          sendJson(res, 403, { ok: false, error: "origin_not_allowed" }, origin);
+          return;
+        }
+        const id = decodeURIComponent(url.pathname.slice("/v1/pair/request/".length));
+        const reqPair = pairingRequestStatus(id);
+        if (!reqPair) {
+          sendJson(res, 404, { ok: false, error: "not_found" }, origin);
+          return;
+        }
+        if (reqPair.status !== "approved") {
+          sendJson(res, 200, { ok: true, status: "pending" }, origin);
+          return;
+        }
+        const consumed = consumeApprovedPairingRequest(id);
+        if (!consumed.ok) {
+          sendJson(res, 404, { ok: false, error: "not_found" }, origin);
+          return;
+        }
+        sendJson(
+          res,
+          200,
+          {
+            ok: true,
+            status: "approved",
+            base: `http://${config.host}:${config.port}`,
+            token: config.token,
+            message:
+              "Paired. Token stays on this computer — never share it or put it in screenshots.",
           },
           origin,
         );

@@ -68,6 +68,12 @@ export {
   pairingStatus,
   redeemPairingCode,
   clearPairingState,
+  requestPairing,
+  listPairingRequests,
+  approvePairingRequest,
+  consumeApprovedPairingRequest,
+  pairingRequestStatus,
+  type PairingRequest,
 } from "./pairing.js";
 export {
   loadAiSettings,

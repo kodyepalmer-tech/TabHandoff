@@ -124,4 +124,67 @@ describe("writeHandoffToHome + bridge HTTP", () => {
       await server.close();
     }
   });
+
+  it("one-click pairing over HTTP: request, approve, consume token once", async () => {
+    const home = await mkdtemp(path.join(os.tmpdir(), "th-pair-"));
+    temps.push(home);
+    const config = await loadOrCreateBridgeConfig({ home, port: 0 });
+    const port = 18000 + Math.floor(Math.random() * 1000);
+    config.port = port;
+    const server = await startBridgeServer({ config, home });
+    try {
+      const reqRes = await fetch(`http://127.0.0.1:${port}/v1/pair/request`, {
+        method: "POST",
+        headers: { Origin: "chrome-extension://abcdef" },
+      });
+      assert.equal(reqRes.status, 200);
+      const reqBody = (await reqRes.json()) as { ok: boolean; requestId: string; status: string };
+      assert.equal(reqBody.ok, true);
+      assert.equal(reqBody.status, "pending");
+
+      const pendingRes = await fetch(
+        `http://127.0.0.1:${port}/v1/pair/request/${reqBody.requestId}`,
+        {
+          method: "GET",
+          headers: { Origin: "chrome-extension://abcdef" },
+        },
+      );
+      // Polling before approval returns pending, not the token.
+      const pendingBody = (await pendingRes.json()) as { status: string; token?: string };
+      assert.equal(pendingBody.status, "pending");
+      assert.equal(pendingBody.token, undefined);
+
+      const listRes = await fetch(`http://127.0.0.1:${port}/v1/pair/requests`, {
+        headers: { Authorization: `Bearer ${config.token}` },
+      });
+      const listBody = (await listRes.json()) as { requests: Array<{ id: string }> };
+      assert.ok(listBody.requests.some((r) => r.id === reqBody.requestId));
+
+      const approveRes = await fetch(`http://127.0.0.1:${port}/v1/pair/approve`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${config.token}`,
+        },
+        body: JSON.stringify({ requestId: reqBody.requestId }),
+      });
+      assert.equal(approveRes.status, 200);
+
+      const statusRes = await fetch(
+        `http://127.0.0.1:${port}/v1/pair/request/${reqBody.requestId}`,
+        { headers: { Origin: "chrome-extension://abcdef" } },
+      );
+      const statusBody = (await statusRes.json()) as { status: string; token?: string };
+      assert.equal(statusBody.status, "approved");
+      assert.equal(statusBody.token, config.token);
+
+      const againRes = await fetch(
+        `http://127.0.0.1:${port}/v1/pair/request/${reqBody.requestId}`,
+        { headers: { Origin: "chrome-extension://abcdef" } },
+      );
+      assert.equal(againRes.status, 404);
+    } finally {
+      await server.close();
+    }
+  });
 });

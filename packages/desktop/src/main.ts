@@ -259,6 +259,31 @@ function registerIpc(): void {
     };
   });
 
+  ipcMain.handle("bridge:listPairingRequests", async () => {
+    await ensureBridge();
+    if (!bridge) return { ok: false, error: "bridge_offline", requests: [] };
+    const res = await fetch(`${bridge.url}/v1/pair/requests`, {
+      headers: { Authorization: `Bearer ${bridge.config.token}` },
+    });
+    const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    return { ok: Boolean(body.ok), requests: body.requests ?? [], error: body.error };
+  });
+
+  ipcMain.handle("bridge:approvePairing", async (_e, requestId: string) => {
+    await ensureBridge();
+    if (!bridge) return { ok: false, error: "bridge_offline" };
+    const res = await fetch(`${bridge.url}/v1/pair/approve`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${bridge.config.token}`,
+      },
+      body: JSON.stringify({ requestId }),
+    });
+    const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    return { ok: Boolean(body.ok), error: body.error };
+  });
+
   ipcMain.handle("bridge:startPairing", async () => {
     await ensureBridge();
     if (!bridge) {
