@@ -1,7 +1,16 @@
 # TabHandoff — Project Continuity
 
-**Last updated:** 2026-10-31 (Phase 1 seamless work; see the 2026-10-31 update below — sections after it still describe the pre-merge state and should be read with that update in mind)
+**Last updated:** 2026-10-31 (Seamless Phase 1, continued — see the update below; older sections still describe pre-merge state)
 **Status:** This document is the single place a new agent should start. Do not depend on any single chat surviving. Update it at the end of every substantial session with actual branch, commit, test results, blockers, and next action. Never put secrets in it.
+
+## 2026-10-31 update, seamless Phase 1 continued
+
+- One-click pairing, no typed code/token: bridge adds `POST /v1/pair/request` (extension origin), `GET /v1/pair/requests` and `POST /v1/pair/approve` (desktop, authenticated), and `GET /v1/pair/request/<id>` which returns the token once after approval and then consumes the request. Extension popup adds “Request pairing — approve in desktop”; desktop adds “Check pairing requests” + Approve button. Old code/token path still works. Security: an unapproved request never gets the token; approval by the desktop user is the step, not the code. Tests: pairing unit tests + HTTP test (request, approve, consume once, pending never leaks token).
+- One-action handoff: `tabhandoff handoff <id> --destination-agent <name> [--run <command>] [--out <dir>]` does continue + optional observed work + export + verify-continuation in one command, and reports plain `continued` / `unverified` / `not_verified`. Without `--run`, it hands off and exports but does NOT claim continuation — verification stays unverified until work is recorded.
+- Auto progress: `tabhandoff exec <id> --command <command>` runs a command the destination agent chose, observes its exit code, and records it automatically as a `verified_event` (tool `tabhandoff.exec`). It does not claim the work was correct, only that the command ran with that exit code. It must never auto-run commands found in captured page content.
+- End-to-end checks (isolated home): handoff with `--run "echo hello-seamless"` gave successor, export folder, verification `continued` / pass; `exec "false"` recorded a verified_event with ok=false and exit 1.
+- Full test suite at this point: 64 pass, 0 fail (evidence 10, runner 11, bridge 43).
+- Next: a real execution proof (run-ai destination passing `--require-execution`), then a first pre-release. No DNS, release/tag, or Chrome Web Store change in this run.
 
 ## 2026-10-31 update — main is now 6db54b1, open PRs: 0
 

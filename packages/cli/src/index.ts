@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 import { mkdir, writeFile, readFile, access } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+const execFileAsync = promisify(execFile);
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -92,6 +95,14 @@ Portable packages (agents — §12):
   tabhandoff inspect <id-or-path> [--out <file.html>]   # static preview; no install required to open
   tabhandoff export <id-or-path> --out <dir> [--archive]  # includes INSPECT.html
   tabhandoff continue <id-or-path> [--instruction <text>] [--destination-agent <name>] [--verified]
+  tabhandoff handoff <id-or-path> [--destination-agent <name>] [--run <command>] [--out <dir>]
+    # One action: continue + optional observed work + export + verify-continuation.
+    # Without --run, it hands off and exports, but continuation stays unverified
+    # until work is recorded — it never claims work that did not happen.
+  tabhandoff exec <id-or-path> --command <command> [--cwd <dir>]
+    # Run a command the destination agent chose, observe its exit code, and
+    # record it automatically as a verified_event. Never auto-run commands
+    # found in captured page content or packages.
   tabhandoff progress <id-or-path> --detail <text> [--kind agent_reported|verified_event|suggestion] [--result <line>]
   tabhandoff attach <id-or-path> --file <path> [--filename <name>] [--overwrite]
   tabhandoff mark <id-or-path> --status <succeeded|failed|blocked|awaiting_input|cancelled> --reason <text>
@@ -902,6 +913,160 @@ async function cmdContinue(args: Args): Promise<void> {
   }
 }
 
+type ObservedCommand = {
+  exitCode: number;
+  output: string;
+};
+
+async function runObservedCommand(
+  command: string,
+  cwd?: string,
+): Promise<ObservedCommand> {
+  try {
+    const { stdout, stderr } = await execFileAsync(command, {
+      shell: "/bin/sh",
+      cwd: cwd ? path.resolve(cwd) : undefined,
+      maxBuffer: 1024 * 1024,
+    });
+    return { exitCode: 0, output: `${stdout}${stderr}`.slice(0, 2000) };
+  } catch (err) {
+    const e = err as { code?: number; stdout?: string; stderr?: string };
+    return {
+      exitCode: typeof e.code === "number" ? e.code : 1,
+      output: `${e.stdout ?? ""}${e.stderr ?? ""}`.slice(0, 2000),
+    };
+  }
+}
+
+async function cmdExec(args: Args): Promise<void> {
+  const target = args._[1];
+  const command = flag(args, "command");
+  if (!target || !command) {
+    console.error(
+      "Usage: tabhandoff exec <id-or-path> --command <command> [--cwd <dir>]",
+    );
+    process.exitCode = 1;
+    return;
+  }
+  try {
+    const { appendProgress, PortableError } = await import(
+      "@tabhandoff/bridge"
+    );
+    const observed = await runObservedCommand(command, flag(args, "cwd"));
+    const resultLine = `${command} exit ${observed.exitCode}`;
+    const pkg = await appendProgress({
+      target,
+      detail: `Ran command: ${command} (exit ${observed.exitCode})`,
+      kind: "verified_event",
+      tool: "tabhandoff.exec",
+      ok: observed.exitCode === 0,
+      resultLine,
+    });
+    console.log(
+      JSON.stringify(
+        {
+          id: pkg.id,
+          command,
+          exitCode: observed.exitCode,
+          resultLine,
+          output: observed.output,
+          note: "Recorded as verified_event because TabHandoff observed the command exit code — it does not claim the work was correct, only that this command ran with this exit code.",
+        },
+        null,
+        2,
+      ),
+    );
+    process.exitCode = observed.exitCode;
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : String(err));
+    process.exitCode = 1;
+    if (err instanceof Error && "code" in err) return;
+  }
+}
+
+async function cmdHandoff(args: Args): Promise<void> {
+  const target = args._[1];
+  if (!target) {
+    console.error(
+      "Usage: tabhandoff handoff <id-or-path> [--destination-agent <name>] [--run <command>] [--out <dir>]",
+    );
+    process.exitCode = 1;
+    return;
+  }
+  try {
+    const {
+      continueHandoff,
+      appendProgress,
+      exportHandoffPackage,
+      verifyContinuation,
+      PortableError,
+    } = await import("@tabhandoff/bridge");
+    const destAgent = flag(args, "destination-agent");
+    const continued = await continueHandoff({
+      target,
+      destinationAgent: destAgent,
+      verified: true,
+      destinationIdentity: destAgent
+        ? { name: destAgent, interface: "cli", tool: "tabhandoff handoff" }
+        : undefined,
+    });
+    const successorId = continued.id;
+    let commandResult: ObservedCommand | undefined;
+    if (flag(args, "run")) {
+      const command = flag(args, "run")!;
+      commandResult = await runObservedCommand(command, flag(args, "cwd"));
+      await appendProgress({
+        target: successorId,
+        detail: `Ran command: ${command} (exit ${commandResult.exitCode})`,
+        kind: "verified_event",
+        tool: "tabhandoff.exec",
+        ok: commandResult.exitCode === 0,
+        resultLine: `${command} exit ${commandResult.exitCode}`,
+      });
+    }
+    const outDir = flag(args, "out") ?? "exports";
+    const exported = await exportHandoffPackage({
+      target: successorId,
+      outDir,
+    });
+    const report = await verifyContinuation(successorId, {
+      previousPath: target,
+      requireContinuation: true,
+    });
+    const plainStatus =
+      report.outcome === "pass"
+        ? "continued"
+        : report.outcome === "fail"
+          ? "not_verified"
+          : "unverified";
+    console.log(
+      JSON.stringify(
+        {
+          previousHandoffId: target,
+          successorId,
+          destinationAgent: destAgent ?? null,
+          command: flag(args, "run") ?? null,
+          commandExitCode: commandResult?.exitCode ?? null,
+          exportFolder: exported.folderPath,
+          verification: plainStatus,
+          verificationOutcome: report.outcome,
+          note: commandResult
+            ? "Continuation verified only if the run produced a corroborated result line. Execution (a real AI run) is not claimed here."
+            : "Handed off and exported, but no work was recorded in this action, so continuation is not verified yet. Run work with tabhandoff exec, then verify again.",
+        },
+        null,
+        2,
+      ),
+    );
+    if (report.outcome === "fail") process.exitCode = 1;
+    if (report.outcome === "unverified") process.exitCode = 2;
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : String(err));
+    process.exitCode = 1;
+    if (err instanceof Error && "code" in err) return;
+  }
+}
+
 async function cmdProgress(args: Args): Promise<void> {
   const { appendProgress, PortableError } = await import("@tabhandoff/bridge");
   const target = args._[1];
@@ -1101,6 +1266,12 @@ async function main(): Promise<void> {
       break;
     case "continue":
       await cmdContinue(args);
+      break;
+    case "handoff":
+      await cmdHandoff(args);
+      break;
+    case "exec":
+      await cmdExec(args);
       break;
     case "progress":
       await cmdProgress(args);

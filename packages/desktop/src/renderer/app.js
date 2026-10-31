@@ -445,6 +445,38 @@ function wireAiSettings() {
         err instanceof Error ? err.message : String(err);
     }
   });
+  $("#btn-pair-requests")?.addEventListener("click", async () => {
+    try {
+      const r = await api.listPairingRequests();
+      const box = $("#pair-request-actions");
+      if (!box) return;
+      box.innerHTML = "";
+      if (!r.ok || !r.requests?.length) {
+        $("#pair-request-line").textContent = "No pairing requests.";
+        toast("No pairing requests");
+        return;
+      }
+      $("#pair-request-line").textContent =
+        "A browser asked to pair. Approve only if you just clicked Request pairing in the extension.";
+      for (const req of r.requests) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "btn primary";
+        btn.textContent = `Approve pairing (expires in ${req.expiresInSec}s)`;
+        btn.addEventListener("click", async () => {
+          const ok = await api.approvePairing(req.id);
+          toast(ok.ok ? "Pairing approved" : "Approval failed");
+          if (ok.ok) {
+            $("#pair-request-line").textContent = "Pairing approved.";
+            box.innerHTML = "";
+          }
+        });
+        box.appendChild(btn);
+      }
+    } catch (err) {
+      toast(err instanceof Error ? err.message : String(err));
+    }
+  });
   $("#btn-pair-code")?.addEventListener("click", async () => {
     try {
       const r = await api.startPairing();

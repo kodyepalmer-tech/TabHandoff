@@ -17,6 +17,7 @@ import {
   listAiTasks,
   getAiTask,
   completePairing,
+  requestPairingApproval,
 } from "./lib/bridge-client.js";
 
 const HISTORY_KEY = "aiTaskHistory";
@@ -941,6 +942,24 @@ function wire() {
     await loadCapabilities();
     await renderHistory();
     $("bridge-status").textContent = "Saved.";
+  });
+  $("btn-pair-request").addEventListener("click", async () => {
+    $("bridge-status").textContent =
+      "Pairing requested — approve it in the desktop app. No code to type.";
+    const result = await requestPairingApproval($("bridge-base").value.trim());
+    if (result.ok) {
+      $("pair-code").value = "";
+      $("bridge-token").value = "";
+      const settings = await loadBridgeSettings();
+      $("bridge-base").value = settings.base;
+      $("bridge-status").textContent =
+        "Paired. Token saved on this device only — not shown again.";
+      await refreshBridgePill();
+      await loadCapabilities();
+      await renderHistory();
+    } else {
+      $("bridge-status").textContent = result.message || "Pairing failed.";
+    }
   });
   $("btn-pair").addEventListener("click", async () => {
     $("bridge-status").textContent = "Pairing…";
