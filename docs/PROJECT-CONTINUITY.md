@@ -3,6 +3,13 @@
 **Last updated:** 2026-10-31 (First pre-release in progress — see the update below; older sections still describe pre-merge state)
 **Status:** This document is the single place a new agent should start. Do not depend on any single chat surviving. Update it at the end of every substantial session with actual branch, commit, test results, blockers, and next action. Never put secrets in it.
 
+## 2026-10-31 update, pre-release fix for 0.1.0-pre.2
+
+- v0.1.0-pre.1 release page exists but has NO installer assets: Release desktop run #1 failed on all three OS jobs at the Package desktop step because electron-builder.yml sets publish provider github, but the workflow's Package step sets no GH_TOKEN, so packaging tried to publish and errored "GitHub Personal Access Token is not set". Earlier steps passed; checksums/upload/publish were skipped.
+- Fix in this change: desktop dist scripts now pass `--publish never` to electron-builder, so CI packaging only builds artifacts; the workflow's upload-artifact + publish job attaches them to the release. Local Linux packaging is unaffected except it also no longer tries to publish.
+- Version bumped to 0.1.0-pre.2 in root package.json and packages/desktop/package.json (kept equal, per docs/releasing.md). The pre.1 tag is frozen with the old recipe, so the corrected release must be a new tag, v0.1.0-pre.2.
+- Builds remain unsigned; that must still be stated on the release.
+
 ## 2026-10-31 update, first pre-release in progress
 
 - Version bumped to 0.1.0-pre.1 in root package.json and packages/desktop/package.json (kept equal, per docs/releasing.md) so installer artifacts are named for the pre-release, not 0.1.0.
