@@ -1,7 +1,13 @@
 # TabHandoff — Project Continuity
 
-**Last updated:** 2026-10-31 (Real execution proof — see the update below; older sections still describe pre-merge state)
+**Last updated:** 2026-10-31 (First pre-release in progress — see the update below; older sections still describe pre-merge state)
 **Status:** This document is the single place a new agent should start. Do not depend on any single chat surviving. Update it at the end of every substantial session with actual branch, commit, test results, blockers, and next action. Never put secrets in it.
+
+## 2026-10-31 update, first pre-release in progress
+
+- Version bumped to 0.1.0-pre.1 in root package.json and packages/desktop/package.json (kept equal, per docs/releasing.md) so installer artifacts are named for the pre-release, not 0.1.0.
+- Builds are unsigned (CSC_IDENTITY_AUTO_DISCOVERY=false in the release workflow; no signing secrets). Expect macOS Gatekeeper / Windows SmartScreen warnings until signing is set up later. This must be stated on the release, not hidden.
+- No DNS, Chrome Web Store, or signing change in this step.
 
 ## 2026-10-31 update, real execution proof
 

@@ -1,6 +1,6 @@
 {
   "name": "tabhandoff",
-  "version": "0.1.0",
+  "version": "0.1.0-pre.1",
   "private": true,
   "description": "TabHandoff \u2014 the open handoff protocol for AI agents. Your AI was here. Now the next one can pick up.",
   "license": "MIT",

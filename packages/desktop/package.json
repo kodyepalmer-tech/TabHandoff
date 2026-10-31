@@ -1,6 +1,6 @@
 {
   "name": "@tabhandoff/desktop",
-  "version": "0.1.0",
+  "version": "0.1.0-pre.1",
   "description": "TabHandoff desktop — local AI activity and evidence library",
   "license": "MIT",
   "private": true,
