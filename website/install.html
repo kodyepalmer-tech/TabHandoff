@@ -6,181 +6,110 @@
     <title>Setup — TabHandoff</title>
     <meta
       name="description"
-      content="Set up TabHandoff for coding-agent handoffs: browser capture today, portable verified packages, CLI/MCP. Honest about what is not live."
+      content="Set up TabHandoff: browser capture today, portable verified packages for AI coding agents. Honest about roadmap."
     />
     <link rel="canonical" href="https://tabhandoff.com/install.html" />
-    <meta property="og:url" content="https://tabhandoff.com/install.html" />
     <meta property="og:title" content="Setup TabHandoff" />
     <meta property="og:image" content="https://tabhandoff.com/assets/tabhandoff-og.png" />
     <link rel="icon" href="./assets/tabhandoff-mark.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <div class="wrap">
-      <nav class="site-nav" aria-label="Primary">
-        <a class="brand-lockup" href="./">
-          <img src="./assets/tabhandoff-mark.svg" width="36" height="36" alt="" />
-          TabHandoff
-        </a>
-        <ul class="nav-links">
-          <li><a href="./install.html" aria-current="page">Setup</a></li>
-          <li><a href="./download.html">Download</a></li>
-          <li><a href="./privacy.html">Privacy</a></li>
-          <li><a href="./support.html">Support</a></li>
-          <li>
-            <a href="https://github.com/kodyepalmer-tech/TabHandoff">GitHub</a>
-          </li>
-        </ul>
-      </nav>
+    <div class="atmosphere" aria-hidden="true"></div>
+    <nav class="site-nav wrap" aria-label="Primary">
+      <a class="brand-lockup" href="./">
+        <img src="./assets/tabhandoff-mark.svg" width="32" height="32" alt="" />
+        TabHandoff
+      </a>
+      <ul class="nav-links">
+        <li><a href="./">Home</a></li>
+        <li><a href="./install.html" aria-current="page">Setup</a></li>
+        <li><a href="./download.html">Download</a></li>
+        <li><a href="./privacy.html">Privacy</a></li>
+        <li>
+          <a href="https://github.com/kodyepalmer-tech/TabHandoff">GitHub</a>
+        </li>
+      </ul>
+    </nav>
 
-      <header class="page-hero">
-        <h1>Setup &amp; troubleshoot</h1>
-        <p>
-          Primary path today: capture from the browser → portable package →
-          continue in a coding agent (CLI / MCP). Local bridge and desktop are
-          supporting tools — not the product pitch.
-        </p>
-      </header>
+    <header class="page-hero wrap">
+      <h1>Setup</h1>
+      <p>
+        Coding-agent handoffs: capture from the browser, export a portable
+        package, continue in the next agent. Desktop and local bridge are
+        optional tools.
+      </p>
+    </header>
 
-      <article class="prose">
-        <p class="warn">
-          <strong>Not live yet:</strong> Chrome Web Store · signed desktop
-          installers · “any agent anywhere” · file/desktop capture.
-          <span class="tag tag-muted">Roadmap</span> items are labeled below —
-          do not treat them as shipped.
-        </p>
+    <article class="prose wrap">
+      <p class="warn">
+        Chrome Web Store and signed installers are <strong>not</strong> live.
+        File/desktop capture and “any agent anywhere” are roadmap — not shipped.
+      </p>
 
-        <h2 id="first-run">First run (coding-agent handoff)</h2>
-        <ol>
-          <li>
-            Install <a href="https://nodejs.org/">Node.js 22+</a>, then:
-            <pre><code>git clone https://github.com/kodyepalmer-tech/TabHandoff.git
+      <h2 id="first-run">Today</h2>
+      <ol>
+        <li>
+          Node 22+, then:
+          <pre><code>git clone https://github.com/kodyepalmer-tech/TabHandoff.git
 cd TabHandoff
 pnpm install && pnpm build</code></pre>
-          </li>
-          <li>
-            <strong>Browser capture (ships today):</strong> Chrome / Edge / Brave
-            → <code>chrome://extensions</code> → Developer mode →
-            <strong>Load unpacked</strong> → <code>packages/extension</code>.
-            Hand off a normal <code>https://…</code> page → Review →
-            <strong>Save package</strong> (portable ZIP) or connect the optional
-            local bridge for loopback runs.
-          </li>
-          <li>
-            <strong>Continue in a coding agent:</strong> validate / continue /
-            verify with the CLI (or MCP). See
-            <a
-              href="https://github.com/kodyepalmer-tech/TabHandoff/blob/main/docs/verified-handoff.md"
-              >docs/verified-handoff.md</a
-            >.
-            <pre><code>node packages/cli/dist/index.js validate /path/to/package
-node packages/cli/dist/index.js create-verified --url https://example.com --instruction "Summarize next steps"</code></pre>
-          </li>
-        </ol>
-        <p class="ok-note">
-          Status stays honest: package-created is not “agent finished”;
-          continuation checks must pass before you claim a handoff continued.
-        </p>
-
-        <h2 id="extension">Browser extension</h2>
-        <p>
-          <strong>Chrome Web Store is not live.</strong> Load unpacked is the
-          path until the founder publishes a listing. Pin the toolbar icon; open
-          a normal website (not <code>chrome://</code>).
-        </p>
-        <p>
-          Checklist:
+        </li>
+        <li>
+          Load unpacked <code>packages/extension</code> in Chrome, Edge, or
+          Brave (<code>chrome://extensions</code> → Developer mode).
+        </li>
+        <li>
+          Hand off a normal https page → Save package. Validate / continue with
+          the CLI — see
           <a
-            href="https://github.com/kodyepalmer-tech/TabHandoff/blob/main/docs/extension-setup.md"
-            >docs/extension-setup.md</a
+            href="https://github.com/kodyepalmer-tech/TabHandoff/blob/main/docs/verified-handoff.md"
+            >verified-handoff.md</a
+          >.
+        </li>
+      </ol>
+      <p class="ok-note">
+        Honest status: “package created” is not “agent finished.” Continuation
+        needs a real verify step.
+      </p>
+
+      <h2 id="supporting">Optional tools</h2>
+      <p>
+        <code>pnpm desktop</code> or <code>pnpm bridge</code> for loopback runs
+        and local history. Not required for Save package.
+      </p>
+
+      <h2 id="download">Installers</h2>
+      <p>
+        <a href="./download.html">Download</a> only enables buttons when a
+        GitHub Release asset exists. Early builds would be unsigned.
+      </p>
+
+      <h2 id="troubleshoot">Troubleshooting</h2>
+      <ul>
+        <li>Can’t hand off <code>chrome://</code> — use a normal website.</li>
+        <li>Bridge off — fine for ZIP-only packages.</li>
+        <li>
+          More:
+          <a
+            href="https://github.com/kodyepalmer-tech/TabHandoff/blob/main/docs/troubleshooting.md"
+            >troubleshooting.md</a
           >
-          ·
-          <a href="./privacy.html">Privacy</a>
-        </p>
-
-        <h2 id="supporting">Supporting tools (optional)</h2>
-        <p>
-          Desktop app / <code>pnpm bridge</code> / local
-          <code>run-ai</code> help with loopback execution and history. Useful —
-          not the beachhead story. Example:
-        </p>
-        <pre><code>pnpm desktop   # optional local bridge + activity
-# paste token in extension Settings only if you need loopback</code></pre>
-
-        <h2 id="download">Desktop installers</h2>
-        <p>
-          Buttons on <a href="./download.html">Download</a> appear only when a
-          GitHub Release asset exists. Early builds would be
-          <strong>unsigned</strong>. No <code>v*</code> release is required to
-          use the coding-agent CLI path from source.
-        </p>
-        <ul>
-          <li id="macos"><strong>macOS</strong> — <code>.dmg</code> when published; Gatekeeper may warn if unsigned.</li>
-          <li id="windows"><strong>Windows</strong> — NSIS <code>.exe</code> when published; SmartScreen may warn if unsigned.</li>
-          <li id="linux"><strong>Linux</strong> — AppImage / <code>.deb</code> when published.</li>
-        </ul>
-
-        <h2 id="roadmap">Roadmap (not shipped)</h2>
-        <ul>
-          <li>File and desktop capture</li>
-          <li>One-click install via Chrome Web Store / signed installers</li>
-          <li>Broader “any agent anywhere” beyond coding agents</li>
-        </ul>
-
-        <h2 id="data">Where data lives</h2>
-        <ul>
-          <li>macOS / Linux: <code>~/.tabhandoff/</code></li>
-          <li>Windows: <code>%USERPROFILE%\.tabhandoff\</code></li>
-          <li>Override: <code>TABHANDOFF_HOME</code></li>
-        </ul>
-
-        <h2 id="troubleshoot">Troubleshooting</h2>
-        <ul>
-          <li>
-            <strong>Can’t hand off <code>chrome://</code>:</strong> use a normal
-            https page.
-          </li>
-          <li>
-            <strong>Bridge / Run with AI:</strong> optional; start
-            <code>pnpm desktop</code> or <code>pnpm bridge</code> and paste the
-            token only if you need loopback.
-          </li>
-          <li>
-            <strong>Validation fails:</strong> re-export the package; check
-            schema docs for 0.1 vs verified 0.2.
-          </li>
-          <li>
-            More:
-            <a
-              href="https://github.com/kodyepalmer-tech/TabHandoff/blob/main/docs/troubleshooting.md"
-              >docs/troubleshooting.md</a
-            >
-            ·
-            <a href="./support.html">Support</a>
-          </li>
-        </ul>
-
-        <p>
-          <a class="btn btn-primary" href="./download.html">Download page</a>
-          <a class="btn btn-ghost" href="./privacy.html" style="margin-left: 0.5rem"
-            >Privacy</a
-          >
-        </p>
-      </article>
-
-      <footer class="site-footer">
-        <span>TabHandoff · MIT</span>
-        <span>
-          <a href="./privacy.html">Privacy</a>
           ·
           <a href="./support.html">Support</a>
-          ·
-          <a
-            href="https://github.com/kodyepalmer-tech/TabHandoff/blob/main/docs/releasing.md"
-            >Publishing releases</a
-          >
-        </span>
-      </footer>
-    </div>
+        </li>
+      </ul>
+    </article>
+
+    <footer class="site-footer wrap">
+      <span>TabHandoff · MIT</span>
+      <span>
+        <a href="./privacy.html">Privacy</a>
+        ·
+        <a href="./support.html">Support</a>
+        ·
+        <a href="https://github.com/kodyepalmer-tech/TabHandoff">Source</a>
+      </span>
+    </footer>
   </body>
 </html>
