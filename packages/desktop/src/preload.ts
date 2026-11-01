@@ -137,6 +137,58 @@ export type DesktopApi = {
     }>;
     hint: string;
   }>;
+  createPackage: (payload: {
+    instruction: string;
+    intendedOutcome?: string;
+    url?: string;
+    title?: string;
+    selectedText?: string;
+    note?: string;
+  }) => Promise<{
+    id: string;
+    status: string;
+    agentLaunched: boolean;
+    receiptDir: string;
+    handoffPath: string;
+    hint: string;
+  }>;
+  /** One-button transfer → destination AI → verified result (honest Stage checks). */
+  transfer: (payload: {
+    instruction: string;
+    intendedOutcome?: string;
+    url?: string;
+    title?: string;
+    selectedText?: string;
+    note?: string;
+    paths?: string[];
+    destinationAgent?: string;
+  }) => Promise<{
+    ok: boolean;
+    stage: string;
+    plainStatus: string;
+    sourceId?: string;
+    successorId?: string;
+    verificationOutcome?: string;
+    checks?: Array<{
+      id: string;
+      name: string;
+      outcome: string;
+      detail: string;
+    }>;
+    aiResult?: string;
+    aiProvider?: string | null;
+    aiModel?: string | null;
+    executionRecorded?: boolean;
+    agentLaunched?: boolean;
+    taskId?: string;
+    message: string;
+    steps: Array<{
+      id: string;
+      label: string;
+      status: string;
+      detail?: string;
+    }>;
+  }>;
 };
 
 const api: DesktopApi = {
@@ -175,6 +227,9 @@ const api: DesktopApi = {
   },
   createFromFiles: (payload) =>
     ipcRenderer.invoke("handoff:createFromFiles", payload),
+  createPackage: (payload) =>
+    ipcRenderer.invoke("handoff:createPackage", payload),
+  transfer: (payload) => ipcRenderer.invoke("handoff:transfer", payload),
 };
 
 contextBridge.exposeInMainWorld("tabhandoff", api);

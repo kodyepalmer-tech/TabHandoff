@@ -72,9 +72,9 @@
           <div id="activity-empty" class="empty hidden">
             <h2>No activity yet</h2>
             <p>
-              Hand off a tab from the browser extension, use <strong>Hand off</strong> for local
-              files, or run the CLI / MCP, then hit Refresh. Evidence lives in
-              <code>~/.tabhandoff/receipts/</code>.
+              Use <strong>Hand off → Transfer</strong> for one-button verified transfer, hand off a
+              tab from the browser extension, or run the CLI / MCP, then hit Refresh. Evidence lives
+              in <code>~/.tabhandoff/receipts/</code>.
             </p>
           </div>
         </section>
@@ -117,50 +117,83 @@
             <div>
               <h1>Hand off</h1>
               <p class="lede">
-                Select local files, write what you want done, and create a portable package. No
-                fake URLs — Office and PDF files are attached, not analyzed.
+                One button: your task goes in, a destination agent runs it, and a
+                <strong>verified</strong> result shows here — no file export, no terminal, no token copy.
               </p>
             </div>
           </header>
 
-          <div
-            id="handoff-drop"
-            class="handoff-drop"
-            tabindex="0"
-            role="region"
-            aria-label="Drop files to hand off"
-          >
-            <p class="handoff-drop-title">Drop files here</p>
-            <p class="fine">or choose them explicitly — TabHandoff only reads paths you pick.</p>
-            <div class="head-actions">
-              <button type="button" class="btn primary" id="btn-pick-files">Choose files…</button>
-              <button type="button" class="btn ghost" id="btn-clear-files">Clear</button>
-            </div>
-            <ul id="handoff-file-list" class="plain-list handoff-file-list"></ul>
-          </div>
-
-          <div class="panel">
+          <div class="panel transfer-panel">
             <label class="field">
-              <span>Instruction</span>
+              <span>What should the destination agent do?</span>
               <textarea
                 id="handoff-instruction"
                 rows="4"
-                placeholder="What should the next person or agent do with these files?"
+                placeholder="Example: Summarize this task in one honest sentence."
               ></textarea>
             </label>
             <label class="field">
               <span>Intended outcome (optional)</span>
               <input id="handoff-outcome" type="text" placeholder="What done looks like" />
             </label>
+            <label class="field">
+              <span>Page URL (optional)</span>
+              <input id="handoff-url" type="url" placeholder="https://…" />
+            </label>
+            <label class="field">
+              <span>Selected / pasted context (optional)</span>
+              <textarea
+                id="handoff-context"
+                rows="3"
+                placeholder="Paste text the destination agent should use"
+              ></textarea>
+            </label>
             <div class="head-actions">
-              <button type="button" class="btn primary" id="btn-create-file-handoff">
-                Create package
+              <button type="button" class="btn primary" id="btn-transfer">
+                Transfer
+              </button>
+              <button type="button" class="btn ghost" id="btn-create-file-handoff">
+                Create package only
               </button>
             </div>
             <p class="fine" id="handoff-status-line">
-              Package only — no agent is launched. Excerpts for text files; Word/PDF/sheets stay
-              attached, not analyzed.
+              Transfer runs create → hand off → local AI → Stage verification in this window.
+              “Verified” only appears when those checks pass. Create package only never launches an agent.
             </p>
+          </div>
+
+          <div
+            id="handoff-drop"
+            class="handoff-drop"
+            tabindex="0"
+            role="region"
+            aria-label="Optional files for transfer"
+          >
+            <p class="handoff-drop-title">Optional files</p>
+            <p class="fine">
+              Drop or choose files to include. Text excerpts go to the destination agent; Office/PDF
+              stay attached, not analyzed.
+            </p>
+            <div class="head-actions">
+              <button type="button" class="btn ghost" id="btn-pick-files">Choose files…</button>
+              <button type="button" class="btn ghost" id="btn-clear-files">Clear</button>
+            </div>
+            <ul id="handoff-file-list" class="plain-list handoff-file-list"></ul>
+          </div>
+
+          <div id="transfer-result" class="panel transfer-result hidden" aria-live="polite">
+            <div class="transfer-result-head">
+              <h3 id="transfer-result-title">Result</h3>
+              <span id="transfer-result-badge" class="transfer-badge">—</span>
+            </div>
+            <p class="fine" id="transfer-result-meta"></p>
+            <ol id="transfer-steps" class="transfer-steps"></ol>
+            <pre id="transfer-result-body" class="code-block"></pre>
+            <div class="head-actions">
+              <button type="button" class="btn ghost" id="btn-open-transfer-activity">
+                Open in My Activity
+              </button>
+            </div>
           </div>
         </section>
 

@@ -444,6 +444,171 @@ function registerIpc(): void {
       }
     },
   );
+
+  /** Package-only create (no agent). Instruction-only or with optional URL/context. */
+  ipcMain.handle(
+    "handoff:createPackage",
+    async (
+      _e,
+      payload: {
+        instruction: string;
+        intendedOutcome?: string;
+        url?: string;
+        title?: string;
+        selectedText?: string;
+        note?: string;
+      },
+    ) => {
+      const { createVerifiedHandoff, PortableError } = await import(
+        "@tabhandoff/bridge"
+      );
+      const instruction = (payload?.instruction ?? "").trim();
+      if (!instruction) {
+        throw new Error("Write a short instruction for the next person or bot.");
+      }
+      try {
+        const stored = await createVerifiedHandoff({
+          instruction,
+          url: payload.url?.trim() || undefined,
+          title: payload.title?.trim() || undefined,
+          selectedText: payload.selectedText?.trim() || undefined,
+          note:
+            payload.note?.trim() ||
+            (!payload.url?.trim()
+              ? "Desktop package-only create — no agent launched."
+              : undefined),
+          intendedOutcome: payload.intendedOutcome?.trim() || undefined,
+          sourceIdentity: {
+            name: "desktop-transfer",
+            interface: "bridge",
+            tool: "desktop.createPackage",
+          },
+          destinationIdentity: {
+            name: "unassigned",
+            interface: "manual_export",
+          },
+          home: cachedHome,
+        });
+        return {
+          id: stored.id,
+          status: stored.executionStatus,
+          agentLaunched: stored.agentLaunched,
+          receiptDir: stored.receiptDir,
+          handoffPath: stored.handoffPath,
+          hint: "Package created only — no agent was launched.",
+        };
+      } catch (err) {
+        if (
+          err instanceof PackageValidationError ||
+          (err instanceof Error &&
+            (err.name === "PortableError" || err instanceof PortableError))
+        ) {
+          throw new Error(err instanceof Error ? err.message : String(err));
+        }
+        throw err;
+      }
+    },
+  );
+
+  /**
+   * One-button transfer: create → continue → run-ai → verify-continuation.
+   * Never returns plainStatus "verified" unless Stage checks passed.
+   */
+  ipcMain.handle(
+    "handoff:transfer",
+    async (
+      _e,
+      payload: {
+        instruction: string;
+        intendedOutcome?: string;
+        url?: string;
+        title?: string;
+        selectedText?: string;
+        note?: string;
+        paths?: string[];
+        destinationAgent?: string;
+      },
+    ) => {
+      const { transferAndRun, PackageValidationError: PkgErr } =
+        await import("@tabhandoff/bridge");
+      const instruction = (payload?.instruction ?? "").trim();
+      if (!instruction) {
+        throw new Error("Write a short instruction for the destination agent.");
+      }
+
+      let files:
+        | Array<{ absolutePath: string; bytes: Buffer; displayPath?: string }>
+        | undefined;
+      const rawPaths = Array.isArray(payload?.paths) ? payload.paths : [];
+      if (rawPaths.length) {
+        const paths = assertAllowedPaths(rawPaths);
+        if (paths.length > BRIDGE_MAX_FILE_SOURCES) {
+          throw new Error(`Too many files (max ${BRIDGE_MAX_FILE_SOURCES}).`);
+        }
+        files = [];
+        for (const absolutePath of paths) {
+          const st = await stat(absolutePath);
+          if (!st.isFile()) {
+            throw new Error(`Not a file: ${path.basename(absolutePath)}`);
+          }
+          const bytes = await readFile(absolutePath);
+          files.push({
+            absolutePath,
+            bytes,
+            displayPath: absolutePath,
+          });
+        }
+      }
+
+      try {
+        const result = await transferAndRun({
+          instruction,
+          intendedOutcome: payload.intendedOutcome?.trim() || undefined,
+          url: payload.url?.trim() || undefined,
+          title: payload.title?.trim() || undefined,
+          selectedText: payload.selectedText?.trim() || undefined,
+          note: payload.note?.trim() || undefined,
+          files,
+          destinationAgent:
+            payload.destinationAgent?.trim() || "desktop-run-ai",
+          sourceAgent: "desktop-transfer",
+          home: cachedHome,
+        });
+        // Strip full verification object noise for the renderer; keep outcome + checks summary.
+        return {
+          ok: result.ok,
+          stage: result.stage,
+          plainStatus: result.plainStatus,
+          sourceId: result.sourceId,
+          successorId: result.successorId,
+          verificationOutcome: result.verificationOutcome,
+          checks: (result.verification?.checks ?? []).map((c) => ({
+            id: c.id,
+            name: c.name,
+            outcome: c.outcome,
+            detail: c.detail,
+          })),
+          aiResult: result.aiResult,
+          aiProvider: result.aiProvider,
+          aiModel: result.aiModel,
+          executionRecorded: result.executionRecorded,
+          agentLaunched: result.agentLaunched,
+          taskId: result.taskId,
+          message: result.message,
+          steps: result.steps,
+        };
+      } catch (err) {
+        if (
+          err instanceof PackageValidationError ||
+          err instanceof PkgErr ||
+          (err instanceof Error && err.name === "PortableError")
+        ) {
+          throw new Error(err instanceof Error ? err.message : String(err));
+        }
+        throw err;
+      }
+    },
+  );
 }
 
 /**

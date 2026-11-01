@@ -14,6 +14,10 @@ const state = {
   home: "",
   imageCache: new Map(),
   handoffFiles: [],
+  /** @type {string | null} */
+  lastTransferSourceId: null,
+  /** @type {string | null} */
+  lastTransferSuccessorId: null,
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -521,77 +525,88 @@ function renderHandoffFiles() {
 
 function wireHandoff() {
   const drop = $("#handoff-drop");
-  if (!drop || typeof api.pickFiles !== "function") return;
-
   renderHandoffFiles();
 
-  $("#btn-pick-files")?.addEventListener("click", async () => {
-    try {
-      const result = await api.pickFiles();
-      if (result.canceled) return;
-      state.handoffFiles = result.files || [];
-      renderHandoffFiles();
-      toast(`${state.handoffFiles.length} file(s) ready`);
-    } catch (err) {
-      toast(err instanceof Error ? err.message : String(err));
-    }
-  });
+  if (drop && typeof api.pickFiles === "function") {
+    $("#btn-pick-files")?.addEventListener("click", async () => {
+      try {
+        const result = await api.pickFiles();
+        if (result.canceled) return;
+        state.handoffFiles = result.files || [];
+        renderHandoffFiles();
+        toast(`${state.handoffFiles.length} file(s) ready`);
+      } catch (err) {
+        toast(err instanceof Error ? err.message : String(err));
+      }
+    });
 
-  $("#btn-clear-files")?.addEventListener("click", () => {
-    state.handoffFiles = [];
-    renderHandoffFiles();
-  });
-
-  drop.addEventListener("dragover", (e) => {
-    e.preventDefault();
-    drop.classList.add("is-dragover");
-  });
-  drop.addEventListener("dragleave", () => drop.classList.remove("is-dragover"));
-  drop.addEventListener("drop", async (e) => {
-    e.preventDefault();
-    drop.classList.remove("is-dragover");
-    const files = [...(e.dataTransfer?.files || [])];
-    const paths = files
-      .map((f) => api.pathForFile(f))
-      .filter((p) => typeof p === "string" && p.length > 0);
-    if (!paths.length) {
-      toast("Could not resolve dropped file paths.");
-      return;
-    }
-    try {
-      const registered = await api.registerDroppedPaths(paths);
-      state.handoffFiles = registered.files || [];
+    $("#btn-clear-files")?.addEventListener("click", () => {
+      state.handoffFiles = [];
       renderHandoffFiles();
-      toast(`${state.handoffFiles.length} file(s) ready`);
-    } catch (err) {
-      toast(err instanceof Error ? err.message : String(err));
-    }
-  });
+    });
+
+    drop.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      drop.classList.add("is-dragover");
+    });
+    drop.addEventListener("dragleave", () => drop.classList.remove("is-dragover"));
+    drop.addEventListener("drop", async (e) => {
+      e.preventDefault();
+      drop.classList.remove("is-dragover");
+      const files = [...(e.dataTransfer?.files || [])];
+      const paths = files
+        .map((f) => api.pathForFile(f))
+        .filter((p) => typeof p === "string" && p.length > 0);
+      if (!paths.length) {
+        toast("Could not resolve dropped file paths.");
+        return;
+      }
+      try {
+        const registered = await api.registerDroppedPaths(paths);
+        state.handoffFiles = registered.files || [];
+        renderHandoffFiles();
+        toast(`${state.handoffFiles.length} file(s) ready`);
+      } catch (err) {
+        toast(err instanceof Error ? err.message : String(err));
+      }
+    });
+  }
 
   $("#btn-create-file-handoff")?.addEventListener("click", async () => {
     const instruction = ($("#handoff-instruction")?.value || "").trim();
     const intendedOutcome = ($("#handoff-outcome")?.value || "").trim();
-    if (!state.handoffFiles.length) {
-      toast("Choose or drop at least one file first.");
-      return;
-    }
+    const url = ($("#handoff-url")?.value || "").trim();
+    const selectedText = ($("#handoff-context")?.value || "").trim();
     if (!instruction) {
       toast("Write a short instruction.");
       return;
     }
     $("#handoff-status-line").textContent = "Creating package…";
+    hideTransferResult();
     try {
-      const result = await api.createFromFiles({
-        paths: state.handoffFiles.map((f) => f.path),
-        instruction,
-        intendedOutcome: intendedOutcome || undefined,
-      });
+      let result;
+      if (state.handoffFiles.length) {
+        result = await api.createFromFiles({
+          paths: state.handoffFiles.map((f) => f.path),
+          instruction,
+          intendedOutcome: intendedOutcome || undefined,
+        });
+      } else if (typeof api.createPackage === "function") {
+        result = await api.createPackage({
+          instruction,
+          intendedOutcome: intendedOutcome || undefined,
+          url: url || undefined,
+          selectedText: selectedText || undefined,
+        });
+      } else {
+        toast("Create package is unavailable in this build.");
+        return;
+      }
       $("#handoff-status-line").textContent = result.hint;
-      toast(`Package created · ${result.id.slice(0, 8)}…`);
+      toast(`Package created · ${result.id.slice(0, 8)}… (not verified)`);
       state.handoffFiles = [];
       renderHandoffFiles();
-      $("#handoff-instruction").value = "";
-      $("#handoff-outcome").value = "";
+      clearHandoffForm();
       await refresh();
       await openDetail(result.id);
     } catch (err) {
@@ -600,6 +615,161 @@ function wireHandoff() {
       toast(msg);
     }
   });
+
+  $("#btn-transfer")?.addEventListener("click", async () => {
+    if (typeof api.transfer !== "function") {
+      toast("Transfer is unavailable in this build.");
+      return;
+    }
+    const instruction = ($("#handoff-instruction")?.value || "").trim();
+    const intendedOutcome = ($("#handoff-outcome")?.value || "").trim();
+    const url = ($("#handoff-url")?.value || "").trim();
+    const selectedText = ($("#handoff-context")?.value || "").trim();
+    if (!instruction) {
+      toast("Write a short instruction.");
+      return;
+    }
+    const btn = $("#btn-transfer");
+    if (btn) btn.disabled = true;
+    $("#handoff-status-line").textContent =
+      "Transferring: create → hand off → run AI → verify…";
+    showTransferProgress();
+    try {
+      const result = await api.transfer({
+        instruction,
+        intendedOutcome: intendedOutcome || undefined,
+        url: url || undefined,
+        selectedText: selectedText || undefined,
+        paths: state.handoffFiles.length
+          ? state.handoffFiles.map((f) => f.path)
+          : undefined,
+      });
+      renderTransferResult(result);
+      $("#handoff-status-line").textContent = result.message;
+      if (result.plainStatus === "verified") {
+        toast("Transfer verified");
+      } else if (result.plainStatus === "blocked") {
+        toast("Blocked — need a local AI provider");
+      } else {
+        toast(`Transfer ${result.plainStatus}`);
+      }
+      if (result.ok) {
+        state.handoffFiles = [];
+        renderHandoffFiles();
+        clearHandoffForm();
+      }
+      await refresh();
+      await refreshAiTasks();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      $("#handoff-status-line").textContent = msg;
+      hideTransferResult();
+      toast(msg);
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  });
+
+  $("#btn-open-transfer-activity")?.addEventListener("click", async () => {
+    const id = state.lastTransferSuccessorId || state.lastTransferSourceId;
+    if (!id) {
+      toast("No transfer package to open yet.");
+      return;
+    }
+    await refresh();
+    await openDetail(id);
+  });
+}
+
+function clearHandoffForm() {
+  if ($("#handoff-instruction")) $("#handoff-instruction").value = "";
+  if ($("#handoff-outcome")) $("#handoff-outcome").value = "";
+  if ($("#handoff-url")) $("#handoff-url").value = "";
+  if ($("#handoff-context")) $("#handoff-context").value = "";
+}
+
+function hideTransferResult() {
+  $("#transfer-result")?.classList.add("hidden");
+}
+
+function showTransferProgress() {
+  const panel = $("#transfer-result");
+  if (!panel) return;
+  panel.classList.remove("hidden");
+  $("#transfer-result-title").textContent = "Transfer in progress…";
+  const badge = $("#transfer-result-badge");
+  badge.textContent = "running";
+  badge.className = "transfer-badge is-running";
+  $("#transfer-result-meta").textContent =
+    "Working in this window — no export or terminal needed.";
+  $("#transfer-steps").innerHTML = `
+    <li>Create package…</li>
+    <li>Hand off to destination…</li>
+    <li>Run destination AI…</li>
+    <li>Verify continuation…</li>`;
+  $("#transfer-result-body").textContent = "";
+}
+
+function renderTransferResult(result) {
+  const panel = $("#transfer-result");
+  if (!panel) return;
+  panel.classList.remove("hidden");
+  state.lastTransferSourceId = result.sourceId || null;
+  state.lastTransferSuccessorId = result.successorId || null;
+
+  const verified = result.plainStatus === "verified";
+  $("#transfer-result-title").textContent = verified
+    ? "Verified result"
+    : result.plainStatus === "blocked"
+      ? "Blocked — package only"
+      : "Transfer finished (not verified)";
+
+  const badge = $("#transfer-result-badge");
+  badge.textContent = result.plainStatus;
+  badge.className = `transfer-badge is-${escapeHtml(result.plainStatus)}`;
+
+  const metaBits = [
+    result.stage ? `stage ${result.stage}` : null,
+    result.verificationOutcome
+      ? `verification ${result.verificationOutcome}`
+      : null,
+    result.aiProvider || result.aiModel
+      ? `${result.aiProvider || "provider"} / ${result.aiModel || "model"}`
+      : null,
+    result.successorId
+      ? `successor ${result.successorId.slice(0, 8)}…`
+      : result.sourceId
+        ? `package ${result.sourceId.slice(0, 8)}…`
+        : null,
+    result.agentLaunched ? "agent launched" : "agent not launched",
+    result.executionRecorded ? "execution recorded" : null,
+  ].filter(Boolean);
+  $("#transfer-result-meta").textContent = metaBits.join(" · ");
+
+  $("#transfer-steps").innerHTML = (result.steps || [])
+    .map((s) => {
+      const detail = s.detail ? ` — ${escapeHtml(s.detail)}` : "";
+      return `<li class="transfer-step is-${escapeHtml(s.status)}"><strong>${escapeHtml(s.label)}</strong> <span class="fine">(${escapeHtml(s.status)})</span>${detail}</li>`;
+    })
+    .join("");
+
+  const bodyParts = [];
+  if (result.aiResult) {
+    bodyParts.push(result.aiResult);
+  }
+  if (result.message) {
+    bodyParts.push("", result.message);
+  }
+  if (result.checks?.length) {
+    bodyParts.push(
+      "",
+      "Checks:",
+      ...result.checks.map(
+        (c) => `- ${c.id}: ${c.outcome}${c.detail ? ` — ${c.detail}` : ""}`,
+      ),
+    );
+  }
+  $("#transfer-result-body").textContent = bodyParts.join("\n").trim();
 }
 
 async function refreshBridgeStatus() {

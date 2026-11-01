@@ -124,6 +124,13 @@ export {
   type CheckOutcome,
 } from "./verify-continuation.js";
 export {
+  transferAndRun,
+  type OneButtonTransferInput,
+  type OneButtonTransferResult,
+  type TransferStep,
+  type TransferStepStatus,
+} from "./one-button-transfer.js";
+export {
   renderInspectHtml,
   writeInspectHtml,
   type InspectWriteResult,
