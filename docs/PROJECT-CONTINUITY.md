@@ -1,7 +1,12 @@
 # TabHandoff — Project Continuity
 
-**Last updated:** 2026-10-31 (One-button desktop transfer — see update below; older sections still describe earlier state)
+**Last updated:** 2026-11-01 (PR #29 one-button transfer merged — see update below; older sections still describe earlier state)
 **Status:** This document is the single place a new agent should start. Do not depend on any single chat surviving. Update it at the end of every substantial session with actual branch, commit, test results, blockers, and next action. Never put secrets in it.
+
+## 2026-11-01 update, one-button transfer merged
+
+- Merged PR #29 into main under founder blanket approval. Merge commit: `d98e966e076b28dcef863cc28d9b76a560caede0` (“Merge pull request #29 from kodyepalmer-tech/cursor/one-button-transfer-a969”). Feature tip: `9f4c054e7073163f27eccfba3c7a5b99e7261366`.
+- CI on the PR branch: both smoke `build-and-smoke` checks SUCCESS before merge. No distribution work in this merge.
 
 ## 2026-10-31 update, one-button desktop transfer
 
@@ -9,7 +14,7 @@
 - Bridge API: `transferAndRun` in `packages/bridge/src/one-button-transfer.ts` (exported from `@tabhandoff/bridge`). Desktop IPC: `handoff:transfer` / preload `transfer`. “Create package only” remains available and never claims verified.
 - Honesty: `plainStatus` is `verified` only when Stage checks pass. No AI provider → `blocked` (package may still be created). Failed model call → never `verified`.
 - Tests: full suite **70 pass, 0 fail** (evidence 10, runner 11, bridge 49 including 5 new one-button-transfer tests). Local proof script: `node scripts/one-button-transfer-proof.mjs` — mocked provider reached `verified` / outcome pass; **Ollama not available in this sandbox**, so live-model proof is an honest blocker for Kody’s machine (install Ollama + a model, then Transfer in the app).
-- Distribution still PAUSED (no Apple signing/notarization, no CWS, no DNS). Base tip before this work: main `4fc07b8` (v0.1.0-pre.2).
+- Distribution still PAUSED (no Apple signing/notarization, no CWS, no DNS). Base tip before this work: main `4fc07b8` (v0.1.0-pre.2). Now on main via PR #29 merge `d98e966`.
 - Next for founder live demo: run desktop with a local provider (`pnpm desktop`, Ollama up), open **Hand off**, type an instruction, click **Transfer**, confirm badge says **verified** and the AI result appears in-panel.
 
 ## 2026-10-31 update, pre-release 0.1.0-pre.2 downloadable
