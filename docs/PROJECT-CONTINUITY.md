@@ -9,8 +9,9 @@
 - **Lossless thread:** Capture packs the **full surrounding conversation** (structured turns → `conversation.md` + `page.selectedText`), not just the highlight or a single message. DOM selectors are best-effort and labeled fragile.
 - Extension `0.4.0`: content script on known AI hosts, context menus (“Hand off selection…” / “Hand this off…”), in-page selection bar, handoff popup step with Download / Continue now. Fixture: `packages/extension/fixtures/ai-chat-fixture.html`. Demo media (fixture, verified): store `media/in-tool-handoff-demo/`. Founder guide: store `docs/tabhandoff-in-tool-handoff.md`.
 - Hard stops honored: no DNS, no CWS submit, no Apple signing, no invented Cursor IDE APIs.
-- Tests: `node scripts/test-extension-package.mjs` includes thread-lossless assertions; full suite re-run on PR.
-- Base before this work: main `8fc597f` (Merge PR #30). Branch: `cursor/in-tool-handoff-01b0`.
+- Tests: `node scripts/test-extension-package.mjs` includes thread-lossless assertions; evidence/runner/bridge suites green locally (bridge 49 pass). Manual Chrome GUI on fixture: context menu + Download handoff with 3 turns verified.
+- Base before this work: main `8fc597f` (Merge PR #30). Branch pushed: `cursor/in-tool-handoff-01b0` @ `94a1dd0`.
+- **Blocker this session:** `ManagePullRequest` create_pr returned unavailable repeatedly; `gh` API create also 403. Branch is on origin — open PR from https://github.com/kodyepalmer-tech/TabHandoff/pull/new/cursor/in-tool-handoff-01b0 then merge when CI green (blanket approval).
 
 ## 2026-11-01 update, one-button transfer merged
 
