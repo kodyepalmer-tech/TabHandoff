@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "TabHandoff",
-  "version": "0.3.0",
-  "description": "Hand off a browser tab as a portable ZIP for another person or AI — works offline; honest status, no fake runs.",
+  "version": "0.4.0",
+  "description": "Hand off a prompt or selection from ChatGPT, Claude, or Cursor web to another AI — download a package or continue locally. Honest status, no fake runs.",
   "icons": {
     "16": "icons/icon-16.png",
     "32": "icons/icon-32.png",
@@ -10,7 +10,7 @@
     "128": "icons/icon-128.png"
   },
   "action": {
-    "default_title": "Hand off with TabHandoff",
+    "default_title": "Hand off to another AI",
     "default_popup": "popup.html",
     "default_icon": {
       "16": "icons/icon-16.png",
@@ -22,7 +22,29 @@
     "service_worker": "background.js",
     "type": "module"
   },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://chat.openai.com/*",
+        "https://claude.ai/*",
+        "https://cursor.com/*",
+        "https://www.cursor.com/*",
+        "https://*.cursor.sh/*"
+      ],
+      "js": ["content/ai-sites.js"],
+      "run_at": "document_idle"
+    }
+  ],
   "permissions": ["contextMenus", "activeTab", "storage", "scripting"],
-  "host_permissions": ["http://127.0.0.1/*"],
+  "host_permissions": [
+    "http://127.0.0.1/*",
+    "https://chatgpt.com/*",
+    "https://chat.openai.com/*",
+    "https://claude.ai/*",
+    "https://cursor.com/*",
+    "https://www.cursor.com/*",
+    "https://*.cursor.sh/*"
+  ],
   "optional_host_permissions": ["http://*/*", "https://*/*"]
 }

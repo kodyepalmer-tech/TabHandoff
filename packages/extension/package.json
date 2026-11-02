@@ -2,7 +2,7 @@
   "name": "@tabhandoff/extension",
   "version": "0.3.0",
   "private": true,
-  "description": "TabHandoff Chromium MV3 extension — portable ZIP handoffs",
+  "description": "TabHandoff Chromium MV3 extension — in-tool AI-chat handoffs with full-thread packages",
   "type": "module",
   "license": "MIT"
 }

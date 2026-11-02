@@ -85,6 +85,7 @@ assert(
 const entries = buildPackageFiles(pkg);
 const names = entries.map((e) => e.name);
 assert(names.includes("START_HERE.md"), "ZIP must include START_HERE.md");
+assert(names.includes("conversation.md"), "ZIP must include conversation.md");
 assert(names.includes("handoff.json"), "ZIP must include handoff.json");
 assert(names.includes("summary.md"), "ZIP must include summary.md");
 assert(
@@ -196,7 +197,79 @@ try {
   }
 }
 
+// --- Lossless thread package: full conversation, not just a highlight ---
+const THREAD_TURNS = [
+  {
+    role: "user",
+    text: "Build a TypeScript validator for TabHandoff packages.",
+  },
+  {
+    role: "assistant",
+    text: "Here is a sketch. Remaining: unit tests.",
+  },
+  {
+    role: "user",
+    text: "Continue in Cursor: finish the validator tests.",
+  },
+];
+const threadPkg = buildPortablePackage({
+  url: "https://chatgpt.com/c/demo",
+  title: "ChatGPT — validator handoff",
+  selectedText: "finish the validator tests",
+  highlightText: "finish the validator tests",
+  threadText: THREAD_TURNS.map((t) => `### ${t.role}\n\n${t.text}`).join("\n\n"),
+  turns: THREAD_TURNS,
+  siteId: "chatgpt",
+  captureMode: "selection_with_thread",
+  fragile: true,
+  instruction:
+    "Continue this AI-chat task from the latest user prompt using the full thread.",
+  source: { kind: "browser_extension", extensionId: "test-thread" },
+  id: "ext-pack-thread-001",
+  capturedAt: "2026-11-02T00:00:00.000Z",
+});
+assert(
+  threadPkg.page.selectedText.includes("Build a TypeScript validator"),
+  "thread package must prefer full conversation over highlight alone",
+);
+assert(
+  threadPkg.page.selectedText.includes("finish the validator tests"),
+  "thread package must include the latest prompt",
+);
+assert(
+  threadPkg.conversation?.turns?.length === 3,
+  "thread package must keep structured turns for conversation.md",
+);
+const threadFiles = buildPackageFiles(threadPkg);
+const conversationMd = threadFiles.find((e) => e.name === "conversation.md")?.data || "";
+assert(
+  /Build a TypeScript validator/i.test(conversationMd),
+  "conversation.md must include earlier turns",
+);
+assert(
+  /finish the validator tests/i.test(conversationMd),
+  "conversation.md must include focus prompt",
+);
+assert(
+  /without missing prior turns/i.test(conversationMd),
+  "conversation.md must state lossless intent",
+);
+const threadDisk = packageForDisk(threadPkg);
+assert(
+  threadDisk.conversation === undefined,
+  "handoff.json must omit extension-only conversation companion",
+);
+assert(
+  validatePortableHandoffPackage(threadDisk).ok === true,
+  `thread handoff.json schema invalid: ${JSON.stringify(validatePortableHandoffPackage(threadDisk))}`,
+);
+const threadBrief = renderAiBrief({ ...threadDisk, conversation: threadPkg.conversation });
+assert(
+  /Conversation thread/i.test(threadBrief),
+  "AI brief must include conversation thread for lossless paste",
+);
+
 await rm(work, { recursive: true, force: true });
 console.log(
-  "OK: package-only ZIP has START_HERE + handoff.json + summary; brief paste-ready; schema valid (no bridge).",
+  "OK: package-only ZIP has START_HERE + conversation.md + handoff.json + summary; thread handoff is lossless; brief paste-ready; schema valid (no bridge).",
 );

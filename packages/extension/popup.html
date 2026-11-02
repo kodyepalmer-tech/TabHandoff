@@ -11,7 +11,7 @@
       <img class="mark" src="icons/mark.svg" width="36" height="36" alt="" />
       <div>
         <h1>TabHandoff</h1>
-        <p class="tag">Tell AI what to do with this tab.</p>
+        <p class="tag">Hand off coding / AI-chat work — not a Transfer app.</p>
       </div>
     </header>
 
@@ -19,21 +19,66 @@
       <section id="step-onboarding" class="panel hidden">
         <h2>Welcome</h2>
         <p class="lede">
-          Open any webpage, say what you want done, and TabHandoff runs it through your
-          local AI bridge — with honest status if nothing is configured.
+          Inside ChatGPT, Claude, or Cursor web: highlight a prompt (or its message),
+          choose <strong>Hand this off to another AI</strong>, then download a package
+          or continue on this computer when a local destination is available.
         </p>
         <ol class="steps">
-          <li>Right-click a page → <strong>Hand off with TabHandoff</strong></li>
-          <li>Answer <strong>What do you want done?</strong></li>
-          <li><strong>Run with AI</strong> (local bridge) — ZIP export stays optional</li>
+          <li>Load this extension unpacked in Chrome / Edge / Brave</li>
+          <li>Open an AI chat → highlight text → right-click <strong>Hand off selection to another AI</strong></li>
+          <li>Pick <strong>Download handoff</strong> (upload later) or <strong>Continue now</strong> (local bridge)</li>
         </ol>
         <p class="note">
-          Start the desktop app or <code>pnpm bridge</code>, paste the token in Settings,
-          and set a free/local provider (Ollama) or an API key in the bridge environment.
+          The desktop Transfer screen is supporting infrastructure. AI site DOMs change —
+          capture is best-effort and labeled fragile when we climb to a parent message.
         </p>
         <div class="actions">
           <button type="button" id="btn-onboard-continue" class="primary">
-            Got it — hand off a tab
+            Got it — hand off from an AI chat
+          </button>
+        </div>
+      </section>
+
+      <section id="step-handoff" class="panel hidden">
+        <h2>Hand off to another AI</h2>
+        <p id="handoff-site" class="note">Captured from this AI chat.</p>
+        <p id="handoff-fragile" class="trust"></p>
+        <dl class="meta">
+          <div>
+            <dt>Source</dt>
+            <dd id="handoff-title">—</dd>
+          </div>
+          <div>
+            <dt>Link</dt>
+            <dd id="handoff-url" class="mono truncate">—</dd>
+          </div>
+          <div id="handoff-sel-block">
+            <dt>Captured text</dt>
+            <dd id="handoff-selection" class="selection"></dd>
+          </div>
+        </dl>
+        <label class="field">
+          <span>What should the next AI do?</span>
+          <textarea
+            id="handoff-instruction"
+            rows="3"
+            maxlength="8000"
+            placeholder="Continue this task in another coding agent / AI chat."
+          ></textarea>
+        </label>
+        <p class="trust" id="handoff-hint">
+          Download a portable package to upload into another AI later, or Continue now
+          if TabHandoff desktop/bridge is running on this machine.
+        </p>
+        <div class="actions stacked">
+          <button type="button" id="btn-download-handoff" class="primary">
+            Download handoff
+          </button>
+          <button type="button" id="btn-continue-now" class="ghost">
+            Continue now
+          </button>
+          <button type="button" id="btn-handoff-advanced" class="linkish">
+            More options (Run with AI / package review)
           </button>
         </div>
       </section>
@@ -65,17 +110,20 @@
             id="instruction"
             rows="4"
             maxlength="8000"
-            placeholder="Example: Summarize this page and list next steps."
+            placeholder="Example: Continue this prompt in another coding agent."
           ></textarea>
         </label>
 
         <p class="trust" id="capture-hint">
-          Captured page text is untrusted. TabHandoff will not pretend AI ran when it did
-          not.
+          Best on AI chat sites: highlight a prompt → Hand off. Captured page text is
+          untrusted. TabHandoff will not pretend AI ran when it did not.
         </p>
 
         <div class="actions">
-          <button type="button" id="btn-run-ai" class="primary" disabled>
+          <button type="button" id="btn-open-handoff" class="primary" disabled>
+            Hand off to another AI
+          </button>
+          <button type="button" id="btn-run-ai" class="ghost" disabled>
             Run with AI
           </button>
           <button type="button" id="btn-review" class="ghost" disabled>
@@ -133,7 +181,8 @@
           <span>Also download a portable ZIP (optional sharing)</span>
         </label>
         <p class="trust" id="rev-workflow-note">
-          Primary path: Run with AI via the local bridge. ZIP export is optional.
+          Primary product path: hand off from inside an AI chat. Local Run with AI /
+          ZIP are supporting paths — never claimed as “Transfer is the product.”
         </p>
         <div class="actions">
           <button type="button" id="btn-back" class="ghost">Back</button>
@@ -155,7 +204,7 @@
           <button type="button" id="btn-copy-brief" class="ghost">
             Copy brief for another AI
           </button>
-          <button type="button" id="btn-download" class="ghost">Download ZIP</button>
+          <button type="button" id="btn-download" class="ghost">Download handoff</button>
           <button type="button" id="btn-copy" class="ghost">Copy summary</button>
           <button type="button" id="btn-again" class="ghost">Back to tasks</button>
         </div>
@@ -164,9 +213,10 @@
       <section id="step-settings" class="panel hidden">
         <h2>Local bridge</h2>
         <p class="note">
-          Required for <strong>Run with AI</strong> and My Activity. Prefer a short
-          <strong>pairing code</strong> from the desktop app (Settings → Show pairing code).
-          You can still paste the long token. API keys stay in the bridge process — never here.
+          Optional for <strong>Continue now</strong> / <strong>Run with AI</strong> on
+          this computer. Prefer <strong>Request pairing</strong> and approve in the
+          desktop app. API keys stay in the bridge process — never here. Download
+          handoff works without a bridge.
         </p>
         <label class="field">
           <span>Bridge address</span>
