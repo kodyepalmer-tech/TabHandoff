@@ -23,10 +23,23 @@ import {
 const HISTORY_KEY = "aiTaskHistory";
 const HISTORY_LIMIT = 40;
 
+const DEFAULT_HANDOFF_INSTRUCTION =
+  "Continue this AI-chat / coding-agent task from the latest user prompt. Use the full conversation thread in the package so you do not miss earlier turns. Do not invent prior progress.";
+
 const state = {
   tab: null,
   selectedText: "",
+  highlightText: "",
+  threadText: "",
+  focusMessageText: "",
+  turns: [],
+  turnCount: 0,
+  captureMode: "",
+  siteId: "unknown",
+  fragile: true,
+  fragileNote: "",
   pageText: "",
+  inToolHandoff: false,
   screenshotDataUrl: null,
   screenshotError: null,
   lastPackage: null,
@@ -43,6 +56,7 @@ const $ = (id) => document.getElementById(id);
 function show(step) {
   for (const id of [
     "step-onboarding",
+    "step-handoff",
     "step-capture",
     "step-review",
     "step-result",
@@ -72,13 +86,13 @@ async function getActiveTab() {
   return tab ?? null;
 }
 
-async function readPendingSelection() {
+async function readPendingCapture() {
   const { pendingCapture } = await chrome.storage.session.get("pendingCapture");
-  if (pendingCapture?.selectedText) {
+  if (pendingCapture) {
     await chrome.storage.session.remove("pendingCapture");
-    return pendingCapture.selectedText;
+    return pendingCapture;
   }
-  return "";
+  return null;
 }
 
 async function readPageSelection(tabId) {
@@ -128,31 +142,51 @@ async function captureShot(tab) {
   }
 }
 
+function applyCaptureToState(capture) {
+  if (!capture) return;
+  state.highlightText = (capture.selectedText || "").trim();
+  state.focusMessageText = (capture.focusMessageText || capture.messageText || "").trim();
+  state.threadText = (capture.threadText || "").trim();
+  state.turns = Array.isArray(capture.turns) ? capture.turns : [];
+  state.turnCount = capture.turnCount || state.turns.length || 0;
+  state.captureMode = capture.captureMode || "";
+  state.siteId = capture.siteId || "unknown";
+  state.fragile = capture.fragile !== false;
+  state.fragileNote = capture.fragileNote || "";
+  state.pageText = capture.pageText || state.pageText || "";
+  state.selectedText =
+    state.threadText || state.focusMessageText || state.highlightText || "";
+  state.inToolHandoff = Boolean(
+    capture.inToolHandoff ||
+      capture.fromContextMenu ||
+      capture.fromInPage ||
+      state.turnCount > 0 ||
+      ["chatgpt", "claude", "cursor", "fixture"].includes(state.siteId),
+  );
+}
+
 function updatePrimaryActions() {
   const canHandOff = Boolean(state.tab?.url?.startsWith("http"));
   const hasInstruction = Boolean($("instruction").value.trim());
   const enabled = canHandOff && hasInstruction;
   $("btn-review").disabled = !enabled;
   $("btn-run-ai").disabled = !enabled;
+  $("btn-open-handoff").disabled = !canHandOff;
 
   const caps = state.bridgeCaps;
   const canAi = Boolean(caps?.ok && caps.aiCompletion);
   if (canAi) {
-    $("btn-run-ai").textContent = "Run with AI";
     $("capture-hint").textContent =
-      `AI ready via ${caps.aiProvider || "local bridge"}${caps.aiModel ? ` (${caps.aiModel})` : ""}. Keys stay on this computer — never in the extension.`;
+      `Local destination ready via ${caps.aiProvider || "bridge"}${caps.aiModel ? ` (${caps.aiModel})` : ""}. Prefer Hand off → Continue now, or Download handoff for later upload.`;
   } else if (caps?.reachable && caps?.hasToken) {
-    $("btn-run-ai").textContent = "Run with AI";
     $("capture-hint").textContent =
-      "Bridge is connected but no AI provider is configured. Set OPENAI_API_KEY / GROQ_API_KEY, or run Ollama locally. TabHandoff will not invent a result.";
+      "Bridge connected but no AI provider — Continue now stays blocked until Ollama/a key is set. Download handoff still works.";
   } else if (caps?.reachable) {
-    $("btn-run-ai").textContent = "Run with AI";
     $("capture-hint").textContent =
-      "Bridge is reachable — paste the token in Settings to Run with AI.";
+      "Bridge reachable — paste the token in Settings for Continue now. Download handoff works offline.";
   } else {
-    $("btn-run-ai").textContent = "Run with AI";
     $("capture-hint").textContent =
-      "Start pnpm bridge or the desktop app, then paste the token in Settings. Without a provider, Run with AI fails honestly.";
+      "On ChatGPT / Claude / Cursor web: highlight a prompt → Hand off selection to another AI. Download handoff needs no bridge; Continue now needs desktop/bridge.";
   }
 }
 
@@ -165,7 +199,7 @@ function renderCapture() {
 
   if (state.selectedText) {
     $("selection-block").classList.remove("hidden");
-    $("page-selection").textContent = state.selectedText;
+    $("page-selection").textContent = state.selectedText.slice(0, 4000);
   } else {
     $("selection-block").classList.add("hidden");
   }
@@ -178,14 +212,76 @@ function renderCapture() {
     $("page-shot").classList.add("hidden");
     $("shot-note").textContent =
       state.screenshotError ||
-      "No screenshot (some pages block capture). You can still run with page text.";
+      "No screenshot (some pages block capture). You can still hand off page text.";
   }
 
   if (!url?.startsWith("http")) {
     $("shot-note").textContent =
-      "Open a normal http(s) webpage to hand it off. Browser settings pages are not supported.";
+      "Open a normal http(s) webpage (or an AI chat) to hand it off. Browser settings pages are not supported.";
   }
   updatePrimaryActions();
+}
+
+function siteLabel(siteId) {
+  switch (siteId) {
+    case "chatgpt":
+      return "ChatGPT";
+    case "claude":
+      return "Claude";
+    case "cursor":
+      return "Cursor web";
+    case "fixture":
+      return "Demo AI chat fixture";
+    default:
+      return "This page";
+  }
+}
+
+function renderHandoffStep() {
+  const title = state.tab?.title || "(untitled)";
+  const url = state.tab?.url || "";
+  $("handoff-title").textContent = title;
+  $("handoff-url").textContent = url;
+  $("handoff-url").title = url;
+
+  const bits = [`From ${siteLabel(state.siteId)}`];
+  if (state.turnCount) bits.push(`${state.turnCount} conversation turns captured`);
+  if (state.captureMode) bits.push(`mode: ${state.captureMode}`);
+  $("handoff-site").textContent = bits.join(" · ");
+
+  $("handoff-fragile").textContent =
+    state.fragileNote ||
+    "AI chat DOMs change often — review the captured thread before trusting completeness.";
+
+  const preview =
+    state.threadText ||
+    state.focusMessageText ||
+    state.highlightText ||
+    "(No text captured — go back and highlight a prompt.)";
+  $("handoff-selection").textContent = preview.slice(0, 6000);
+
+  if (!$("handoff-instruction").value.trim()) {
+    $("handoff-instruction").value = DEFAULT_HANDOFF_INSTRUCTION;
+  }
+
+  const caps = state.bridgeCaps;
+  const canContinue = Boolean(caps?.ok && caps.hasToken);
+  if (canContinue && caps.aiCompletion) {
+    $("handoff-hint").textContent =
+      `Download a portable package to upload into another AI later, or Continue now via ${caps.aiProvider || "local bridge"}.`;
+    $("btn-continue-now").disabled = false;
+    $("btn-continue-now").textContent = "Continue now";
+  } else if (canContinue) {
+    $("handoff-hint").textContent =
+      "Bridge is paired but no AI provider is configured. Continue now will save/package honestly without inventing a model result — or Download handoff for later upload.";
+    $("btn-continue-now").disabled = false;
+    $("btn-continue-now").textContent = "Continue now";
+  } else {
+    $("handoff-hint").textContent =
+      "No local destination yet (start desktop/`pnpm bridge` + pair in Settings). Download handoff still works — upload the ZIP into another AI later.";
+    $("btn-continue-now").disabled = false;
+    $("btn-continue-now").textContent = "Continue now (needs local bridge)";
+  }
 }
 
 async function refreshBridgePill() {
@@ -352,7 +448,7 @@ function fillReview() {
   $("rev-url").textContent = state.tab?.url || "";
   if (state.selectedText) {
     $("rev-sel-row").classList.remove("hidden");
-    $("rev-selection").textContent = state.selectedText;
+    $("rev-selection").textContent = state.selectedText.slice(0, 2000);
   } else {
     $("rev-sel-row").classList.add("hidden");
   }
@@ -402,10 +498,10 @@ function fillReview() {
     $("run-ai").disabled = false;
     $("run-ai-label").textContent = `Run with AI via ${caps.aiProvider || "bridge"}${caps.aiModel ? ` (${caps.aiModel})` : ""} — key never leaves this computer`;
     $("rev-workflow").textContent =
-      "Run with AI on captured context (ZIP optional)";
+      "Optional local Run with AI (ZIP / handoff download still available)";
     $("btn-confirm").textContent = "Run with AI";
     $("rev-workflow-note").textContent =
-      "Primary path calls the model through the local bridge. ZIP download is optional sharing — not required to see the result.";
+      "Supporting path: local model via bridge. Product value is in-tool handoff (Download handoff / Continue now).";
   } else if (bridgeReady) {
     $("run-ai-row").classList.add("hidden");
     $("run-ai").checked = false;
@@ -419,10 +515,10 @@ function fillReview() {
     $("run-ai-row").classList.add("hidden");
     $("run-ai").checked = false;
     $("rev-workflow").textContent =
-      "Download portable ZIP — package created (no agent executed)";
+      "Download portable handoff ZIP — package created (no agent executed)";
     $("btn-confirm").textContent = "Save package";
     $("rev-workflow-note").textContent =
-      "Connect the local bridge + token (and a provider) for Run with AI. ZIP still works offline.";
+      "Connect the local bridge + token for Continue now / Run with AI. Download handoff works offline.";
   }
 
   $("download-zip").checked = !canAi;
@@ -551,28 +647,71 @@ function downloadZip(pkg = state.lastPackage) {
   return true;
 }
 
-function showPackageOnlyResult({ activitySaved, activityError }) {
+function buildPkgFromState(instruction) {
+  return buildPortablePackage({
+    url: state.tab.url,
+    title: state.tab.title || "",
+    selectedText: state.highlightText || state.focusMessageText || "",
+    highlightText: state.highlightText || "",
+    threadText: state.threadText || "",
+    turns: state.turns,
+    siteId: state.siteId,
+    captureMode: state.captureMode,
+    fragile: state.fragile,
+    instruction,
+    screenshots: screenshotPayload(),
+    source: {
+      kind: "browser_extension",
+      extensionId: chrome.runtime.id,
+    },
+  });
+}
+
+function showPackageOnlyResult({ activitySaved, activityError, downloaded }) {
   $("btn-copy-result").classList.add("hidden");
   setStatusPill("Package created", "ok");
-  $("result-title").textContent = "Package created — not agent executed";
+  $("result-title").textContent = "Handoff package ready — not agent executed";
   const lines = [
-    "A portable ZIP is ready (handoff.json + summary + screenshots when captured).",
+    "A portable handoff ZIP is ready (conversation.md + handoff.json + summary).",
+    state.turnCount
+      ? `Included ${state.turnCount} conversation turns so another AI can continue without missing prior context.`
+      : "No multi-turn thread was detected — package has the captured selection/message only.",
     "No agent was launched.",
   ];
+  if (downloaded) {
+    lines.push("", "ZIP download started.");
+  }
   if (activitySaved) {
     lines.push("", "Also saved to My Activity on this computer.");
   } else if (activityError) {
     lines.push("", `My Activity save skipped: ${activityError}`);
-  } else {
-    lines.push(
-      "",
-      "Bridge was not used. Connect desktop later if you want My Activity or Run with AI.",
-    );
   }
   lines.push(
     "",
-    "Next: Download ZIP, or Copy brief for another AI (ChatGPT / Claude / Cursor).",
+    "Next: upload the ZIP / paste conversation.md into another AI, or Copy brief.",
   );
+  $("result-body").textContent = lines.join("\n");
+  $("result-path").classList.add("hidden");
+  show("step-result");
+}
+
+function showContinueBlocked({ reason, downloaded }) {
+  $("btn-copy-result").classList.add("hidden");
+  setStatusPill("Continue blocked", "");
+  $("result-title").textContent = "Continue now blocked — package still available";
+  const lines = [
+    reason,
+    "",
+    "TabHandoff will not pretend a destination AI ran.",
+    state.turnCount
+      ? `Your handoff still includes ${state.turnCount} conversation turns in the package.`
+      : "Download the handoff package and upload it into another AI later.",
+  ];
+  if (downloaded || state.zipDownloaded) {
+    lines.push("", "Handoff ZIP was downloaded.");
+  } else {
+    lines.push("", "Use Download handoff on this screen to get the ZIP.");
+  }
   $("result-body").textContent = lines.join("\n");
   $("result-path").classList.add("hidden");
   show("step-result");
@@ -583,16 +722,16 @@ function showAiResult(ai, { activitySaved, handoffId, fromHistory }) {
   $("btn-copy-result").classList.toggle("hidden", !ai.result);
 
   if (ai.status === "done" && ai.ok) {
-    setStatusPill(fromHistory ? "Saved result" : "AI done", "ok");
+    setStatusPill(fromHistory ? "Saved result" : "Continued", "ok");
     $("result-title").textContent = fromHistory
       ? "Saved AI task"
-      : "Run with AI finished";
+      : "Continue now finished";
   } else if (ai.status === "unavailable") {
-    setStatusPill("AI unavailable", "");
-    $("result-title").textContent = "Run with AI unavailable";
+    setStatusPill("Blocked", "");
+    $("result-title").textContent = "Continue now unavailable";
   } else {
-    setStatusPill("AI failed", "bad");
-    $("result-title").textContent = "Run with AI failed";
+    setStatusPill("Failed", "bad");
+    $("result-title").textContent = "Continue now failed";
   }
 
   const lines = [
@@ -610,7 +749,7 @@ function showAiResult(ai, { activitySaved, handoffId, fromHistory }) {
   if (!fromHistory) {
     lines.push(
       "",
-      "Task is saved locally — close and reopen TabHandoff to find it under Saved tasks.",
+      "Task is saved locally when the bridge is available — reopen TabHandoff under Saved tasks.",
     );
   }
   if (activitySaved) {
@@ -652,6 +791,142 @@ async function persistAiHistory(ai, pkg) {
   void renderHistory();
 }
 
+async function downloadHandoffAction() {
+  const instruction =
+    ($("handoff-instruction")?.value || $("instruction")?.value || "").trim() ||
+    DEFAULT_HANDOFF_INSTRUCTION;
+  if ($("instruction")) $("instruction").value = instruction;
+  let pkg;
+  try {
+    pkg = buildPkgFromState(instruction);
+  } catch (e) {
+    setStatusPill("Error", "bad");
+    $("result-title").textContent = "Could not create package";
+    $("result-body").textContent = e?.message || String(e);
+    $("result-path").classList.add("hidden");
+    $("btn-copy-result").classList.add("hidden");
+    show("step-result");
+    return;
+  }
+  state.lastPackage = pkg;
+  downloadZip(pkg);
+  showPackageOnlyResult({ downloaded: true });
+}
+
+async function continueNowAction() {
+  const instruction =
+    ($("handoff-instruction")?.value || $("instruction")?.value || "").trim() ||
+    DEFAULT_HANDOFF_INSTRUCTION;
+  if ($("instruction")) $("instruction").value = instruction;
+
+  let pkg;
+  try {
+    pkg = buildPkgFromState(instruction);
+  } catch (e) {
+    setStatusPill("Error", "bad");
+    $("result-title").textContent = "Could not create package";
+    $("result-body").textContent = e?.message || String(e);
+    show("step-result");
+    return;
+  }
+  state.lastPackage = pkg;
+
+  const settings = await loadBridgeSettings();
+  const probe = await probeBridge(settings);
+  const caps = state.bridgeCaps;
+
+  if (!probe.ok || !settings.token) {
+    downloadZip(pkg);
+    showContinueBlocked({
+      reason: !probe.ok
+        ? "No local destination — bridge/desktop is offline. Start pnpm bridge or the desktop app, pair in Settings, then retry Continue now."
+        : "No local destination — bridge token missing. Pair in Settings (Request pairing or paste token), then retry Continue now.",
+      downloaded: true,
+    });
+    return;
+  }
+
+  $("result-title").textContent = "Continuing on this computer…";
+  setStatusPill("Continuing", "");
+  $("result-body").textContent =
+    "Saving the handoff package to the local bridge, then running the configured destination AI when available…";
+  $("result-path").classList.add("hidden");
+  $("btn-copy-result").classList.add("hidden");
+  show("step-result");
+
+  const handoff = await postHandoff(settings, {
+    url: pkg.page.url,
+    title: pkg.page.title,
+    selectedText: pkg.page.selectedText,
+    instruction: pkg.instruction,
+    screenshots: screenshotPayload(),
+    extensionId: chrome.runtime.id,
+    runWorkflow: false,
+  });
+
+  if (!handoff.ok) {
+    downloadZip(pkg);
+    showContinueBlocked({
+      reason: `Local bridge could not accept the handoff: ${handoff.message || handoff.error || "unknown error"}. Package was downloaded instead.`,
+      downloaded: true,
+    });
+    return;
+  }
+
+  if (!caps?.aiCompletion) {
+    setStatusPill("Package saved", "ok");
+    $("result-title").textContent =
+      "Handoff saved locally — destination AI not configured";
+    $("result-body").textContent = [
+      handoff.message || "Saved on this computer.",
+      "",
+      "Continue now stopped honestly: no AI provider on the bridge (set Ollama or an API key).",
+      state.turnCount
+        ? `Conversation thread (${state.turnCount} turns) is in the saved package / download.`
+        : "",
+      "",
+      "You can still Download handoff and upload into another AI.",
+      handoff.desktopHint || "Open TabHandoff desktop → My Activity.",
+    ]
+      .filter(Boolean)
+      .join("\n");
+    if (handoff.receiptDir || handoff.handoffPath) {
+      $("result-path").classList.remove("hidden");
+      $("result-path").textContent = handoff.receiptDir || handoff.handoffPath;
+    }
+    state.lastBridgeResult = handoff;
+    return;
+  }
+
+  if (!state.pageText && state.tab?.id) {
+    state.pageText = await readPageText(state.tab.id);
+  }
+  const contextText =
+    state.threadText ||
+    pkg.page.selectedText ||
+    state.pageText ||
+    "";
+
+  const ai = await postAiRun(settings, {
+    url: pkg.page.url,
+    title: pkg.page.title,
+    selectedText: contextText,
+    pageText: state.pageText || undefined,
+    instruction: pkg.instruction,
+    handoffId: handoff.id || undefined,
+  });
+  await persistAiHistory(ai, pkg);
+  if (!ai.ok && (ai.status === "unavailable" || ai.error === "bridge_unreachable")) {
+    downloadZip(pkg);
+    showContinueBlocked({
+      reason: ai.message || "Destination AI unavailable on the local bridge.",
+      downloaded: true,
+    });
+    return;
+  }
+  showAiResult(ai, { activitySaved: true, handoffId: handoff.id });
+}
+
 async function createPackage({ forceAi = false, forceZip = false } = {}) {
   stopPoll();
   state.zipDownloaded = false;
@@ -659,17 +934,7 @@ async function createPackage({ forceAi = false, forceZip = false } = {}) {
   const instruction = $("instruction").value.trim();
   let pkg;
   try {
-    pkg = buildPortablePackage({
-      url: state.tab.url,
-      title: state.tab.title || "",
-      selectedText: state.selectedText,
-      instruction,
-      screenshots: screenshotPayload(),
-      source: {
-        kind: "browser_extension",
-        extensionId: chrome.runtime.id,
-      },
-    });
+    pkg = buildPkgFromState(instruction);
   } catch (e) {
     setStatusPill("Error", "bad");
     $("result-title").textContent = "Could not create package";
@@ -724,6 +989,7 @@ async function createPackage({ forceAi = false, forceZip = false } = {}) {
           ? "bridge offline"
           : "missing token"
         : null,
+      downloaded: true,
     });
     return;
   }
@@ -776,6 +1042,7 @@ async function createPackage({ forceAi = false, forceZip = false } = {}) {
       showPackageOnlyResult({
         activitySaved: false,
         activityError: result.message || "bridge could not save",
+        downloaded: true,
       });
       return;
     }
@@ -788,12 +1055,11 @@ async function createPackage({ forceAi = false, forceZip = false } = {}) {
     const ai = await postAiRun(settings, {
       url: pkg.page.url,
       title: pkg.page.title,
-      selectedText: pkg.page.selectedText,
+      selectedText: pkg.page.selectedText || state.selectedText,
       pageText: state.pageText || undefined,
       instruction: pkg.instruction,
       handoffId: handoffId || undefined,
     });
-    // If AI not available on bridge despite UI (stale caps), surface honestly
     if (!ai.ok && ai.status === "unavailable" && !state.bridgeCaps?.aiCompletion) {
       ai.message =
         ai.message ||
@@ -826,13 +1092,13 @@ async function createPackage({ forceAi = false, forceZip = false } = {}) {
   showPackageOnlyResult({
     activitySaved: false,
     activityError: "bridge could not save",
+    downloaded: true,
   });
 }
 
 async function runAiPrimary() {
   state.preferAi = true;
   await loadCapabilities();
-  // Pre-check run-ai checkbox state even if review not shown
   if ($("run-ai")) $("run-ai").checked = true;
   if ($("download-zip")) $("download-zip").checked = false;
   if ($("save-activity") && state.bridgeCaps?.ok) {
@@ -843,7 +1109,10 @@ async function runAiPrimary() {
 
 async function copySummary() {
   if (!state.lastPackage) return;
-  const text = renderSummaryMarkdown(packageForDisk(state.lastPackage));
+  const text = renderSummaryMarkdown({
+    ...packageForDisk(state.lastPackage),
+    conversation: state.lastPackage.conversation,
+  });
   await navigator.clipboard.writeText(text);
   $("btn-copy").textContent = "Copied";
   setTimeout(() => {
@@ -853,7 +1122,10 @@ async function copySummary() {
 
 async function copyAiBrief() {
   if (!state.lastPackage) return;
-  const text = renderAiBrief(packageForDisk(state.lastPackage));
+  const text = renderAiBrief({
+    ...packageForDisk(state.lastPackage),
+    conversation: state.lastPackage.conversation,
+  });
   await navigator.clipboard.writeText(text);
   $("btn-copy-brief").textContent = "Copied — paste into any AI";
   setTimeout(() => {
@@ -880,14 +1152,31 @@ async function openSettings() {
   $("bridge-status").textContent = probe.ok
     ? settings.token
       ? caps?.message || "Bridge is reachable on this computer."
-      : "Bridge is reachable. Paste a token to enable Run with AI / My Activity."
-    : "Bridge is not reachable. Start desktop or pnpm bridge.";
+      : "Bridge is reachable. Paste a token to enable Continue now / Run with AI."
+    : "Bridge is not reachable. Start desktop or pnpm bridge. Download handoff still works.";
   show("step-settings");
 }
 
 async function finishOnboarding() {
   await chrome.storage.local.set({ onboardingDone: true });
-  show("step-capture");
+  if (state.inToolHandoff) {
+    renderHandoffStep();
+    show("step-handoff");
+  } else {
+    show("step-capture");
+  }
+}
+
+function openHandoffFromCapture() {
+  if (!$("handoff-instruction").value.trim()) {
+    $("handoff-instruction").value =
+      $("instruction").value.trim() || DEFAULT_HANDOFF_INSTRUCTION;
+  } else if ($("instruction").value.trim()) {
+    $("handoff-instruction").value = $("instruction").value.trim();
+  }
+  state.inToolHandoff = true;
+  renderHandoffStep();
+  show("step-handoff");
 }
 
 function wire() {
@@ -897,6 +1186,23 @@ function wire() {
 
   $("btn-onboard-continue").addEventListener("click", () => {
     void finishOnboarding();
+  });
+
+  $("btn-open-handoff").addEventListener("click", () => {
+    openHandoffFromCapture();
+  });
+
+  $("btn-download-handoff").addEventListener("click", () => {
+    void downloadHandoffAction();
+  });
+  $("btn-continue-now").addEventListener("click", () => {
+    void continueNowAction();
+  });
+  $("btn-handoff-advanced").addEventListener("click", () => {
+    const instr = $("handoff-instruction").value.trim();
+    if (instr) $("instruction").value = instr;
+    show("step-capture");
+    renderCapture();
   });
 
   $("btn-run-ai").addEventListener("click", () => {
@@ -914,25 +1220,48 @@ function wire() {
 
   $("btn-back").addEventListener("click", () => {
     stopPoll();
-    show("step-capture");
+    if (state.inToolHandoff) {
+      renderHandoffStep();
+      show("step-handoff");
+    } else {
+      show("step-capture");
+    }
   });
   $("btn-confirm").addEventListener("click", () => {
     void createPackage({});
   });
-  $("btn-download").addEventListener("click", () => downloadZip());
+  $("btn-download").addEventListener("click", () => {
+    if (!state.lastPackage) {
+      void downloadHandoffAction();
+      return;
+    }
+    downloadZip();
+  });
   $("btn-copy").addEventListener("click", () => void copySummary());
   $("btn-copy-brief").addEventListener("click", () => void copyAiBrief());
   $("btn-copy-result").addEventListener("click", () => void copyResult());
   $("btn-again").addEventListener("click", () => {
     stopPoll();
-    show("step-capture");
+    if (state.inToolHandoff) {
+      renderHandoffStep();
+      show("step-handoff");
+    } else {
+      show("step-capture");
+    }
     void renderHistory();
   });
   $("btn-refresh-history").addEventListener("click", () => {
     void renderHistory();
   });
   $("btn-settings").addEventListener("click", () => void openSettings());
-  $("btn-settings-back").addEventListener("click", () => show("step-capture"));
+  $("btn-settings-back").addEventListener("click", () => {
+    if (state.inToolHandoff) {
+      renderHandoffStep();
+      show("step-handoff");
+    } else {
+      show("step-capture");
+    }
+  });
   $("btn-save-settings").addEventListener("click", async () => {
     await saveBridgeSettings({
       base: $("bridge-base").value.trim(),
@@ -985,27 +1314,72 @@ function wire() {
 
 async function init() {
   wire();
+  const params = new URLSearchParams(location.search);
+  const forceHandoff = params.get("handoff") === "1" || params.get("context") === "1";
+
   const { onboardingDone } = await chrome.storage.local.get("onboardingDone");
-  if (!onboardingDone) {
-    show("step-onboarding");
-  }
 
   state.tab = await getActiveTab();
-  state.selectedText =
-    (await readPendingSelection()) ||
-    (state.tab?.id ? await readPageSelection(state.tab.id) : "");
-  if (state.tab?.id && state.tab.url?.startsWith("http")) {
+  const pending = await readPendingCapture();
+  if (pending) {
+    applyCaptureToState(pending);
+    if (pending.url && state.tab && !state.tab.url) {
+      /* keep tab */
+    }
+  } else {
+    const sel = state.tab?.id ? await readPageSelection(state.tab.id) : "";
+    if (sel) {
+      state.highlightText = sel;
+      state.selectedText = sel;
+    }
+  }
+
+  // Enrich from page capture when opened from AI sites / context menu.
+  if (state.tab?.id && state.tab.url?.startsWith("http") && !state.threadText) {
+    try {
+      const res = await chrome.runtime.sendMessage({
+        type: "tabhandoff-request-capture",
+        tabId: state.tab.id,
+        selectedText: state.highlightText || "",
+      });
+      if (res?.ok && res.capture) {
+        applyCaptureToState({
+          ...res.capture,
+          inToolHandoff: state.inToolHandoff || forceHandoff,
+          selectedText: res.capture.selectedText || state.highlightText,
+        });
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  if (state.tab?.id && state.tab.url?.startsWith("http") && !state.pageText) {
     state.pageText = await readPageText(state.tab.id);
+  }
+
+  if (!onboardingDone) {
+    show("step-onboarding");
   }
 
   renderCapture();
   void refreshBridgePill()
     .then(() => loadCapabilities())
-    .then(() => renderHistory());
+    .then(() => {
+      if (state.inToolHandoff || forceHandoff) {
+        renderHandoffStep();
+        if (onboardingDone) show("step-handoff");
+      }
+      return renderHistory();
+    });
 
   if (state.tab?.id && state.tab.url?.startsWith("http")) {
     await captureShot(state.tab);
     renderCapture();
+    if ((state.inToolHandoff || forceHandoff) && onboardingDone) {
+      renderHandoffStep();
+      show("step-handoff");
+    }
   } else {
     renderCapture();
   }

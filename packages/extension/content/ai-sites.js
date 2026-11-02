@@ -1,0 +1,380 @@
+/**
+ * In-page capture for known AI chat UIs (ChatGPT, Claude, Cursor web).
+ * Goal: lossless handoff of the conversation around a prompt — full thread,
+ * not only the highlight or a single message. DOM selectors are best-effort
+ * and will break when sites redesign; captures are labeled fragile.
+ */
+(() => {
+  if (globalThis.__tabhandoffAiSitesLoaded) return;
+  globalThis.__tabhandoffAiSitesLoaded = true;
+
+  const SITE = detectSite(location.hostname);
+  const MAX_THREAD = 200_000;
+  const MAX_TURN = 40_000;
+
+  /** @returns {"chatgpt"|"claude"|"cursor"|"fixture"|"unknown"} */
+  function detectSite(hostname) {
+    const h = String(hostname || "").toLowerCase();
+    if (h === "chatgpt.com" || h === "chat.openai.com" || h.endsWith(".chatgpt.com")) {
+      return "chatgpt";
+    }
+    if (h === "claude.ai" || h.endsWith(".claude.ai")) return "claude";
+    if (
+      h === "cursor.com" ||
+      h.endsWith(".cursor.com") ||
+      h === "cursor.sh" ||
+      h.endsWith(".cursor.sh")
+    ) {
+      return "cursor";
+    }
+    if (document.querySelector("[data-tabhandoff-fixture='ai-chat']")) {
+      return (
+        document
+          .querySelector("[data-tabhandoff-fixture='ai-chat']")
+          ?.getAttribute("data-site") || "fixture"
+      );
+    }
+    return "unknown";
+  }
+
+  const MESSAGE_SELECTORS = {
+    chatgpt: [
+      "[data-message-author-role]",
+      "[data-testid^='conversation-turn']",
+      "article[data-testid]",
+    ],
+    claude: [
+      "[data-test-render-count]",
+      "[class*='font-claude-message']",
+      "[data-is-streaming]",
+    ],
+    cursor: ["[data-message-id]", "[class*='composer']", "[class*='message']", "article"],
+    fixture: ["[data-message-role]", "[data-message]", "article.message"],
+    unknown: [
+      "[data-message-author-role]",
+      "[data-message-role]",
+      "[role='article']",
+      "[class*='message']",
+      "article",
+    ],
+  };
+
+  function messageSelectorList() {
+    return [...(MESSAGE_SELECTORS[SITE] || []), ...MESSAGE_SELECTORS.unknown];
+  }
+
+  function nearestMessageRoot(node) {
+    if (!node || node.nodeType !== Node.ELEMENT_NODE) {
+      node = node?.parentElement || null;
+    }
+    const selectors = messageSelectorList();
+    let el = node;
+    while (el && el !== document.body) {
+      for (const sel of selectors) {
+        try {
+          if (el.matches?.(sel)) return el;
+        } catch {
+          /* invalid selector — skip */
+        }
+      }
+      el = el.parentElement;
+    }
+    return null;
+  }
+
+  function textFrom(el) {
+    if (!el) return "";
+    const clone = el.cloneNode(true);
+    // Drop visible role chrome so turns are not "YOU\\n…" / "ASSISTANT\\n…".
+    clone.querySelectorAll?.(".role, [data-role-label], [data-tabhandoff]").forEach((n) => n.remove());
+    return (clone.innerText || clone.textContent || "").replace(/\s+\n/g, "\n").trim();
+  }
+
+  function roleFrom(el) {
+    if (!el) return "unknown";
+    const attr =
+      el.getAttribute("data-message-author-role") ||
+      el.getAttribute("data-message-role") ||
+      el.getAttribute("data-role") ||
+      "";
+    if (attr) return String(attr).toLowerCase();
+    const labeled = el.getAttribute("aria-label") || "";
+    if (/assistant|claude|chatgpt|bot/i.test(labeled)) return "assistant";
+    if (/user|you|human/i.test(labeled)) return "user";
+    const roleEl = el.querySelector?.(".role, [data-role-label]");
+    const roleText = (roleEl?.textContent || "").toLowerCase();
+    if (roleText.includes("you") || roleText.includes("user") || roleText.includes("human")) {
+      return "user";
+    }
+    if (
+      roleText.includes("assistant") ||
+      roleText.includes("claude") ||
+      roleText.includes("chatgpt")
+    ) {
+      return "assistant";
+    }
+    return "unknown";
+  }
+
+  /** Collect every message node in document order (deduped by element). */
+  function collectMessageElements() {
+    const seen = new Set();
+    const out = [];
+    for (const sel of messageSelectorList()) {
+      let nodes;
+      try {
+        nodes = document.querySelectorAll(sel);
+      } catch {
+        continue;
+      }
+      for (const el of nodes) {
+        if (seen.has(el)) continue;
+        // Prefer deepest matching message: skip if an ancestor is already a message.
+        let ancestorIsMessage = false;
+        for (const other of seen) {
+          if (other.contains(el) && other !== el) {
+            ancestorIsMessage = true;
+            break;
+          }
+        }
+        if (ancestorIsMessage) continue;
+        // If this contains a previously seen child, replace children with this parent.
+        for (const other of [...seen]) {
+          if (el.contains(other) && other !== el) {
+            seen.delete(other);
+            const idx = out.indexOf(other);
+            if (idx >= 0) out.splice(idx, 1);
+          }
+        }
+        seen.add(el);
+        out.push(el);
+      }
+    }
+    return out.sort((a, b) => {
+      const pos = a.compareDocumentPosition(b);
+      if (pos & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
+      if (pos & Node.DOCUMENT_POSITION_PRECEDING) return 1;
+      return 0;
+    });
+  }
+
+  function turnsFromElements(els) {
+    const turns = [];
+    for (const el of els) {
+      const text = textFrom(el).slice(0, MAX_TURN);
+      if (!text) continue;
+      turns.push({
+        role: roleFrom(el),
+        text,
+      });
+    }
+    return turns;
+  }
+
+  function formatThread(turns) {
+    if (!turns.length) return "";
+    return turns
+      .map((t, i) => {
+        const label =
+          t.role === "user"
+            ? "User"
+            : t.role === "assistant"
+              ? "Assistant"
+              : `Turn ${i + 1}`;
+        return `### ${label}\n\n${t.text}`;
+      })
+      .join("\n\n---\n\n")
+      .slice(0, MAX_THREAD);
+  }
+
+  /**
+   * Capture selection + nearest message + full surrounding conversation thread.
+   * @returns {object}
+   */
+  function captureAiChatContext(opts = {}) {
+    const selection = window.getSelection();
+    const selectedText = (opts.selectedText || selection?.toString() || "").trim();
+    let anchor = null;
+    if (selection && selection.rangeCount > 0) {
+      anchor = selection.getRangeAt(0).commonAncestorContainer;
+    }
+    if (!anchor && opts.clientX != null && opts.clientY != null) {
+      anchor = document.elementFromPoint(opts.clientX, opts.clientY);
+    }
+
+    const messageEls = collectMessageElements();
+    const focusEl = nearestMessageRoot(anchor);
+    const focusMessageText = textFrom(focusEl).slice(0, MAX_TURN);
+    const turns = turnsFromElements(messageEls);
+    const threadText = formatThread(turns);
+
+    let captureMode = "selection";
+    let fragileNote =
+      "Selection only — could not identify a chat thread (AI site DOM is fragile).";
+
+    if (turns.length >= 2 && threadText) {
+      captureMode = selectedText
+        ? "selection_with_thread"
+        : focusMessageText
+          ? "message_with_thread"
+          : "thread";
+      fragileNote = `Captured ${turns.length} conversation turns via best-effort DOM so another AI can continue without missing prior context. Site redesigns can break this — always review the package.`;
+    } else if (focusEl && focusMessageText) {
+      captureMode = selectedText ? "selection_in_message" : "message";
+      fragileNote =
+        "Captured nearest chat message but not a multi-turn thread. DOM may have changed; review before handing off.";
+    } else if (selectedText) {
+      captureMode = "selection";
+    } else if (turns.length === 1) {
+      captureMode = "last_message_fallback";
+      fragileNote =
+        "No selection — used a single matching message as a fragile fallback. Prefer highlighting the prompt.";
+    }
+
+    const payloadText = (
+      threadText ||
+      focusMessageText ||
+      selectedText ||
+      ""
+    ).trim();
+
+    return {
+      ok: Boolean(payloadText),
+      siteId: SITE,
+      host: location.hostname,
+      url: location.href,
+      title: document.title || "",
+      selectedText: selectedText || undefined,
+      focusMessageText: focusMessageText || undefined,
+      messageText: focusMessageText || selectedText || undefined,
+      threadText: threadText || undefined,
+      turns: turns.length ? turns.map((t) => ({ role: t.role, text: t.text.slice(0, MAX_TURN) })) : undefined,
+      turnCount: turns.length,
+      captureMode,
+      fragile: true,
+      fragileNote,
+      pageText: (document.body?.innerText || "")
+        .replace(/\s+\n/g, "\n")
+        .trim()
+        .slice(0, 20_000),
+    };
+  }
+
+  globalThis.__tabhandoffCaptureAiChat = captureAiChatContext;
+
+  chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+    if (msg?.type === "tabhandoff-capture-ai") {
+      try {
+        sendResponse(captureAiChatContext(msg));
+      } catch (e) {
+        sendResponse({
+          ok: false,
+          error: e?.message || String(e),
+          siteId: SITE,
+          fragile: true,
+        });
+      }
+      return true;
+    }
+    return false;
+  });
+
+  // --- Lightweight in-page affordance on known AI sites only ---
+  if (SITE === "unknown") return;
+
+  let bar = null;
+  let hideTimer = null;
+
+  function ensureBar() {
+    if (bar) return bar;
+    bar = document.createElement("div");
+    bar.id = "tabhandoff-selection-bar";
+    bar.setAttribute("data-tabhandoff", "1");
+    Object.assign(bar.style, {
+      position: "fixed",
+      zIndex: "2147483646",
+      display: "none",
+      gap: "8px",
+      alignItems: "center",
+      padding: "8px 10px",
+      borderRadius: "10px",
+      background: "#0b0b0c",
+      color: "#f4f4f5",
+      fontFamily: 'ui-sans-serif, system-ui, "Segoe UI", sans-serif',
+      fontSize: "13px",
+      boxShadow: "0 8px 28px rgba(0,0,0,.35)",
+      border: "1px solid #2a2a2e",
+    });
+    const label = document.createElement("span");
+    label.textContent = "TabHandoff";
+    label.style.opacity = "0.7";
+    label.style.marginRight = "4px";
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = "Hand this off to another AI";
+    Object.assign(btn.style, {
+      cursor: "pointer",
+      border: "0",
+      borderRadius: "8px",
+      padding: "6px 10px",
+      background: "#fafafa",
+      color: "#0b0b0c",
+      fontWeight: "600",
+    });
+    btn.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    });
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const capture = captureAiChatContext();
+      chrome.runtime.sendMessage({
+        type: "tabhandoff-inpage-handoff",
+        capture,
+      });
+      hideBar();
+    });
+    bar.appendChild(label);
+    bar.appendChild(btn);
+    document.documentElement.appendChild(bar);
+    return bar;
+  }
+
+  function hideBar() {
+    if (bar) bar.style.display = "none";
+  }
+
+  function showBarNearSelection() {
+    const sel = window.getSelection();
+    const text = (sel?.toString() || "").trim();
+    if (!text || !sel || sel.rangeCount === 0) {
+      hideBar();
+      return;
+    }
+    const range = sel.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+    if (!rect || (rect.width === 0 && rect.height === 0)) {
+      hideBar();
+      return;
+    }
+    const el = ensureBar();
+    el.style.display = "flex";
+    const top = Math.min(window.innerHeight - 48, Math.max(8, rect.bottom + 8));
+    const left = Math.min(window.innerWidth - 280, Math.max(8, rect.left));
+    el.style.top = `${top}px`;
+    el.style.left = `${left}px`;
+  }
+
+  document.addEventListener("selectionchange", () => {
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(showBarNearSelection, 120);
+  });
+  document.addEventListener(
+    "scroll",
+    () => {
+      if (bar?.style.display === "flex") showBarNearSelection();
+    },
+    true,
+  );
+})();

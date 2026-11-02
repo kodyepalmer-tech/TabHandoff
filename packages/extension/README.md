@@ -1,29 +1,37 @@
 # TabHandoff browser extension
 
-Primary path: **What do you want done?** → **Run with AI** via the local bridge → see the real result → reopen **Saved tasks**.
+**Product path:** Hand off from *inside* an AI chat (ChatGPT / Claude / Cursor web).
 
-ZIP export remains available as optional sharing under **Package / options**. Status is always honest — TabHandoff never pretends a model ran when it did not.
+1. Highlight a prompt (or click its parent message).
+2. Choose **Hand this off to another AI** (in-page bar or right-click).
+3. TabHandoff packages the **full surrounding conversation thread** (not just the snippet) so another AI can continue without missing prior turns.
+4. Then either:
+   - **Download handoff** — portable ZIP (`conversation.md` + `handoff.json`) to upload into another AI later, or
+   - **Continue now** — local bridge/desktop destination when available (honest **blocked** if none).
 
-## Run with AI (Phase 1)
+Standalone desktop Transfer is supporting infrastructure, not the value prop.
 
-1. Start the bridge: `pnpm bridge` or `pnpm desktop` (with a provider — see below).
-2. Open `chrome://extensions` → Developer mode → **Load unpacked** → this folder.
-3. Popup → **Settings** → paste the bridge token.
-4. Open any `https://` page → toolbar / right-click **Hand off with TabHandoff**.
-5. Answer **What do you want done?** → **Run with AI**.
-6. Close and reopen the popup — the task appears under **Saved tasks**.
+AI site DOMs change often — thread capture is **best-effort and labeled fragile**. Always review the package.
 
-The extension talks only to `http://127.0.0.1` (existing permission). Model keys stay in the bridge process env — never in extension storage or ZIP packages.
+## Load unpacked
 
-Providers (bridge env): local **Ollama** (auto-detected), `OPENAI_API_KEY`, `GROQ_API_KEY`, or `ANTHROPIC_API_KEY`. Details: [docs/ai-execution.md](../../docs/ai-execution.md).
+1. Chrome/Edge/Brave → `chrome://extensions` → Developer mode → **Load unpacked** → this folder (`packages/extension`).
+2. Open ChatGPT, Claude, Cursor web, or `fixtures/ai-chat-fixture.html` via a local static server.
+3. Highlight text → right-click **Hand off selection to another AI** (or use the in-page button on known AI hosts).
+4. **Download handoff** or **Continue now**.
 
-## Package-only (no bridge)
+Optional: start `pnpm bridge` / `pnpm desktop`, pair in Settings, for Continue now / Run with AI. Keys stay in the bridge process — never in the extension.
 
-Still works offline: **Package / options** → download ZIP (`START_HERE.md` + `handoff.json` + summary). Result says **package created — not agent executed**. **Copy brief for another AI** remains available.
+## Package contents
 
-## Optional My Activity / page extraction
+| File | Purpose |
+|---|---|
+| `conversation.md` | Full chat thread around the prompt |
+| `START_HERE.md` | How to continue without installing TabHandoff |
+| `handoff.json` | Portable schema (`page.selectedText` holds the thread) |
+| `summary.md` | Human-readable handoff |
 
-On **Package / options**, check **Also save to My Activity** and/or isolated page extraction when Playwright is available on the bridge.
+Status is always honest — never pretends an agent ran when only a package was created.
 
 ## Store ZIP
 
@@ -32,16 +40,15 @@ pnpm pack:extension
 # → artifacts/tabhandoff-extension-<version>.zip
 ```
 
-See [docs/chrome-web-store.md](../../docs/chrome-web-store.md) and [docs/privacy.md](../../docs/privacy.md).
-
 ## Permissions (plain language)
 
 | Permission | Why |
 |---|---|
-| Read the active tab | Capture title, URL, selection, screenshot, visible text |
+| Active tab + scripting | Capture selection, nearest message, and best-effort full thread |
 | Context menu | Right-click “Hand off…” |
+| Host access (ChatGPT / Claude / Cursor web) | In-page “Hand this off…” bar on those sites |
 | Storage | Onboarding, optional bridge token, local task cache |
-| `http://127.0.0.1` | Local bridge only (Run with AI / My Activity) |
+| `http://127.0.0.1` | Local bridge only (Continue now / Run with AI / My Activity) |
 
 Nothing is uploaded to a TabHandoff cloud by default.
 
@@ -54,5 +61,5 @@ pnpm test:extension-package
 ## Safety
 
 - Bridge binds to **127.0.0.1** only when used.
-- Captured page text is **untrusted** (prompt-injection aware).
+- Captured page/thread text is **untrusted** (prompt-injection aware).
 - See [docs/extension-setup.md](../../docs/extension-setup.md).
