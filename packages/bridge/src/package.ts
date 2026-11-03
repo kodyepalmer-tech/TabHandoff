@@ -79,7 +79,9 @@ export class PackageValidationError extends Error {
 
 function truncate(s: string, max: number): string {
   if (s.length <= max) return s;
-  return s.slice(0, max);
+  const marker = "\n…[truncated — bridge selectedText cap; not lossless]…";
+  const keep = Math.max(0, max - marker.length);
+  return `${s.slice(0, keep)}${marker}`;
 }
 
 function assertHttpUrl(url: string): void {

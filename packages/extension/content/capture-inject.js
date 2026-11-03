@@ -148,17 +148,20 @@
 
   function turnsFromElements(els) {
     const turns = [];
+    let turnTruncated = false;
     for (const el of els) {
-      const text = textFrom(el).slice(0, MAX_TURN);
+      const raw = textFrom(el);
+      if (raw.length > MAX_TURN) turnTruncated = true;
+      const text = raw.slice(0, MAX_TURN);
       if (!text) continue;
       turns.push({ role: roleFrom(el), text });
     }
-    return turns;
+    return { turns, turnTruncated };
   }
 
   function formatThread(turns) {
-    if (!turns.length) return "";
-    return turns
+    if (!turns.length) return { threadText: "", threadTruncated: false };
+    const joined = turns
       .map((t, i) => {
         const label =
           t.role === "user"
@@ -168,8 +171,11 @@
               : `Turn ${i + 1}`;
         return `### ${label}\n\n${t.text}`;
       })
-      .join("\n\n---\n\n")
-      .slice(0, MAX_THREAD);
+      .join("\n\n---\n\n");
+    return {
+      threadText: joined.slice(0, MAX_THREAD),
+      threadTruncated: joined.length > MAX_THREAD,
+    };
   }
 
   const selection = window.getSelection();
@@ -180,9 +186,13 @@
   }
   const messageEls = collectMessageElements();
   const focusEl = nearestMessageRoot(anchor);
-  const focusMessageText = textFrom(focusEl).slice(0, MAX_TURN);
-  const turns = turnsFromElements(messageEls);
-  const threadText = formatThread(turns);
+  const focusRaw = textFrom(focusEl);
+  const focusMessageText = focusRaw.slice(0, MAX_TURN);
+  const { turns, turnTruncated } = turnsFromElements(messageEls);
+  const { threadText, threadTruncated } = formatThread(turns);
+  const truncated = Boolean(
+    turnTruncated || threadTruncated || focusRaw.length > MAX_TURN,
+  );
 
   let captureMode = "selection";
   let fragileNote =
@@ -194,7 +204,9 @@
       : focusMessageText
         ? "message_with_thread"
         : "thread";
-    fragileNote = `Captured ${turns.length} conversation turns via best-effort DOM so another AI can continue without missing prior context. Site redesigns can break this — always review the package.`;
+    fragileNote = truncated
+      ? `Captured ${turns.length} conversation turns (PARTIAL — character caps hit). Package will include archive + brief + recent; not unbounded lossless. Site redesigns can break this — always review.`
+      : `Captured ${turns.length} conversation turns via best-effort DOM. Long threads ship as archive + brief + recent (partial when caps hit). Site redesigns can break this — always review the package.`;
   } else if (focusEl && focusMessageText) {
     captureMode = selectedText ? "selection_in_message" : "message";
     fragileNote =
@@ -226,6 +238,10 @@
     captureMode,
     fragile: true,
     fragileNote,
+    truncated,
+    turnTruncated,
+    threadTruncated,
+    partial: truncated,
     pageText: (document.body?.innerText || "")
       .replace(/\s+\n/g, "\n")
       .trim()

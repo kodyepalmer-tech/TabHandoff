@@ -1,6 +1,7 @@
 import {
   buildPortablePackage,
   buildPackageFiles,
+  buildContinueContext,
   packageForDisk,
   renderSummaryMarkdown,
   renderAiBrief,
@@ -24,7 +25,7 @@ const HISTORY_KEY = "aiTaskHistory";
 const HISTORY_LIMIT = 40;
 
 const DEFAULT_HANDOFF_INSTRUCTION =
-  "Continue this AI-chat / coding-agent task from the latest user prompt. Use the full conversation thread in the package so you do not miss earlier turns. Do not invent prior progress.";
+  "Continue this AI-chat / coding-agent task from the latest user prompt. Use brief.md + recent.md for working context and conversation.md when you need the archive. Do not invent missing turns or prior progress.";
 
 const state = {
   tab: null,
@@ -38,6 +39,9 @@ const state = {
   siteId: "unknown",
   fragile: true,
   fragileNote: "",
+  capturePartial: false,
+  turnTruncated: false,
+  threadTruncated: false,
   pageText: "",
   inToolHandoff: false,
   screenshotDataUrl: null,
@@ -153,6 +157,11 @@ function applyCaptureToState(capture) {
   state.siteId = capture.siteId || "unknown";
   state.fragile = capture.fragile !== false;
   state.fragileNote = capture.fragileNote || "";
+  state.capturePartial = Boolean(
+    capture.partial || capture.truncated || capture.turnTruncated || capture.threadTruncated,
+  );
+  state.turnTruncated = Boolean(capture.turnTruncated);
+  state.threadTruncated = Boolean(capture.threadTruncated);
   state.pageText = capture.pageText || state.pageText || "";
   state.selectedText =
     state.threadText || state.focusMessageText || state.highlightText || "";
@@ -249,6 +258,28 @@ function renderHandoffStep() {
   if (state.captureMode) bits.push(`mode: ${state.captureMode}`);
   $("handoff-site").textContent = bits.join(" · ");
 
+  const completenessEl = $("handoff-completeness");
+  const pkgPreview = state.lastPackage;
+  const willBePartial =
+    state.capturePartial ||
+    pkgPreview?.conversation?.completeness === "partial";
+  if (completenessEl) {
+    if (willBePartial || state.turnCount > 0) {
+      completenessEl.classList.remove("hidden");
+      if (willBePartial) {
+        completenessEl.textContent =
+          "Thread status: partial — caps hit. ZIP keeps archive + brief + recent; Continue uses brief+recent (not an unlabeled raw dump). Not unbounded lossless.";
+        completenessEl.className = "trust partial-flag";
+      } else {
+        completenessEl.textContent =
+          "Thread status: complete under capture caps. ZIP includes archive + heuristic brief + recent turns. Continue uses brief+recent.";
+        completenessEl.className = "trust";
+      }
+    } else {
+      completenessEl.classList.add("hidden");
+    }
+  }
+
   $("handoff-fragile").textContent =
     state.fragileNote ||
     "AI chat DOMs change often — review the captured thread before trusting completeness.";
@@ -268,7 +299,7 @@ function renderHandoffStep() {
   const canContinue = Boolean(caps?.ok && caps.hasToken);
   if (canContinue && caps.aiCompletion) {
     $("handoff-hint").textContent =
-      `Download a portable package to upload into another AI later, or Continue now via ${caps.aiProvider || "local bridge"}.`;
+      `Download a portable package (archive + brief + recent) or Continue now via ${caps.aiProvider || "local bridge"} (brief+recent context).`;
     $("btn-continue-now").disabled = false;
     $("btn-continue-now").textContent = "Continue now";
   } else if (canContinue) {
@@ -658,6 +689,10 @@ function buildPkgFromState(instruction) {
     siteId: state.siteId,
     captureMode: state.captureMode,
     fragile: state.fragile,
+    truncated: state.capturePartial,
+    partial: state.capturePartial,
+    turnTruncated: state.turnTruncated,
+    threadTruncated: state.threadTruncated,
     instruction,
     screenshots: screenshotPayload(),
     source: {
@@ -669,13 +704,20 @@ function buildPkgFromState(instruction) {
 
 function showPackageOnlyResult({ activitySaved, activityError, downloaded }) {
   $("btn-copy-result").classList.add("hidden");
-  setStatusPill("Package created", "ok");
-  $("result-title").textContent = "Handoff package ready — not agent executed";
+  const completeness = state.lastPackage?.conversation?.completeness || "unknown";
+  const partial = completeness === "partial";
+  setStatusPill(partial ? "Package created (partial)" : "Package created", partial ? "" : "ok");
+  $("result-title").textContent = partial
+    ? "Handoff package ready — partial thread (not lossless)"
+    : "Handoff package ready — not agent executed";
   const lines = [
-    "A portable handoff ZIP is ready (conversation.md + handoff.json + summary).",
+    "A portable handoff ZIP is ready (conversation.md archive + brief.md + recent.md + handoff.json + summary).",
     state.turnCount
-      ? `Included ${state.turnCount} conversation turns so another AI can continue without missing prior context.`
+      ? `Included ${state.turnCount} conversation turns as archive; Continue path uses heuristic brief + recent turns.`
       : "No multi-turn thread was detected — package has the captured selection/message only.",
+    partial
+      ? `Thread completeness: partial (${(state.lastPackage?.conversation?.partialReasons || []).join(", ") || "caps"}). Not unbounded lossless.`
+      : "Thread completeness: complete under capture caps.",
     "No agent was launched.",
   ];
   if (downloaded) {
@@ -688,7 +730,7 @@ function showPackageOnlyResult({ activitySaved, activityError, downloaded }) {
   }
   lines.push(
     "",
-    "Next: upload the ZIP / paste conversation.md into another AI, or Copy brief.",
+    "Next: paste brief.md + recent.md into another AI (or open conversation.md for the archive), or Copy brief.",
   );
   $("result-body").textContent = lines.join("\n");
   $("result-path").classList.add("hidden");
@@ -854,10 +896,12 @@ async function continueNowAction() {
   $("btn-copy-result").classList.add("hidden");
   show("step-result");
 
+  // Continue-now sends labeled brief+recent — not a silent raw archive dump.
+  const continueCtx = buildContinueContext(pkg);
   const handoff = await postHandoff(settings, {
     url: pkg.page.url,
     title: pkg.page.title,
-    selectedText: pkg.page.selectedText,
+    selectedText: continueCtx.text,
     instruction: pkg.instruction,
     screenshots: screenshotPayload(),
     extensionId: chrome.runtime.id,
@@ -882,7 +926,7 @@ async function continueNowAction() {
       "",
       "Continue now stopped honestly: no AI provider on the bridge (set Ollama or an API key).",
       state.turnCount
-        ? `Conversation thread (${state.turnCount} turns) is in the saved package / download.`
+        ? `Archive (${state.turnCount} turns) is in the ZIP; bridge received brief+recent Continue context (${continueCtx.completeness}).`
         : "",
       "",
       "You can still Download handoff and upload into another AI.",
@@ -901,16 +945,11 @@ async function continueNowAction() {
   if (!state.pageText && state.tab?.id) {
     state.pageText = await readPageText(state.tab.id);
   }
-  const contextText =
-    state.threadText ||
-    pkg.page.selectedText ||
-    state.pageText ||
-    "";
 
   const ai = await postAiRun(settings, {
     url: pkg.page.url,
     title: pkg.page.title,
-    selectedText: contextText,
+    selectedText: continueCtx.text,
     pageText: state.pageText || undefined,
     instruction: pkg.instruction,
     handoffId: handoff.id || undefined,
@@ -1052,10 +1091,11 @@ async function createPackage({ forceAi = false, forceZip = false } = {}) {
     if (!state.pageText && state.tab?.id) {
       state.pageText = await readPageText(state.tab.id);
     }
+    const continueCtx = buildContinueContext(pkg);
     const ai = await postAiRun(settings, {
       url: pkg.page.url,
       title: pkg.page.title,
-      selectedText: pkg.page.selectedText || state.selectedText,
+      selectedText: continueCtx.text,
       pageText: state.pageText || undefined,
       instruction: pkg.instruction,
       handoffId: handoffId || undefined,

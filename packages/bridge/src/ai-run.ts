@@ -83,7 +83,10 @@ export async function aiCompletionAvailableAsync(
 function clamp(s: string | undefined, max: number): string | undefined {
   if (s == null) return undefined;
   const t = String(s);
-  return t.length <= max ? t : t.slice(0, max);
+  if (t.length <= max) return t;
+  const marker = "\n…[truncated — AI-run context cap; prefer ZIP archive]…";
+  const keep = Math.max(0, max - marker.length);
+  return `${t.slice(0, keep)}${marker}`;
 }
 
 function safeId(id: string | undefined): string | null {
