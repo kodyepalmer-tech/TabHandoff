@@ -210,6 +210,12 @@ input:focus {
   margin: 0 0 12px;
 }
 
+.trust.partial-flag {
+  color: var(--danger);
+  border-left: 3px solid var(--danger);
+  padding-left: 8px;
+}
+
 .actions {
   display: flex;
   flex-wrap: wrap;

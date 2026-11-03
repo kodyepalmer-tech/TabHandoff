@@ -30,8 +30,11 @@ const protocolMod = await import(
 const {
   buildPortablePackage,
   buildPackageFiles,
+  buildContinueContext,
   renderAiBrief,
   packageForDisk,
+  MAX_ARCHIVE_TURNS,
+  MAX_TURN_CHARS,
 } = packageMod;
 const { buildZip, base64ToBytes } = zipMod;
 const { validatePortableHandoffPackage } = protocolMod;
@@ -86,6 +89,8 @@ const entries = buildPackageFiles(pkg);
 const names = entries.map((e) => e.name);
 assert(names.includes("START_HERE.md"), "ZIP must include START_HERE.md");
 assert(names.includes("conversation.md"), "ZIP must include conversation.md");
+assert(names.includes("brief.md"), "ZIP must include brief.md");
+assert(names.includes("recent.md"), "ZIP must include recent.md");
 assert(names.includes("handoff.json"), "ZIP must include handoff.json");
 assert(names.includes("summary.md"), "ZIP must include summary.md");
 assert(
@@ -143,6 +148,9 @@ await execFileAsync("unzip", ["-q", zipPath, "-d", unpackDir]);
 
 const unpackedNames = [
   "START_HERE.md",
+  "conversation.md",
+  "brief.md",
+  "recent.md",
   "handoff.json",
   "summary.md",
   "screenshots/capture-01.png",
@@ -197,7 +205,7 @@ try {
   }
 }
 
-// --- Lossless thread package: full conversation, not just a highlight ---
+// --- Tiered thread package: archive + brief + recent (not silent "lossless") ---
 const THREAD_TURNS = [
   {
     role: "user",
@@ -251,8 +259,28 @@ assert(
   "conversation.md must include focus prompt",
 );
 assert(
-  /without missing prior turns/i.test(conversationMd),
-  "conversation.md must state lossless intent",
+  /archive/i.test(conversationMd),
+  "conversation.md must identify itself as the archive layer",
+);
+assert(
+  threadPkg.conversation?.completeness === "complete",
+  "short fixture thread should be complete under caps",
+);
+assert(
+  threadPkg.conversation?.brief?.method === "heuristic_template",
+  "brief must be heuristic (not fake AI summary)",
+);
+assert(
+  (threadPkg.conversation?.recentTurns?.length || 0) >= 1,
+  "thread package must expose recent turns layer",
+);
+assert(
+  threadFiles.some((e) => e.name === "brief.md"),
+  "thread ZIP must include brief.md",
+);
+assert(
+  threadFiles.some((e) => e.name === "recent.md"),
+  "thread ZIP must include recent.md",
 );
 const threadDisk = packageForDisk(threadPkg);
 assert(
@@ -265,11 +293,118 @@ assert(
 );
 const threadBrief = renderAiBrief({ ...threadDisk, conversation: threadPkg.conversation });
 assert(
-  /Conversation thread/i.test(threadBrief),
-  "AI brief must include conversation thread for lossless paste",
+  /Continue context|heuristic|Recent turns/i.test(threadBrief),
+  "AI brief must include labeled continue context (brief + recent)",
+);
+const continueCtx = buildContinueContext(threadPkg);
+assert(
+  /PARTIAL|complete under capture caps|Brief|Recent turns/i.test(continueCtx.text),
+  "Continue context must be labeled brief+recent, not a silent raw dump",
+);
+assert(
+  continueCtx.text.includes("finish the validator tests") ||
+    /Latest user ask|Open work/i.test(continueCtx.text),
+  "Continue context must carry the live edge",
+);
+
+// --- Caps → partial flag ---
+const manyTurns = [];
+for (let i = 0; i < MAX_ARCHIVE_TURNS + 25; i++) {
+  manyTurns.push({
+    role: i % 2 === 0 ? "user" : "assistant",
+    text: `Turn ${i + 1}: ${"x".repeat(40)}`,
+  });
+}
+const partialByTurns = buildPortablePackage({
+  url: "https://chatgpt.com/c/long",
+  title: "Long thread",
+  turns: manyTurns,
+  threadText: manyTurns.map((t) => t.text).join("\n").slice(0, 5000),
+  instruction: "Continue the long thread.",
+  source: { kind: "browser_extension" },
+  id: "ext-pack-partial-turns",
+  capturedAt: "2026-11-03T00:00:00.000Z",
+});
+assert(
+  partialByTurns.conversation?.completeness === "partial",
+  "exceeding archive turn cap must mark partial",
+);
+assert(
+  (partialByTurns.conversation?.partialReasons || []).includes("max_archive_turns"),
+  "partial reasons must include max_archive_turns",
+);
+assert(
+  (partialByTurns.missingInputs || []).some((m) => /partial/i.test(m)),
+  "handoff.json missingInputs must surface partial honesty",
+);
+assert(
+  /partial/i.test(
+    buildPackageFiles(partialByTurns).find((e) => e.name === "START_HERE.md").data,
+  ),
+  "START_HERE must show partial when caps hit",
+);
+
+const hugeTurn = "y".repeat(MAX_TURN_CHARS + 500);
+const partialByTurnChars = buildPortablePackage({
+  url: "https://claude.ai/chat/long",
+  title: "Huge turn",
+  turns: [
+    { role: "user", text: hugeTurn },
+    { role: "assistant", text: "ack" },
+    { role: "user", text: "continue please" },
+  ],
+  instruction: "Continue after the huge turn.",
+  source: { kind: "browser_extension" },
+  id: "ext-pack-partial-turnchars",
+  capturedAt: "2026-11-03T00:00:00.000Z",
+});
+assert(
+  partialByTurnChars.conversation?.completeness === "partial",
+  "per-turn char cap must mark partial",
+);
+assert(
+  (partialByTurnChars.conversation?.partialReasons || []).includes("per_turn_chars"),
+  "partial reasons must include per_turn_chars",
+);
+
+const partialFromCapture = buildPortablePackage({
+  url: "https://chatgpt.com/c/cap",
+  title: "Capture flagged",
+  turns: THREAD_TURNS,
+  threadText: THREAD_TURNS.map((t) => t.text).join("\n"),
+  truncated: true,
+  threadTruncated: true,
+  instruction: "Continue; capture said truncated.",
+  source: { kind: "browser_extension" },
+  id: "ext-pack-partial-capture",
+  capturedAt: "2026-11-03T00:00:00.000Z",
+});
+assert(
+  partialFromCapture.conversation?.completeness === "partial",
+  "capture truncated flag must mark partial",
+);
+
+const partialZip = buildPackageFiles(partialByTurns);
+for (const name of ["conversation.md", "brief.md", "recent.md"]) {
+  assert(
+    partialZip.some((e) => e.name === name),
+    `partial ZIP must include ${name}`,
+  );
+}
+assert(
+  /heuristic/i.test(partialZip.find((e) => e.name === "brief.md").data),
+  "brief.md must disclose heuristic method",
+);
+assert(
+  /partial/i.test(partialZip.find((e) => e.name === "recent.md").data),
+  "recent.md must show partial when capped",
+);
+assert(
+  validatePortableHandoffPackage(packageForDisk(partialByTurns)).ok === true,
+  "partial package handoff.json must still validate",
 );
 
 await rm(work, { recursive: true, force: true });
 console.log(
-  "OK: package-only ZIP has START_HERE + conversation.md + handoff.json + summary; thread handoff is lossless; brief paste-ready; schema valid (no bridge).",
+  "OK: tiered ZIP has archive + brief + recent; caps mark partial; Continue uses labeled brief+recent; schema valid (no bridge).",
 );

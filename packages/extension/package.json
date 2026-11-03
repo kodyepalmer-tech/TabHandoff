@@ -1,8 +1,8 @@
 {
   "name": "@tabhandoff/extension",
-  "version": "0.3.0",
+  "version": "0.4.1",
   "private": true,
-  "description": "TabHandoff Chromium MV3 extension — in-tool AI-chat handoffs with full-thread packages",
+  "description": "TabHandoff Chromium MV3 extension — in-tool AI-chat handoffs with tiered archive/brief/recent packages",
   "type": "module",
   "license": "MIT"
 }

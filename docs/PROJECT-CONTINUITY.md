@@ -1,17 +1,23 @@
 # TabHandoff — Project Continuity
 
-**Last updated:** 2026-11-02 (in-tool / full-thread browser handoff beachhead — see update below; older sections still describe earlier state)
+**Last updated:** 2026-11-03 (tiered long-thread handoff — archive + brief + recent; partial when capped)
 **Status:** This document is the single place a new agent should start. Do not depend on any single chat surviving. Update it at the end of every substantial session with actual branch, commit, test results, blockers, and next action. Never put secrets in it.
+
+## 2026-11-03 update, tiered long-thread packages
+
+- **Founder-approved:** ZIP / Continue-now must not silently truncate and call it lossless. Three layers: **archive** (`conversation.md`), **heuristic brief** (`brief.md`), **recent turns** (`recent.md`). Caps → **partial** in UI + package files.
+- Extension `0.4.1`: package builder + popup Continue path uses labeled brief+recent; capture reports truncation flags; bridge/ai-run clamps add truncation markers.
+- Tests: `node scripts/test-extension-package.mjs` asserts caps→partial and ZIP layers. Demo: store `media/tiered-handoff-demo/`. Founder guide updated: store `docs/tabhandoff-in-tool-handoff.md`.
+- Branch: `cursor/tiered-handoff-0f5f` off main `@0889d0e` (includes merged #31).
+- Hard stops: no DNS / CWS / Apple signing; brief is heuristic (not paid AI summary).
 
 ## 2026-11-02 update, in-tool handoff (extension beachhead)
 
 - **Product pivot (founder):** Value prop is hand off **from inside** ChatGPT / Claude / Cursor web — highlight or select a prompt → **Hand this off to another AI** → **Download handoff** (portable package for later upload) **or** **Continue now** (local bridge when available; honest blocked otherwise). Standalone desktop Transfer is infrastructure, not the hero.
-- **Lossless thread:** Capture packs the **full surrounding conversation** (structured turns → `conversation.md` + `page.selectedText`), not just the highlight or a single message. DOM selectors are best-effort and labeled fragile.
+- Capture packs the surrounding conversation (structured turns → `conversation.md` + `page.selectedText`), not just the highlight. DOM selectors are best-effort and labeled fragile. (2026-11-03: tiered layers + partial honesty superseded silent “lossless” claims.)
 - Extension `0.4.0`: content script on known AI hosts, context menus (“Hand off selection…” / “Hand this off…”), in-page selection bar, handoff popup step with Download / Continue now. Fixture: `packages/extension/fixtures/ai-chat-fixture.html`. Demo media (fixture, verified): store `media/in-tool-handoff-demo/`. Founder guide: store `docs/tabhandoff-in-tool-handoff.md`.
 - Hard stops honored: no DNS, no CWS submit, no Apple signing, no invented Cursor IDE APIs.
-- Tests: `node scripts/test-extension-package.mjs` includes thread-lossless assertions; evidence/runner/bridge suites green locally (bridge 49 pass). Manual Chrome GUI on fixture: context menu + Download handoff with 3 turns verified.
-- Base before this work: main `8fc597f` (Merge PR #30). Branch pushed: `cursor/in-tool-handoff-01b0` @ `94a1dd0`.
-- **Blocker this session:** `ManagePullRequest` create_pr returned unavailable repeatedly; `gh` API create also 403. Branch is on origin — open PR from https://github.com/kodyepalmer-tech/TabHandoff/pull/new/cursor/in-tool-handoff-01b0 then merge when CI green (blanket approval).
+- Merged as PR #31 → main `0889d0e`.
 
 ## 2026-11-01 update, one-button transfer merged
 
